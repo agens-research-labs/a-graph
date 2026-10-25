@@ -9,7 +9,7 @@ fn here() -> &'static std::path::Path {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn parallel_overlap() {
     let (_, collector) = serve_at(19814, |_| Resp::ok("{}")).await;
-    let (p, _) = program(here(), "parallel_overlap", slow).await;
+    let (p, _) = program_slow(here(), "parallel_overlap").await;
     p.run("hi").await.unwrap();
     let spans = spans_of(&collector);
     let (i, d) = (named(&spans, "node i"), named(&spans, "node d"));

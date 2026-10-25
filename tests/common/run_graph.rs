@@ -9,7 +9,7 @@ pub use serde_json::{Value, json};
 pub use a_graph::run::{Content, Program, RunOutput, build};
 pub use std::sync::Arc as Shared;
 pub use super::run::{yml_in};
-pub use super::http::{Req, Resp, serve_at};
+pub use super::http::{Req, Resp, serve_at, serve_at_delayed};
 
 pub fn chat(text: &str) -> String {
     json!({ "model": "m", "message": { "role": "assistant", "content": text }, "done": true, "done_reason": "stop", "prompt_eval_count": 1, "eval_count": 1 }).to_string()
@@ -69,13 +69,13 @@ pub fn asked_of(seen: &Arc<Mutex<Vec<Req>>>, first: char) -> String {
 
 pub const D_AND_E: &str = "---\nfrom agent d\n---\nD(I(S(hi)))\n\n---\nfrom agent e\n---\nE(I(S(hi)))";
 
-/// A mock that takes 300 ms to answer the nodes `D` and `E`.
-pub fn slow(req: &Req) -> Resp {
-    let text = user_of(req);
-    if text.starts_with('D') || text.starts_with('E') {
-        std::thread::sleep(Duration::from_millis(300));
-    }
-    Resp::ok(chat(&text))
+/// Like `program`, with a mock that takes 300 ms to answer the nodes `D` and `E` (the server waits
+/// without blocking a thread: a handler that slept would hold up the other requests).
+pub async fn program_slow(dir: &std::path::Path, name: &str) -> (Shared<Program>, Arc<Mutex<Vec<Req>>>) {
+    let yml = yml_in(dir, name);
+    let delay = |req: &Req| if user_of(req).starts_with(['D', 'E']) { Duration::from_millis(300) } else { Duration::ZERO };
+    let (_, seen) = serve_at_delayed(port_of(&yml), delay, |req| Resp::ok(chat(&user_of(req)))).await;
+    (Shared::new(build(&yml).unwrap_or_else(|e| panic!("{e}"))), seen)
 }
 
 // --- the branches of a `parallel` group run on different threads ----------------------------
