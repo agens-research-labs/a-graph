@@ -34,6 +34,7 @@ aws-sdk-s3 = "1.152.0"
 aws-types = "1.6.0"
 uuid = { version = "1.28.0", features = ["v4"] }
 futures-util = "0.3"
+jsonschema = { version = "0.60.0", default-features = false }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "io-util", "time"] }

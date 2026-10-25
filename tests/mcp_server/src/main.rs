@@ -45,6 +45,7 @@ impl ServerHandler for Server {
             tool("boom", "Always fails", none.clone()),
             tool("slow", "Takes ten seconds", none.clone()),
             tool("die", "Ends the process the first time", none),
+            tool("odd", "Has a schema that is not valid", json!({ "type": 5 })),
         ];
         Ok(ListToolsResult { tools, ..Default::default() })
     }

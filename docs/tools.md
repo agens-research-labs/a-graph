@@ -22,7 +22,7 @@ resources:
 ```
 
 The model knows a tool by its `id`, its `description` and its `parameters`, a JSON Schema given to the provider as it
-is written.
+is written. `parameters` must be a valid JSON Schema: one that is not is an error of the file (`bad_value`).
 
 The same mechanism serves the tools of [MCP servers](mcp.md), which speak a standard protocol, and the tools of
 [skills](skills.md).
@@ -42,6 +42,8 @@ An answer that is not JSON is a failure too.
 
 ## When a call goes wrong
 
+- Arguments that do not match the `parameters` of the tool: the tool is not called, and the model is told the
+  reasons, as for any other failure. The call counts in `max_iter`.
 - A tool that fails, does not answer within `timeout` seconds, or answers something that is not JSON: the model is
   told why, and may try again or answer otherwise. A program that runs out of time is killed; a request is abandoned.
 - A call of a tool the node does not have: the model is told that the node has no such tool.
@@ -58,6 +60,10 @@ An answer that is not JSON is a failure too.
 Each tool may be called at most `max_iter` times in one run of a node, timeouts and failures included. The count
 starts again for each node, and for each appearance of the same node in the edges. Asking once more fails the run
 (`tool_limit`). The tools of an MCP server and the files and scripts of a skill have their own caps, written on the
-server and on the skill. The number of rounds of the loop is not limited otherwise.
+server and on the skill.
+
+The rounds of the loop are limited too: the model may ask for tools in at most `resources.max_rounds` rounds of one run
+of the node (20 by default, at least 1). Every round counts, whatever the model asks for: also a skill, or a tool the
+node does not have, which no `max_iter` counts. One more round fails the run (`tool_limit`).
 
 The calls are written in the log and in the display as `tool.call` events (see [observability](observability.md)).

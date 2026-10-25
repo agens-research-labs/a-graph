@@ -45,7 +45,9 @@ const TOOL: Shape = Shape::Map(&[
     Field::req(TIMEOUT, Shape::Int).doc(
         "The seconds one call may take, at least 1. After that the program is killed or the request abandoned, and the model is told, as for any other failure.",
     ),
-    Field::req(PARAMETERS, Shape::Any).doc("The JSON Schema of the arguments, an object, given to the provider as it is written."),
+    Field::req(PARAMETERS, Shape::Any).doc(
+        "The JSON Schema of the arguments, an object, given to the provider as it is written; it must be a valid JSON Schema (`bad_value`). Before a call the arguments the model chose are checked against it: if they do not match, the tool is not called and the model is told why, as for any other failure, and the call counts in `max_iter`.",
+    ),
 ]);
 
 const MCP_SERVER: Shape = Shape::Map(&[
@@ -131,7 +133,7 @@ pub(super) const RESOURCES: Shape = Shape::Map(&[
     Field::opt(PROMPTS, Shape::List(&PROMPT)).doc("The texts the nodes send to their models, with their placeholders."),
     Field::opt(TOOLS, Shape::List(&TOOL)).doc("Programs and services of yours that the model may call while a node runs. The model decides whether to call them; the program makes the call."),
     Field::opt(MCP_SERVERS, Shape::List(&MCP_SERVER)).doc(
-        "Servers of the Model Context Protocol, connected when the run starts. Only their tools are used, never their resources or prompts.",
+        "Servers of the Model Context Protocol, connected when the run starts. Only their tools are used, never their resources or prompts. The arguments of a call are checked against the input schema the server gives for the tool, as for `tools`.",
     ),
     Field::opt(MEDIA, Shape::List(&MEDIA_ITEM)).doc("Everything that is not the text of a message: documents, images, audio, read or produced by the nodes."),
     Field::opt(SKILLS, Shape::List(&SKILL)).doc(

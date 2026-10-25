@@ -142,6 +142,7 @@ keys! {
     ASSISTANT = "assistant",
     PROMPT = "prompt",
     MAX_ITER = "max_iter",
+    MAX_ROUNDS = "max_rounds",
     TIMEOUT = "timeout",
     RUN_SCRIPTS = "run_scripts",
     MAX_FILES = "max_files",

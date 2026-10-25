@@ -63,7 +63,12 @@ pub(super) fn external(mut o: Obj, errs: &mut Errs, judge: bool) -> External {
 }
 
 pub(super) fn resources(mut o: Obj, errs: &mut Errs) -> Resources {
+    let max_rounds = o.opt::<u32>(key::MAX_ROUNDS, errs);
+    if max_rounds == Some(0) {
+        errs.add(&o.at().key(key::MAX_ROUNDS), Rule::BadValue, "`max_rounds` is at least 1");
+    }
     Resources {
+        max_rounds,
         prompt: o.opt(key::PROMPT, errs),
         tools: o.opt(key::TOOLS, errs).unwrap_or_default(),
         mcp_servers: o.opt(key::MCP_SERVERS, errs).unwrap_or_default(),

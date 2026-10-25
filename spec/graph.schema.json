@@ -1123,6 +1123,10 @@
                 "additionalProperties": false,
                 "description": "The prompt, the tools, the MCP servers and the skills of the node.",
                 "properties": {
+                  "max_rounds": {
+                    "description": "The most rounds in which the model may ask for tools in one run of the node. The default is 20, at least 1. Every round counts, whatever it asks for: also a skill, or a tool the node does not have, which no `max_iter` counts. One more round fails the run (`tool_limit`).",
+                    "type": "integer"
+                  },
                   "mcp_servers": {
                     "description": "The MCP servers whose tools the model may call.",
                     "items": {
@@ -2389,7 +2393,7 @@
       "description": "What the nodes use: prompts, tools, MCP servers, media, skills.",
       "properties": {
         "mcp_servers": {
-          "description": "Servers of the Model Context Protocol, connected when the run starts. Only their tools are used, never their resources or prompts.",
+          "description": "Servers of the Model Context Protocol, connected when the run starts. Only their tools are used, never their resources or prompts. The arguments of a call are checked against the input schema the server gives for the tool, as for `tools`.",
           "items": {
             "additionalProperties": false,
             "properties": {
@@ -2813,7 +2817,7 @@
                 "type": "integer"
               },
               "parameters": {
-                "description": "The JSON Schema of the arguments, an object, given to the provider as it is written."
+                "description": "The JSON Schema of the arguments, an object, given to the provider as it is written; it must be a valid JSON Schema (`bad_value`). Before a call the arguments the model chose are checked against it: if they do not match, the tool is not called and the model is told why, as for any other failure, and the call counts in `max_iter`."
               },
               "timeout": {
                 "description": "The seconds one call may take, at least 1. After that the program is killed or the request abandoned, and the model is told, as for any other failure.",

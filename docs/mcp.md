@@ -47,6 +47,10 @@ without a handshake) and falls back to the older ones (`initialize`).
 
 - The result of a call is the structured content of the answer, if it has one; otherwise its text blocks, one after
   the other on separate lines.
+- The arguments of a call are checked against the input schema the server gave for the tool, as for the `parameters`
+  of [tools](tools.md): arguments that do not match are told to the model, and the tool is not called. A schema of the
+  server that is not a valid JSON Schema is not enforced: the arguments of that tool are not checked, and the run says
+  so once, with the warning `tool_schema_ignored`, when the servers are connected.
 - An answer that the server marks as an error reaches the model as an error.
 - A server that goes away during a call is connected again once, and the call is repeated. If that fails too, the
   model is told that the server is not reachable.

@@ -268,7 +268,7 @@ An Ollama server, called with `POST <host>/api/embed`.
 |---|---|---|---|
 | `prompts` | no | list of: map (below) | The texts the nodes send to their models, with their placeholders. |
 | `tools` | no | list of: map (below) | Programs and services of yours that the model may call while a node runs. The model decides whether to call them; the program makes the call. |
-| `mcp_servers` | no | list of: map (below) | Servers of the Model Context Protocol, connected when the run starts. Only their tools are used, never their resources or prompts. |
+| `mcp_servers` | no | list of: map (below) | Servers of the Model Context Protocol, connected when the run starts. Only their tools are used, never their resources or prompts. The arguments of a call are checked against the input schema the server gives for the tool, as for `tools`. |
 | `media` | no | list of: map (below) | Everything that is not the text of a message: documents, images, audio, read or produced by the nodes. |
 | `skills` | no | list of: map (below) | Folders in the Agent Skills format (https://agentskills.io/specification): instructions for a task, with their files and scripts, that the model reads when it needs them. |
 
@@ -309,7 +309,7 @@ An Ollama server, called with `POST <host>/api/embed`.
 | `headers` | no | map of names to: secret | The headers of the POSTs, with `transport: http` only, each read from an environment variable when the file is checked. |
 | `max_iter` | yes | whole number | The most calls of this tool in one run of a node, at least 1, failures included. The count starts again for each node and each appearance of the node in the edges; one more call fails the run (`tool_limit`). |
 | `timeout` | yes | whole number | The seconds one call may take, at least 1. After that the program is killed or the request abandoned, and the model is told, as for any other failure. |
-| `parameters` | yes | any value | The JSON Schema of the arguments, an object, given to the provider as it is written. |
+| `parameters` | yes | any value | The JSON Schema of the arguments, an object, given to the provider as it is written; it must be a valid JSON Schema (`bad_value`). Before a call the arguments the model chose are checked against it: if they do not match, the tool is not called and the model is told why, as for any other failure, and the call counts in `max_iter`. |
 
 ## `resources.mcp_servers[]`
 
@@ -580,6 +580,7 @@ The form with `url` and `access`:
 | `tools` | no | list of: the id of a tool | The tools the model may call. |
 | `mcp_servers` | no | list of: the id of an MCP server | The MCP servers whose tools the model may call. |
 | `skills` | no | list of: the id of a skill | The skills the model may use. |
+| `max_rounds` | no | whole number | The most rounds in which the model may ask for tools in one run of the node. The default is 20, at least 1. Every round counts, whatever it asks for: also a skill, or a tool the node does not have, which no `max_iter` counts. One more round fails the run (`tool_limit`). |
 
 ## `graph.nodes[].blackboard`
 

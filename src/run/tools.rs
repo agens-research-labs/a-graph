@@ -10,6 +10,7 @@ use super::Program;
 use crate::logging::{Event, LogLevel};
 use crate::error::{Error, Path, Phase, Rule};
 use crate::gate::{self, ToolOutcome};
+use crate::graph::nodes::component::DEFAULT_MAX_ROUNDS;
 use crate::graph::{ACTIVATE_SKILL, Entity, READ_SKILL_FILE, RUN_SKILL_SCRIPT};
 use crate::models::{Llm, ModelInvocation, ModelResponse, ToolDefinition, ToolResult, ToolRound};
 
@@ -119,7 +120,8 @@ impl Program {
     }
 
     /// Calls the model until it stops asking for tools. Each tool, and each MCP server, may be
-    /// called at most its `max_iter` times in this run of the node; asking once more is an error.
+    /// called at most its `max_iter` times in this run of the node, and the model may ask for tools in at most
+    /// `max_rounds` rounds; asking once more is an error.
     /// `usage` and the time of the final response are the sum of all the calls.
     pub(super) async fn invoke_with_tools(&self, node: Entity, llm: &dyn Llm, mut call: ModelInvocation) -> Result<ModelResponse, Error> {
         let id = self.nodes.id(node).unwrap_or_default().to_string();
@@ -127,6 +129,8 @@ impl Program {
         let mut used: HashMap<String, u32> = HashMap::new();
         let mut activated: std::collections::HashSet<String> = std::collections::HashSet::new();
         let (mut usage, mut time) = (Default::default(), 0.0);
+        let max_rounds = self.nodes.resources().get(node).and_then(|r| r.max_rounds).unwrap_or(DEFAULT_MAX_ROUNDS);
+        let mut rounds = 0u32;
 
         loop {
             let mut response = llm.invoke(&call).await.map_err(|e| fail(Rule::ModelFailed, e.to_string()))?;
@@ -137,6 +141,12 @@ impl Program {
                 response.info.usage = usage;
                 response.info.execution_time = time;
                 return Ok(response);
+            }
+
+            // every round counts, whatever the model asks for: a skill, a tool the node does not have, a wrong name
+            rounds += 1;
+            if rounds > max_rounds {
+                return Err(fail(Rule::ToolLimit, format!("the model asked for tools in more than {max_rounds} rounds, the `max_rounds` of the node")));
             }
 
             // the cap of each tool and of each server, before anything is called
@@ -185,7 +195,13 @@ impl Program {
                 let skills = &skills;
                 async move {
                     let started = std::time::Instant::now();
+                    let invalid = match target {
+                        Some(Target::Tool(t)) => serde_json::to_value(&t.parameters).ok().and_then(|schema| bad_arguments(&schema, &c.arguments)),
+                        Some(Target::Mcp { server, tool }) => pool.as_ref().and_then(|p| p.tools(&server.id).iter().find(|d| &d.name == tool)).and_then(|d| bad_arguments(&d.parameters, &c.arguments)),
+                        _ => None,
+                    };
                     let outcome = match target {
+                        _ if invalid.is_some() => Ok(ToolOutcome::failed(format!("the arguments do not match the parameters of `{}`: {}", c.function_name, invalid.unwrap_or_default()))),
                         Some(Target::Skill | Target::SkillFile) => Ok(ToolOutcome::ok(serde_json::Value::Null)),
                         Some(Target::SkillScript) => Ok(run_skill_script(skills, &c.arguments).await),
                         Some(Target::Tool(t)) => gate::call_tool(t, &c.arguments).await.map_err(|e| format!("tool `{}`: {e}", t.id)),
@@ -228,6 +244,14 @@ impl Program {
             call.tool_rounds.push(ToolRound { message: response.message, reasoning: response.reasoning, calls: response.tools_call, results });
         }
     }
+}
+
+/// Why `arguments` do not satisfy the JSON Schema of a tool, or `None` if they do. A schema that
+/// cannot be compiled is not enforced: the tool or the server that wrote it answers for it.
+fn bad_arguments(schema: &serde_json::Value, arguments: &serde_json::Value) -> Option<String> {
+    let validator = jsonschema::validator_for(schema).ok()?;
+    let reasons: Vec<String> = validator.iter_errors(arguments).map(|e| format!("{e} (at `{}`)", e.instance_path())).collect();
+    (!reasons.is_empty()).then(|| reasons.join("; "))
 }
 
 /// The answer to the activation of the skill `name`: its instructions in a tag with its name, or a

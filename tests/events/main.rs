@@ -20,3 +20,6 @@ mod tool_call_logged;
 
 #[path = "vectordb_read_logged/vectordb_read_logged.rs"]
 mod vectordb_read_logged;
+
+#[path = "tool_schema_ignored/tool_schema_ignored.rs"]
+mod tool_schema_ignored;
