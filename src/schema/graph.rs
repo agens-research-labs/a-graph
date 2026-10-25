@@ -56,6 +56,9 @@ const NODE_RESOURCES: Shape = Shape::Map(&[
     Field::opt(TOOLS, Shape::List(&Shape::Ref(Kind::Tool))).doc("The tools the model may call."),
     Field::opt(MCP_SERVERS, Shape::List(&Shape::Ref(Kind::Mcp))).doc("The MCP servers whose tools the model may call."),
     Field::opt(SKILLS, Shape::List(&Shape::Ref(Kind::Skill))).doc("The skills the model may use."),
+    Field::opt(MAX_ROUNDS, Shape::Int).doc(
+        "The most rounds in which the model may ask for tools in one run of the node. The default is 20, at least 1. Every round counts, whatever it asks for: also a skill, or a tool the node does not have, which no `max_iter` counts. One more round fails the run (`tool_limit`).",
+    ),
 ]);
 
 const NODE_BLACKBOARD: Shape = Shape::Map(&[

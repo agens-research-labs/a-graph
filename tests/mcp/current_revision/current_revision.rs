@@ -13,6 +13,6 @@ async fn current_revision() {
     // the model was told the tools of the server, with the schema of their parameters
     let first = body_of(&seen.lock().unwrap()[0]);
     let names: Vec<&str> = first["tools"].as_array().unwrap().iter().map(|t| t["function"]["name"].as_str().unwrap()).collect();
-    assert_eq!(names, ["say", "count", "boom", "slow", "die"]);
+    assert_eq!(names, ["say", "count", "boom", "slow", "die", "odd"]);
     assert_eq!(first["tools"][0]["function"]["parameters"]["required"], json!(["text"]));
 }

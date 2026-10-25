@@ -80,7 +80,14 @@ impl ToolsManager {
                 errs.add(&at.key(key::TIMEOUT), Rule::BadValue, "`timeout` is at least 1 second");
             }
             let parameters = match parameters {
-                Some(p) if p.is_mapping() => Some(p),
+                Some(p) if p.is_mapping() => match serde_json::to_value(&p).map(|j| jsonschema::validator_for(&j)) {
+                    Ok(Ok(_)) => Some(p),
+                    Ok(Err(e)) => {
+                        errs.add(&at.key(key::PARAMETERS), Rule::BadValue, format!("parameters is not a valid JSON Schema: {e}"));
+                        None
+                    }
+                    Err(_) => None,
+                },
                 _ => {
                     errs.add(&at.key(key::PARAMETERS), Rule::BadValue, "parameters must be a JSON Schema object");
                     None

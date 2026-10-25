@@ -39,6 +39,9 @@ mod stdio_timeout;
 #[path = "stdio_tool_rules/stdio_tool_rules.rs"]
 mod stdio_tool_rules;
 
+#[path = "tool_bad_arguments/tool_bad_arguments.rs"]
+mod tool_bad_arguments;
+
 #[path = "tool_headers/tool_headers.rs"]
 mod tool_headers;
 
@@ -50,6 +53,12 @@ mod tool_over_max_iter;
 
 #[path = "tool_params_object/tool_params_object.rs"]
 mod tool_params_object;
+
+#[path = "tool_params_schema/tool_params_schema.rs"]
+mod tool_params_schema;
+
+#[path = "tool_rounds_limit/tool_rounds_limit.rs"]
+mod tool_rounds_limit;
 
 #[path = "two_calls_in_order/two_calls_in_order.rs"]
 mod two_calls_in_order;

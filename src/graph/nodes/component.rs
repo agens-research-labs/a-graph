@@ -69,7 +69,12 @@ pub struct Resources {
     /// Ids of `resources.mcp_servers`: the caps belong to the server.
     pub mcp_servers: Vec<String>,
     pub skills: Vec<String>,
+    /// The most rounds of tool requests of the model in one run of the node; `None` is `DEFAULT_MAX_ROUNDS`.
+    pub max_rounds: Option<u32>,
 }
+
+/// The default of `resources.max_rounds`.
+pub const DEFAULT_MAX_ROUNDS: u32 = 20;
 
 #[derive(Debug, Clone)]
 pub struct BlackboardWrite {

@@ -7,6 +7,7 @@ use std::sync::Arc;
 use super::Program;
 use crate::error::{Error, Path, Phase, Rule};
 use crate::gate::McpPool;
+use crate::logging::{Event, LogLevel};
 use crate::schema::key;
 
 impl Program {
@@ -40,6 +41,19 @@ impl Program {
                         pool.close().await;
                         return Err(Error::new(Phase::Execution, Path::node(id), Rule::DuplicateId, msg));
                     }
+                }
+            }
+        }
+        // a schema that cannot be compiled is not enforced: the user is told, once per tool
+        for server in &used {
+            for t in pool.tools(server) {
+                if let Err(e) = jsonschema::validator_for(&t.parameters) {
+                    self.emit(
+                        Event::new(LogLevel::Warn, "tool_schema_ignored")
+                            .field("phase", Phase::Execution.to_string())
+                            .field("path", Path::root().key(key::RESOURCES).key(key::MCP_SERVERS).to_string())
+                            .field("message", format!("MCP server `{server}`: the schema of the tool `{}` is not valid ({e}), its arguments are not checked", t.name)),
+                    );
                 }
             }
         }
