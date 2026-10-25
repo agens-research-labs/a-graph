@@ -1,0 +1,57 @@
+# The model tries to read outside the folder of the skill (model on port 18812, started by the test).
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:18812
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: p_s
+      content: { system: "", user: "S({{user_message}})" }
+    - id: p_n
+      content: { system: "", user: "N({{agent_message}})" }
+    - id: p_q
+      content: { system: "Be brief.", user: "Q({{user_message}})" }
+    - id: p_e
+      content: { system: "", user: "E({{agent_message}})" }
+  skills:
+    - id: pdf
+      path: ./tests/skills/path_leaves_folder/files/skills_run/pdf
+    - id: notes
+      path: ./tests/skills/path_leaves_folder/files/skills_run/notes
+graph:
+  nodes:
+    - id: s
+      model: { id: m }
+      resources: { prompt: p_s }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true, node: true }
+    - id: n
+      model: { id: m }
+      resources: { prompt: p_q, skills: [pdf, notes] }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true, node: true }
+    - id: e
+      model: { id: m }
+      resources: { prompt: p_e }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true }
+  edges:
+    - start: n
+    - end: e

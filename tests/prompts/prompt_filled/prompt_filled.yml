@@ -1,0 +1,36 @@
+# One node `n`, the model is a mock server on port 18101 (the test starts it). The prompt uses both messages; the node sets temperature, top_p and max_tokens.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:18101
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: pr
+      content:
+        system: "Be brief."
+        user: "User said: {{user_message}} / agent said: {{agent_message}}"
+graph:
+  nodes:
+    - id: n
+      model: { id: m, temperature: 0.2, top_p: 0.9, max_tokens: 50 }
+      resources: { prompt: pr }
+      message:
+        input: { user_message: true, agent_message: true }
+        output: { assistant_message: true }
+  edges:
+    - start: n
+    - end: n

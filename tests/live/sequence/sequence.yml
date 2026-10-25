@@ -1,0 +1,46 @@
+# A graph on the local Ollama (model qwen3.5:4b). The first node names a country, the second says its capital.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [localhost] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: qwen3.5:4b
+    host: http://localhost:11434
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: p_country
+      content:
+        system: "Reply with one country name only."
+        user: "Name a country that starts with the letter {{user_message}}."
+    - id: p_capital
+      content:
+        system: "Reply with the capital city only, one word."
+        user: "The capital of {{agent_message}}"
+graph:
+  nodes:
+    - id: country
+      model: { id: m, reasoning: off, max_tokens: 150 }
+      resources: { prompt: p_country }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true, node: true }
+    - id: capital
+      model: { id: m, reasoning: off, max_tokens: 150 }
+      resources: { prompt: p_capital }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+  edges:
+    - start: country
+    - end: capital

@@ -1,0 +1,222 @@
+# The input of the batch is not an s3:// URI.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: demo
+    description: demo agent
+    version: "1.0.0"
+    data_classification:
+      sensitivity: internal
+      categories: [pii]
+    lifecycle:
+      status: active
+      sunset_date: 2027-01-01T00:00:00Z
+    permissions:
+      network:
+        allowed_hosts:
+        - api.anthropic.com
+        - api.openai.com
+        - bedrock-runtime.eu-west-1.amazonaws.com
+        - bedrock.eu-west-1.amazonaws.com
+        - my-out.s3.eu-west-1.amazonaws.com
+        - aiplatform.googleapis.com
+        - my-res.services.ai.azure.com
+        - localhost
+        - collector.example.com
+        - mcp.example.com
+        - q.example.com
+observability:
+  level: info
+  output: stdout
+trace:
+  endpoint: https://collector.example.com
+  headers:
+    Authorization: { env: TRACE_TOKEN }
+verbose:
+  level: steps
+models:
+  - id: fast
+    provider: anthropic
+    model: claude-haiku-4-5
+    input: [text, image]
+    output: [text]
+    api_key: { env: ANTHROPIC_API_KEY }
+    workspace_id: wrkspc_demo
+  - id: strong
+    provider: bedrock
+    model: anthropic.claude-sonnet-4-5
+    input: [text]
+    output: [text]
+    region: eu-west-1
+    credentials: ambient
+    batch:
+      input_s3_uri: my-in/jobs
+      output_s3_uri: s3://my-out/results/
+      role_arn: arn:aws:iam::123456789012:role/batch
+  - id: smart
+    provider: openai
+    model: gpt-image-1
+    input: [text]
+    output: [text, image]
+    api_key: { env: OPENAI_API_KEY }
+  - id: claude_gcp
+    provider: vertex_ai
+    publisher: anthropic
+    model: claude-sonnet-5-5
+    input: [text]
+    output: [text]
+    project: p
+    location: global
+    credentials: ambient
+  - id: claude_azure
+    provider: azure_foundry
+    publisher: anthropic
+    model: claude-sonnet-5-5
+    input: [text]
+    output: [text]
+    resource: my-res
+    credentials: ambient
+  - id: local
+    provider: ollama
+    model: qwen2.5:7b
+    host: http://localhost:11434
+    input: [text]
+    output: [text]
+embeddings:
+  - id: emb_gemma
+    provider: ollama
+    model: embeddinggemma
+    host: http://localhost:11434
+resources:
+  prompts:
+    - id: analyst
+      content:
+        system: "You are an analyst. Context: {{chunks}} Notes: {{findings}}"
+        user: "Task: {{input_message}}"
+    - id: chat
+      source: { path: ./tests/network/batch_hosts/files/chat.yml }
+    - id: check
+      content:
+        system: "You are a judge. Notes: {{findings}}"
+        user: "Text to check: {{user_message}}"
+  tools:
+    - id: get_weather
+      description: weather
+      max_iter: 5
+      timeout: 30
+      transport: stdio
+      command: /usr/bin/python3
+      args: ["w.py"]
+      parameters: { type: object, properties: { city: { type: string } }, required: [city] }
+  mcp_servers:
+    - id: files
+      max_iter: 5
+      timeout: 30
+      transport: stdio
+      command: /usr/bin/python3
+      env: { SOME_VAR: { env: SOME_ENV } }
+    - id: remote
+      max_iter: 5
+      timeout: 30
+      transport: http
+      url: https://mcp.example.com/mcp
+      headers: { Authorization: { env: MCP_TOKEN } }
+  media:
+    - id: scan
+      type: md
+      source: { path: ./scan.md }
+    - id: cover
+      type: { img: png }
+      generate:
+        size: { width: 1024, height: 1024 }
+        background: true
+      provider:
+        openai: { moderation: low }
+  skills:
+    - id: pdf
+      path: ./tests/network/batch_hosts/files/skills/pdf
+external:
+  vectordb:
+    - id: kb
+      provider: qdrant
+      embedding: emb_gemma
+      text_field: text
+      url: https://q.example.com
+      api_key: { env: QDRANT_API_KEY }
+      collection: docs
+      top_k: 5
+  memory:
+    - id: session
+      provider: json_file
+      path: ./s.json
+      chat: { length: 10 }
+    - id: vmem
+      provider: vectordb
+      ref: kb
+blackboards:
+  - id: findings
+    source: memory
+  - id: notes
+    source: { file: ./tests/network/batch_hosts/files/notes.md }
+graph:
+  nodes:
+    - id: a
+      model: { id: fast, max_tokens: 1000, reasoning: low }
+      external:
+        vectordb:
+          - { id: kb, query: user_message }
+      resources:
+        prompt: analyst
+        tools: [get_weather]
+        skills: [pdf]
+      blackboard:
+        id: findings
+        read: true
+        write: { enabled: true, place: top }
+      media:
+        input: [ { id: scan, from: resources } ]
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true, node: true, schema: '{"type":"object"}' }
+    - id: b
+      model: { id: smart }
+      media:
+        output: [ { id: cover, node: false } ]
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true }
+    - id: c
+      model: { id: local }
+    - id: judge
+      validation-node:
+        model: { id: fast, max_tokens: 200 }
+        resources:
+          prompt: check
+        message:
+          input: { user_message: true }
+        blackboard:
+          id: findings
+        on_error: stop
+    - id: d
+      model: { id: local }
+    - id: e
+      model: { id: local }
+    - id: f
+      model: { id: local }
+    - id: g
+      model: { id: local }
+  edges:
+    - start: a
+    - next: judge
+    - parallel:
+        - limit: 20
+        - in: b
+        - fan:
+            - next: c
+            - linear:
+                - in: d
+                - fan:
+                    - next: e
+        - out: f
+    - end: g

@@ -1,0 +1,51 @@
+# The blackboard has `write.utility: [wrap]` and the output has `utility: [up]` (model mock 19921).
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:19921
+    input: [text]
+    output: [text]
+blackboards:
+  - id: bb
+    source: memory
+utilities:
+  - id: wrap
+    transport: stdio
+    command: /bin/sh
+    args: ["tests/utilities/board_write_utility/files/scripts/wrap.sh"]
+    timeout: 5
+  - id: up
+    transport: stdio
+    command: /bin/sh
+    args: ["tests/utilities/board_write_utility/files/scripts/up.sh"]
+    timeout: 5
+resources:
+  prompts:
+    - id: pr
+      content:
+        system: "Be brief."
+        user: "Q: {{user_message}}"
+graph:
+  nodes:
+    - id: n
+      model: { id: m, max_tokens: 50 }
+      resources: { prompt: pr }
+      blackboard: { id: bb, write: { enabled: true, place: top, utility: [wrap] } }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true, utility: [up] }
+  edges:
+    - start: n
+    - end: n

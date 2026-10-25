@@ -1,0 +1,4 @@
+# The configuration of the service for this test (port 19977); the sessions keep their files in target/test-service/host_refused.
+port: 19977
+data_dir: target/test-service/host_refused
+allowed_hosts: [127.0.0.1]

@@ -1,0 +1,41 @@
+//! The models: their yml block, and the contract to call them.
+
+mod anthropic;
+mod auth;
+mod bedrock;
+mod batch;
+mod endpoint;
+mod error;
+mod gemini;
+mod http;
+mod identity;
+mod invocation;
+mod llm;
+mod manager;
+mod mistral;
+mod ollama;
+mod openai;
+mod reasoning;
+mod requirements;
+mod response;
+mod spec;
+pub(crate) mod timing;
+
+pub use anthropic::Anthropic;
+pub use auth::{AzureAmbient, GoogleAdc, StaticToken, TokenSource};
+pub use batch::*;
+pub use bedrock::Bedrock;
+pub use error::ModelError;
+pub(crate) use http::{client as http_client, send as http_send};
+pub(crate) use identity::Identity;
+pub use gemini::Gemini;
+pub use invocation::*;
+pub use llm::Llm;
+pub use manager::ModelManager;
+pub use mistral::Mistral;
+pub use ollama::Ollama;
+pub use openai::OpenAi;
+pub use reasoning::{Modality, Reasoning};
+pub use requirements::*;
+pub use response::*;
+pub use spec::*;

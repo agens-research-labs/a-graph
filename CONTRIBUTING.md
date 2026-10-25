@@ -1,0 +1,73 @@
+# Contributing
+
+## Build and test
+
+You need [Rust](https://rustup.rs). From the root of the project:
+
+```
+cargo build
+cargo test                      # the whole suite: no network and no key needed
+cargo test --test memory        # the tests of one topic
+cargo test -- --ignored         # the live tests (see below)
+```
+
+The suite runs against mock servers, started by the tests themselves: it needs no network and no key.
+
+The live tests are marked `#[ignore]` because they need something outside the project; each says what in its
+`#[ignore]` line. They need a local [Ollama](https://ollama.com) with some models (`qwen3.5:4b`, `embeddinggemma`,
+`llama3.2`, `gpt-oss`, `mistral-small3.2`, `gemma4:e2b`), a Chroma server on `127.0.0.1:8000`, `python3` with
+`pymupdf4llm`, or the keys `GEMINI_API_KEY` and `CLAUDE_API_KEY` for the real APIs.
+
+The code has been built and tested only on Linux.
+
+## How the code is organized
+
+- `src/main.rs`: the command line.
+- `src/schema`: the names of the keys and the shape of each block of the graph file.
+- `src/loader`: checks the shape of the file, the links between ids and the order of the edges.
+- `src/models`, `src/embeddings`, `src/resources`, `src/external`, `src/blackboards`, `src/utilities`: the blocks of
+  the file, each built by its own manager.
+- `src/graph`: the nodes and the edges, and the rules between them.
+- `src/run`: the execution of a graph.
+- `src/gate`: the calls to tools, MCP servers and skill scripts.
+- `src/logging`: the log, the trace and the display.
+- `src/network.rs`: the check of the allowed hosts.
+- `src/service`: the HTTP service.
+- `src/error`: the errors, with their phase, path and rule.
+
+A file is read in two steps. First the loader checks its shape and the links between its names (a name is unique in
+the whole file). Then each block is built by its own manager, which checks the rules of its content. The errors of
+all the steps are reported together.
+
+## Tests
+
+- Every test lives in `tests/<topic>/<name>/`, with its code (`<name>.rs`), its graph file (`<name>.yml`) and its
+  files (`files/`). Each topic has a `tests/<topic>/main.rs` that lists its tests.
+- The names of the tests are short.
+- Code shared by the tests lives only in `tests/common`, and the MCP server used by the tests in `tests/mcp_server`, a
+  project of its own.
+- The mock servers of the tests listen on fixed ports, written in each test's yml, so that no port is shared between
+  tests.
+- A test must run from a clean checkout, for anyone: no file outside the project, no state left by another test.
+
+## The schema of the graph file
+
+The keys of the graph file and of the file of the service, their shapes and their descriptions are written once, in
+`src/schema`. From there the program generates the JSON Schemas `spec/graph.schema.json` and
+`spec/service.schema.json` and the references `docs/graph.md` and `docs/service.md`, which are never edited by hand.
+The routes of the HTTP service are listed once, in `src/service/api.rs`: the server is built from that list, and the
+OpenAPI description `spec/service.openapi.json` is generated from it. After a change in `src/schema`, write them again:
+
+```
+cargo run -- --print-schema > spec/graph.schema.json
+cargo run -- --print-docs > docs/graph.md
+cargo run -- --print-service-schema > spec/service.schema.json
+cargo run -- --print-service-docs > docs/service.md
+cargo run -- --print-service-api > spec/service.openapi.json
+```
+
+The tests of `tests/schema` fail when these files are not those of the code, or when a key has no description.
+
+## License
+
+By contributing you agree that your contribution is released under the [MIT License](LICENSE).

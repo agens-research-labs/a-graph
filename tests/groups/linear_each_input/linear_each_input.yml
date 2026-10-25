@@ -1,0 +1,80 @@
+# A graph on a mock model (port 18203, started by the test) that answers with the text it was asked, so the answer of a node shows what it received. A `linear` group: in i, fan d and e, out f.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:18203
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: p_s
+      content: { system: "", user: "S({{user_message}})" }
+    - id: p_i
+      content: { system: "", user: "I({{agent_message}})" }
+    - id: p_d
+      content: { system: "", user: "D({{agent_message}})" }
+    - id: p_e
+      content: { system: "", user: "E({{agent_message}})" }
+    - id: p_f
+      content: { system: "", user: "F({{agent_message}})" }
+    - id: p_z
+      content: { system: "", user: "Z({{agent_message}})" }
+graph:
+  nodes:
+    - id: s
+      model: { id: m }
+      resources: { prompt: p_s }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true, node: true }
+    - id: i
+      model: { id: m }
+      resources: { prompt: p_i }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: d
+      model: { id: m }
+      resources: { prompt: p_d }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: e
+      model: { id: m }
+      resources: { prompt: p_e }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: f
+      model: { id: m }
+      resources: { prompt: p_f }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: z
+      model: { id: m }
+      resources: { prompt: p_z }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+  edges:
+    - start: s
+    - linear:
+        - in: i
+        - fan:
+            - next: d
+            - next: e
+        - out: f
+    - end: z

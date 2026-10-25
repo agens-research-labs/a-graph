@@ -1,0 +1,36 @@
+# Hello
+# One node answers the message of the user. A graph of one node is the `start` alone.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: hello
+    description: One node answers the message of the user. A graph of one node is the `start` alo
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [localhost] } }
+observability: { level: warn }      # the log goes to the standard error
+verbose: { level: steps }        # the display of the run: off | steps | detail
+models:
+  - id: local
+    provider: ollama
+    model: qwen3.5:4b
+    host: http://localhost:11434
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: answer
+      content:
+        system: "Answer in one short sentence."
+        user: "{{user_message}}"      # {{user_message}} is the message you give on the command line
+graph:
+  nodes:
+    - id: assistant
+      model: { id: local, reasoning: off, max_tokens: 300, temperature: 0 }
+      resources: { prompt: answer }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true }   # the answer goes to the result
+  edges:
+    - start: assistant

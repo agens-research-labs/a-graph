@@ -1,0 +1,50 @@
+# The prompt uses {{chunks}} and the node reads no vectordb.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:19023
+    input: [text]
+    output: [text]
+embeddings:
+  - id: emb
+    provider: ollama
+    model: embeddinggemma
+    host: http://127.0.0.1:19024
+resources:
+  prompts:
+    - id: pr
+      content:
+        system: "Answer with the context."
+        user: "Context: {{chunks}} / Question: {{user_message}}"
+external:
+  vectordb:
+    - id: contracts_db
+      provider: qdrant
+      url: http://127.0.0.1:19025
+      collection: contracts
+      top_k: 2
+      embedding: emb
+      text_field: text
+graph:
+  nodes:
+    - id: n
+      model: { id: m, max_tokens: 50 }
+      resources: { prompt: pr }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true }
+  edges:
+    - start: n
+    - end: n

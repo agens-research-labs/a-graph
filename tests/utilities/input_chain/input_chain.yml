@@ -1,0 +1,47 @@
+# `message.input.utility: [up, wrap]` (model mock 19911).
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:19911
+    input: [text]
+    output: [text]
+utilities:
+  - id: up
+    transport: stdio
+    command: /bin/sh
+    args: ["tests/utilities/input_chain/files/scripts/up.sh"]
+    timeout: 5
+  - id: wrap
+    transport: stdio
+    command: /bin/sh
+    args: ["tests/utilities/input_chain/files/scripts/wrap.sh"]
+    timeout: 5
+resources:
+  prompts:
+    - id: pr
+      content:
+        system: "Be brief."
+        user: "Q: {{user_message}}"
+graph:
+  nodes:
+    - id: n
+      model: { id: m, max_tokens: 50 }
+      resources: { prompt: pr }
+      message:
+        input: { user_message: true, utility: [up, wrap] }
+        output: { assistant_message: true }
+  edges:
+    - start: n
+    - end: n

@@ -1,0 +1,36 @@
+# Live: a memory with `chat` only; the node is on the local Ollama (qwen3.5:4b). The file is made by the test in target/test-memory/.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [localhost] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: qwen3.5:4b
+    host: http://localhost:11434
+    input: [text]
+    output: [text]
+external:
+  memory:
+    - id: session
+      provider: json_file
+      path: ./target/test-memory/live_chat_history.json
+      chat: { length: 5 }
+graph:
+  nodes:
+    - id: n
+      model: { id: m, reasoning: off, max_tokens: 200, temperature: 0 }
+      external:
+        memory:
+          - { id: session, read: { user: true, assistant: true }, write: { user: true, assistant: true } }
+      message: { input: { user_message: true }, output: { assistant_message: true } }
+  edges:
+    - start: n
+    - end: n

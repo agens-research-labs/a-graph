@@ -1,0 +1,27 @@
+# One node `n` on the local Ollama (model qwen3.5:4b). Plain answer, no reasoning.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [localhost] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: qwen3.5:4b
+    host: http://localhost:11434
+    input: [text, image]
+    output: [text]
+graph:
+  nodes:
+    - id: n
+      model: { id: m, reasoning: off, max_tokens: 200 }
+      message: { input: { user_message: true }, output: { assistant_message: true } }
+  edges:
+    - start: n
+    - end: n

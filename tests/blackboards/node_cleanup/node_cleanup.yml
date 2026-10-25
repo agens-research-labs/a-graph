@@ -1,0 +1,31 @@
+# One node `n`, the model is a mock server on port 18109 (the test starts it). The node cleans its board once done; the board is a copy made by the test in target/test-boards/.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:18109
+    input: [text]
+    output: [text]
+blackboards:
+  - id: bb
+    source: { file: ./target/test-boards/run_node_cleanup.md }
+graph:
+  nodes:
+    - id: n
+      model: { id: m }
+      blackboard: { id: bb, read: false, cleanup: true }
+      message: { input: { user_message: true }, output: { assistant_message: true } }
+  edges:
+    - start: n
+    - end: n

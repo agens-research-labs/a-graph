@@ -1,0 +1,38 @@
+# The node writes its board and cleans it in the same task (`write` enabled and `cleanup: true`): the loader refuses it.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:19203
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: pr
+      content:
+        system: "Use the notes."
+        user: "Notes: {{bb}} / Question: {{user_message}}"
+blackboards:
+  - id: bb
+    source: { file: ./target/test-boards/cleanup_write_refused.md }
+graph:
+  nodes:
+    - id: n
+      model: { id: m }
+      resources: { prompt: pr }
+      blackboard: { id: bb, read: true, write: { enabled: true, place: top }, cleanup: true }
+      message: { input: { user_message: true }, output: { assistant_message: true } }
+  edges:
+    - start: n
+    - end: n

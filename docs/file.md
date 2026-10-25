@@ -1,0 +1,78 @@
+# The graph file
+
+A graph is one YAML file. This page explains the rules that hold for the whole file. Each key is described in
+[the reference](graph.md).
+
+## The blocks
+
+| Block | Required | What it holds |
+|---|---|---|
+| `graph_spec` | yes | the version of the format: `"1.0"` |
+| `passport` | yes | the identity of the graph, in the [ADL](https://www.adl-spec.org/) format, and the hosts it may reach |
+| `observability` | yes | the log |
+| `trace` | no | the timeline of the run, sent to a collector |
+| `verbose` | yes | the live display of the run |
+| `models` | yes | the language models |
+| `embeddings` | no | the models that turn a text into a vector |
+| `utilities` | no | programs and services that change the data of a node |
+| `resources` | no | `prompts`, `tools`, `mcp_servers`, `media`, `skills` |
+| `external` | no | `vectordb`, `search`, `memory` |
+| `blackboards` | no | Markdown notes shared by nodes |
+| `graph` | yes | the `nodes` and the `edges` that connect them |
+
+The blocks may be written in any order.
+
+## Keys
+
+Only the keys described in the reference are accepted. A key that is not allowed where it is written is an error
+(`unexpected_field`), and so is a mandatory key that is missing (`missing_field`) or a value of the wrong kind
+(`bad_value`).
+
+## Ids
+
+Everything that is cited by other parts of the file has an `id`: models, embeddings, utilities, prompts, tools, MCP
+servers, media, skills, vector databases, search engines, memories, blackboards and nodes. An id is unique in the
+whole file, whatever it names: a model and a node cannot both be called `writer` (`duplicate_id`). Citing an id that
+is not declared, or that names something of another kind, is an error (`unknown_ref`).
+
+## Secrets
+
+A secret is never written in the file. The file holds only the name of an environment variable, and the value is
+read from the environment:
+
+```yaml
+api_key: { env: ANTHROPIC_API_KEY }
+```
+
+A secret written as text, `"${ANTHROPIC_API_KEY}"` included, is an error (`bad_value`): there is no substitution of
+variables inside texts.
+
+A variable that is not set is an error (`env_missing`). When it is reported depends on what uses it:
+
+- the keys of the models, and the headers of tools, utilities, the log and the trace: when the file is checked,
+  before anything runs;
+- the key of a vector database, and the `env` and `headers` of an MCP server: when they are used, during the run.
+
+## Network
+
+The graph may reach only the hosts listed in `passport.adl.permissions.network.allowed_hosts`. Without
+`permissions`, no host is allowed.
+
+The list holds host names, not URLs: `api.anthropic.com`, not `https://api.anthropic.com/v1`. Hosts are compared
+without the scheme, the port and the path, and without regard to case. A local server is a host too: a model served
+at `http://localhost:11434` needs `localhost` in the list.
+
+Every destination written in the file is checked, before anything runs:
+
+- the host of every model and embedding provider, and for a `bedrock` model with a `batch` block also the Bedrock
+  control API and the S3 buckets of the batch (see [models](models.md#batch));
+- the `url` of utilities, tools and MCP servers with `transport: http`;
+- the `url` of prompts, media and blackboards read from the network;
+- the `url` of vector databases and search engines;
+- `observability.output.url` and `trace.endpoint`.
+
+A destination whose host is not in the list is an error (`network_not_allowed`). The standard output, files and the
+verbose display are not network.
+
+The check covers the destinations the file names. It does not cover the traffic that the SDKs of the cloud
+providers make to resolve `credentials: ambient` (metadata servers, token endpoints).

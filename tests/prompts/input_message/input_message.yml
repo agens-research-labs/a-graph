@@ -1,0 +1,32 @@
+# One node `n`, the model is a mock server on port 18102 (the test starts it). The node takes only the message of the connected node; the prompt uses `input_message`.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:18102
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: pr
+      content: { system: "S {{input_message}}", user: "U {{input_message}}" }
+graph:
+  nodes:
+    - id: n
+      model: { id: m }
+      resources: { prompt: pr }
+      message: { input: { agent_message: true }, output: { assistant_message: true } }
+  edges:
+    - start: n
+    - end: n

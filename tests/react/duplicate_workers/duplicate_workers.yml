@@ -1,0 +1,102 @@
+# A react graph (react_basic of the run tests). Two workers are called `w1`: a node and a group that enters from `w1`.
+# A graph on a mock model (port 18301, started by the test) that answers with the text it was asked, so the answer of a node shows what it received. A react: controller c, workers w1 (a node) and wi (a parallel group, in wi, fan wa and wb, out wo).
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:18301
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: p_s
+      content: { system: "", user: "S({{user_message}})" }
+    - id: p_c
+      content: { system: "", user: "C({{agent_message}})" }
+    - id: p_w1
+      content: { system: "", user: "W1({{agent_message}})" }
+    - id: p_wi
+      content: { system: "", user: "WI({{agent_message}})" }
+    - id: p_wa
+      content: { system: "", user: "WA({{agent_message}})" }
+    - id: p_wb
+      content: { system: "", user: "WB({{agent_message}})" }
+    - id: p_wo
+      content: { system: "", user: "WO({{agent_message}})" }
+    - id: p_z
+      content: { system: "", user: "Z({{agent_message}})" }
+graph:
+  nodes:
+    - id: s
+      model: { id: m }
+      resources: { prompt: p_s }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true, node: true }
+    - id: c
+      model: { id: m }
+      resources: { prompt: p_c }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: w1
+      model: { id: m }
+      resources: { prompt: p_w1 }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: wi
+      model: { id: m }
+      resources: { prompt: p_wi }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: wa
+      model: { id: m }
+      resources: { prompt: p_wa }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: wb
+      model: { id: m }
+      resources: { prompt: p_wb }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: wo
+      model: { id: m }
+      resources: { prompt: p_wo }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: z
+      model: { id: m }
+      resources: { prompt: p_z }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+  edges:
+    - start: s
+    - react:
+        controller: c
+        max_iterations: 3
+        components:
+          - worker: w1
+          - parallel:
+              - in: w1
+              - fan:
+                  - next: wa
+                  - next: wb
+              - out: wo
+    - end: z

@@ -1,0 +1,13 @@
+# The MCP server of the tests (tests/run/mcp.rs). It is a project of its own so that building it does
+# not change the features of the crate under test; the tests build it into target/mcp-test-server.
+[package]
+name = "mcp_test_server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rmcp = { version = "3.5.1", features = ["server", "transport-io"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
+serde_json = "1"
+
+[workspace]

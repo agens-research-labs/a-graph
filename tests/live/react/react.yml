@@ -1,0 +1,82 @@
+# A graph on the local Ollama (model qwen3.5:4b). A react: the controller can only know the access code by asking the worker `vault`; the worker `weather` is a distraction.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [localhost] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: mistral-small3.2:latest
+    host: http://localhost:11434
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: p_start
+      content:
+        system: "Reply with the single word: OK"
+        user: "{{user_message}}"
+    - id: p_boss
+      content:
+        system: "You help with questions, but you know nothing yourself: you only use your workers. Your workers are `vault`, which knows the access code, and `weather`, which knows the weather. To answer, call the worker that knows, with the question as input. When a worker has answered, finish and give its answer in one short sentence."
+        user: "Question: {{user_message}}"
+    - id: p_vault
+      content:
+        system: "Reply with exactly this sentence and nothing else: The access code is 7391."
+        user: "{{agent_message}}"
+    - id: p_weather
+      content:
+        system: "Reply with exactly this sentence and nothing else: It is sunny today."
+        user: "{{agent_message}}"
+    - id: p_end
+      content:
+        system: "Repeat the text you are given."
+        user: "{{agent_message}}"
+graph:
+  nodes:
+    - id: start
+      model: { id: m, reasoning: off, max_tokens: 400 }
+      resources: { prompt: p_start }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true, node: true }
+    - id: boss
+      model: { id: m, reasoning: off, max_tokens: 400, temperature: 0 }
+      resources: { prompt: p_boss }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true, node: true }
+    - id: vault
+      model: { id: m, reasoning: off, max_tokens: 400 }
+      resources: { prompt: p_vault }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: weather
+      model: { id: m, reasoning: off, max_tokens: 400 }
+      resources: { prompt: p_weather }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: end
+      model: { id: m, reasoning: off, max_tokens: 400 }
+      resources: { prompt: p_end }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+  edges:
+    - start: start
+    - react:
+        controller: boss
+        max_iterations: 4
+        components:
+          - worker: vault
+          - worker: weather
+    - end: end

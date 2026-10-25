@@ -1,0 +1,64 @@
+# The vectordb of the node has `utility: { query: [wrap], chunks: [up] }` (model mock 19924, qdrant mock 19925, embedding mock 19926).
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:19924
+    input: [text]
+    output: [text]
+embeddings:
+  - id: emb
+    provider: ollama
+    model: embeddinggemma
+    host: http://127.0.0.1:19926
+external:
+  vectordb:
+    - id: docs
+      provider: qdrant
+      url: http://127.0.0.1:19925
+      collection: c
+      top_k: 2
+      embedding: emb
+      text_field: text
+utilities:
+  - id: wrap
+    transport: stdio
+    command: /bin/sh
+    args: ["tests/utilities/vectordb_utility/files/scripts/wrap.sh"]
+    timeout: 5
+  - id: up
+    transport: stdio
+    command: /bin/sh
+    args: ["tests/utilities/vectordb_utility/files/scripts/up.sh"]
+    timeout: 5
+resources:
+  prompts:
+    - id: pr
+      content:
+        system: "Be brief."
+        user: "C: {{chunks}} / Q: {{user_message}}"
+graph:
+  nodes:
+    - id: n
+      model: { id: m, max_tokens: 50 }
+      resources: { prompt: pr }
+      external:
+        vectordb:
+          - { id: docs, query: user_message, utility: { query: [wrap], chunks: [up] } }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true }
+  edges:
+    - start: n
+    - end: n

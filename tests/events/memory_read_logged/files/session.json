@@ -1,0 +1,33 @@
+[
+  {
+    "id": "n",
+    "timestamp": "2026-10-13_21:12:00",
+    "synt": "The user asks about ETFs.",
+    "chat": [
+      {
+        "role": "user",
+        "content": "q1"
+      },
+      {
+        "role": "assistant",
+        "content": "a1"
+      },
+      {
+        "role": "user",
+        "content": "q2"
+      },
+      {
+        "role": "assistant",
+        "content": "a2"
+      },
+      {
+        "role": "user",
+        "content": "q3"
+      },
+      {
+        "role": "assistant",
+        "content": "a3"
+      }
+    ]
+  }
+]

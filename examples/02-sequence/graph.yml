@@ -1,0 +1,47 @@
+# Sequence
+# Two nodes one after the other: the output of the first is the input of the second.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: sequence
+    description: Two nodes one after the other - the output of the first is the input of the secon
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [localhost] } }
+observability: { level: warn }      # the log goes to the standard error
+verbose: { level: steps }        # the display of the run: off | steps | detail
+models:
+  - id: local
+    provider: ollama
+    model: qwen3.5:4b
+    host: http://localhost:11434
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: translate
+      content:
+        system: "Translate the text into Italian. Answer only with the translation."
+        user: "{{user_message}}"
+    - id: shorten
+      content:
+        system: "Shorten the text to at most ten words, in the same language. Answer only with the shortened text."
+        user: "{{agent_message}}"       # {{agent_message}} is what the node before passed on
+graph:
+  nodes:
+    - id: translator
+      model: { id: local, reasoning: off, max_tokens: 300, temperature: 0 }
+      resources: { prompt: translate }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true, node: true }   # to the result AND to the next node
+    - id: shortener
+      model: { id: local, reasoning: off, max_tokens: 300, temperature: 0 }
+      resources: { prompt: shorten }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true }
+  edges:
+    - start: translator
+    - end: shortener

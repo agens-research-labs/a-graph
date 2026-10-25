@@ -1,0 +1,31 @@
+# One node `n` on the local Ollama (model qwen3.5:4b). The node writes its answer on a board, a copy of blackboards/board.md made by the test in target/test-boards/.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [localhost] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: qwen3.5:4b
+    host: http://localhost:11434
+    input: [text, image]
+    output: [text]
+blackboards:
+  - id: bb
+    source: { file: ./target/test-boards/run_node_live.md }
+graph:
+  nodes:
+    - id: n
+      model: { id: m, reasoning: off, max_tokens: 200 }
+      blackboard: { id: bb, read: false, write: { enabled: true, place: bottom } }
+      message: { input: { user_message: true }, output: { assistant_message: true } }
+  edges:
+    - start: n
+    - end: n

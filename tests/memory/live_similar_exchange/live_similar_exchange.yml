@@ -1,0 +1,41 @@
+# Live: a memory with `chat.embedding` (embeddinggemma); the file is written by the test with real vectors, the node is on qwen3.5:4b.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [localhost] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: qwen3.5:4b
+    host: http://localhost:11434
+    input: [text]
+    output: [text]
+embeddings:
+  - id: emb
+    provider: ollama
+    model: embeddinggemma
+    host: http://localhost:11434
+external:
+  memory:
+    - id: session
+      provider: json_file
+      path: ./target/test-memory/live_similar_exchange.json
+      chat: { length: 1, embedding: emb }
+graph:
+  nodes:
+    - id: n
+      model: { id: m, reasoning: off, max_tokens: 200, temperature: 0 }
+      external:
+        memory:
+          - { id: session, read: { user: true, assistant: true }, write: { user: true, assistant: true } }
+      message: { input: { user_message: true }, output: { assistant_message: true } }
+  edges:
+    - start: n
+    - end: n

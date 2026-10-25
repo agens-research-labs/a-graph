@@ -1,0 +1,56 @@
+# A node with a memory and both utilities: what is saved is the changed question and the changed answer (model mock 19918).
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:19918
+    input: [text]
+    output: [text]
+external:
+  memory:
+    - id: session
+      provider: json_file
+      path: ./target/test-memory/memory_gets_changed.json
+      chat: { length: 5 }
+utilities:
+  - id: up
+    transport: stdio
+    command: /bin/sh
+    args: ["tests/utilities/memory_gets_changed/files/scripts/up.sh"]
+    timeout: 5
+  - id: wrap
+    transport: stdio
+    command: /bin/sh
+    args: ["tests/utilities/memory_gets_changed/files/scripts/wrap.sh"]
+    timeout: 5
+resources:
+  prompts:
+    - id: pr
+      content:
+        system: "Be brief."
+        user: "Q: {{user_message}}"
+graph:
+  nodes:
+    - id: n
+      model: { id: m, max_tokens: 50 }
+      resources: { prompt: pr }
+      external:
+        memory:
+          - { id: session, read: { user: true, assistant: true }, write: { user: true, assistant: true } }
+      message:
+        input: { user_message: true, utility: [up] }
+        output: { assistant_message: true, utility: [wrap] }
+  edges:
+    - start: n
+    - end: n

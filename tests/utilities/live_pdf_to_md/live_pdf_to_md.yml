@@ -1,0 +1,48 @@
+# Live: a PDF changed into Markdown by a Python utility (pymupdf4llm: `pip install pymupdf4llm`, `python3` must be the one that has it), then read by a node on the local Ollama (qwen3.5:4b).
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [localhost] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: qwen3.5:4b
+    host: http://localhost:11434
+    input: [text]
+    output: [text]
+utilities:
+  - id: pdf_to_md
+    transport: stdio
+    command: python3
+    args: ["tests/utilities/live_pdf_to_md/files/utilities/pdf_to_md.py"]
+    timeout: 60
+resources:
+  media:
+    - id: contract
+      type: md
+      source: { path: ./tests/utilities/live_pdf_to_md/files/contract.pdf }
+  prompts:
+    - id: pr
+      content:
+        system: "Answer only from the document."
+        user: "Question: {{user_message}}"
+graph:
+  nodes:
+    - id: n
+      model: { id: m, reasoning: off, max_tokens: 200, temperature: 0 }
+      resources: { prompt: pr }
+      media:
+        input: [ { id: contract, from: resources, utility: [pdf_to_md] } ]
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true }
+  edges:
+    - start: n
+    - end: n

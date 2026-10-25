@@ -1,0 +1,69 @@
+# Unknown utility ids in the blackboard, the memory and the vectordb (nothing runs).
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:19927
+    input: [text]
+    output: [text]
+blackboards:
+  - id: bb
+    source: memory
+embeddings:
+  - id: emb
+    provider: ollama
+    model: embeddinggemma
+    host: http://127.0.0.1:19926
+external:
+  vectordb:
+    - id: docs
+      provider: qdrant
+      url: http://127.0.0.1:19925
+      collection: c
+      embedding: emb
+      text_field: text
+  memory:
+    - id: session
+      provider: json_file
+      path: ./target/test-memory/unknown_in_places.json
+      chat: { length: 5 }
+utilities:
+  - id: up
+    transport: stdio
+    command: /bin/sh
+    args: ["tests/utilities/unknown_in_places/files/scripts/up.sh"]
+    timeout: 5
+resources:
+  prompts:
+    - id: pr
+      content:
+        system: "Be brief."
+        user: "Q: {{user_message}}"
+graph:
+  nodes:
+    - id: n
+      model: { id: m, max_tokens: 50 }
+      resources: { prompt: pr }
+      blackboard: { id: bb, write: { enabled: true, place: top, utility: ghost } }
+      external:
+        vectordb:
+          - { id: docs, query: user_message, utility: { query: ghost, chunks: [ghost] } }
+        memory:
+          - { id: session, read: { user: true, assistant: true, utility: [ghost] }, write: { user: true, assistant: true, utility: [up, ghost] } }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true }
+  edges:
+    - start: n
+    - end: n

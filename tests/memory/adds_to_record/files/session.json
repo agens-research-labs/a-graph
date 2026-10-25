@@ -1,0 +1,23 @@
+[
+  {
+    "id": "n",
+    "timestamp": "old",
+    "synt": "",
+    "chat": [
+      {
+        "role": "user",
+        "content": "q1"
+      },
+      {
+        "role": "assistant",
+        "content": "a1"
+      }
+    ]
+  },
+  {
+    "id": "other",
+    "timestamp": "old",
+    "synt": "keep me",
+    "chat": []
+  }
+]

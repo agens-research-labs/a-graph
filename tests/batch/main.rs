@@ -1,0 +1,25 @@
+//! Tests of the topic `batch`: every test is a folder with its own files.
+
+#[path = "../common/mod.rs"]
+mod common;
+
+#[path = "batch_builds/batch_builds.rs"]
+mod batch_builds;
+
+#[path = "group_in_batch/group_in_batch.rs"]
+mod group_in_batch;
+
+#[path = "limit_per_job/limit_per_job.rs"]
+mod limit_per_job;
+
+#[path = "model_no_batch/model_no_batch.rs"]
+mod model_no_batch;
+
+#[path = "one_job/one_job.rs"]
+mod one_job;
+
+#[path = "request_refused/request_refused.rs"]
+mod request_refused;
+
+#[path = "same_model/same_model.rs"]
+mod same_model;

@@ -1,0 +1,60 @@
+# A node that lists a chromadb and then a qdrant vectordb: the chunks come in that order (model 19007, embedding 19008, chroma 19009, qdrant 19010).
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:19007
+    input: [text]
+    output: [text]
+embeddings:
+  - id: emb
+    provider: ollama
+    model: embeddinggemma
+    host: http://127.0.0.1:19008
+resources:
+  prompts:
+    - id: pr
+      content:
+        system: "Answer with the context."
+        user: "Context: {{chunks}} / Question: {{user_message}}"
+external:
+  vectordb:
+    - id: qdrant_db
+      provider: qdrant
+      url: http://127.0.0.1:19010
+      collection: contracts
+      top_k: 2
+      embedding: emb
+      text_field: text
+    - id: chroma_db
+      provider: chromadb
+      url: http://127.0.0.1:19009
+      collection: contracts
+      top_k: 3
+      embedding: emb
+graph:
+  nodes:
+    - id: n
+      model: { id: m, max_tokens: 50 }
+      resources: { prompt: pr }
+      external:
+        vectordb:
+          - { id: chroma_db, query: user_message }
+          - { id: qdrant_db, query: user_message }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true }
+  edges:
+    - start: n
+    - end: n

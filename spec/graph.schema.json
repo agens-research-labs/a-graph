@@ -1,0 +1,2972 @@
+{
+  "$defs": {
+    "branch": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "next": {
+              "description": "A branch made of one node.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "next"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "linear": {
+              "$ref": "#/$defs/group",
+              "description": "A group whose branches run one after the other. `limit` is not allowed."
+            }
+          },
+          "required": [
+            "linear"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "parallel": {
+              "$ref": "#/$defs/group",
+              "description": "A group whose branches run all together, each as a task of its own; with `limit`, at most that many at a time. The first branch that fails ends the run."
+            }
+          },
+          "required": [
+            "parallel"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "concurrent": {
+              "$ref": "#/$defs/group",
+              "description": "A group whose branches run all together, at most `limit` at a time; `limit` is mandatory. The first branch that fails ends the run."
+            }
+          },
+          "required": [
+            "concurrent"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "batch": {
+              "$ref": "#/$defs/group",
+              "description": "A group whose branches are sent to the provider as one batch job; with `limit`, at most that many requests in each job. The branches are plain nodes, all with the same model."
+            }
+          },
+          "required": [
+            "batch"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "react": {
+              "$ref": "#/$defs/react",
+              "description": "A controller that decides at run time which worker to call. A `react` inside a `react` cannot run yet."
+            }
+          },
+          "required": [
+            "react"
+          ],
+          "type": "object"
+        }
+      ],
+      "description": "One branch of a `fan`: a node, or a whole group or `react`."
+    },
+    "group": {
+      "description": "The entries of a group: `limit`, `in`, `fan` and `out`, each written once and in this order.",
+      "items": {
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "limit": {
+                "description": "How many branches run at the same time; in `batch`, how many requests go in each job.",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "limit"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "in": {
+                "description": "The node that runs first. What it sends on is the input of every branch. Mandatory.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "in"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "fan": {
+                "description": "The branches, at least one. Mandatory.",
+                "items": {
+                  "$ref": "#/$defs/branch"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "fan"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "out": {
+                "description": "The node that receives the answers of all the branches, packed as one, in the order of the `fan`, and whose output goes on. It may be left out only if no node of the group sends its output on (`group_out_required`).",
+                "type": "string"
+              }
+            },
+            "required": [
+              "out"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "type": "array"
+    },
+    "react": {
+      "additionalProperties": false,
+      "description": "A controller and the workers it calls.",
+      "properties": {
+        "components": {
+          "description": "The workers the controller may call. Two workers with the same id are an error (`duplicate_id`).",
+          "items": {
+            "$ref": "#/$defs/worker"
+          },
+          "type": "array"
+        },
+        "controller": {
+          "description": "The node that decides at every turn which worker to call, or gives the final answer, which is the output of the `react`. It has no tools, MCP servers, skills, blackboard or output `schema` of its own.",
+          "type": "string"
+        },
+        "max_iterations": {
+          "description": "The most calls to workers. One more fails the run (`react_limit`).",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "controller",
+        "max_iterations",
+        "components"
+      ],
+      "type": "object"
+    },
+    "step": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "start": {
+              "description": "The first node: the first entry, and the only `start` (`edge_start`). A graph of one node is its `start` alone.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "start"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "next": {
+              "description": "A node that runs after the entry before it. A node may appear more than once in the edges, and each appearance is a run of it.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "next"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "end": {
+              "description": "The last node: the last entry, and the only `end` (`edge_end`). Every graph needs it, except one of a single node.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "end"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "linear": {
+              "$ref": "#/$defs/group",
+              "description": "A group whose branches run one after the other. `limit` is not allowed."
+            }
+          },
+          "required": [
+            "linear"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "parallel": {
+              "$ref": "#/$defs/group",
+              "description": "A group whose branches run all together, each as a task of its own; with `limit`, at most that many at a time. The first branch that fails ends the run."
+            }
+          },
+          "required": [
+            "parallel"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "concurrent": {
+              "$ref": "#/$defs/group",
+              "description": "A group whose branches run all together, at most `limit` at a time; `limit` is mandatory. The first branch that fails ends the run."
+            }
+          },
+          "required": [
+            "concurrent"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "batch": {
+              "$ref": "#/$defs/group",
+              "description": "A group whose branches are sent to the provider as one batch job; with `limit`, at most that many requests in each job. The branches are plain nodes, all with the same model."
+            }
+          },
+          "required": [
+            "batch"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "react": {
+              "$ref": "#/$defs/react",
+              "description": "A controller that decides at run time which worker to call. A `react` inside a `react` cannot run yet."
+            }
+          },
+          "required": [
+            "react"
+          ],
+          "type": "object"
+        }
+      ],
+      "description": "One entry of `graph.edges`."
+    },
+    "worker": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "worker": {
+              "description": "A worker made of one node.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "worker"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "linear": {
+              "$ref": "#/$defs/group",
+              "description": "A group whose branches run one after the other. `limit` is not allowed."
+            }
+          },
+          "required": [
+            "linear"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "parallel": {
+              "$ref": "#/$defs/group",
+              "description": "A group whose branches run all together, each as a task of its own; with `limit`, at most that many at a time. The first branch that fails ends the run."
+            }
+          },
+          "required": [
+            "parallel"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "concurrent": {
+              "$ref": "#/$defs/group",
+              "description": "A group whose branches run all together, at most `limit` at a time; `limit` is mandatory. The first branch that fails ends the run."
+            }
+          },
+          "required": [
+            "concurrent"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "batch": {
+              "$ref": "#/$defs/group",
+              "description": "A group whose branches are sent to the provider as one batch job; with `limit`, at most that many requests in each job. The branches are plain nodes, all with the same model."
+            }
+          },
+          "required": [
+            "batch"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "react": {
+              "$ref": "#/$defs/react",
+              "description": "A controller that decides at run time which worker to call. A `react` inside a `react` cannot run yet."
+            }
+          },
+          "required": [
+            "react"
+          ],
+          "type": "object"
+        }
+      ],
+      "description": "One worker of a `react`: a node, or a whole group, called by the id of its `in` node."
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A graph of agents, run by a-graph. Generated from the code by `a-graph --print-schema`: do not edit it by hand.",
+  "properties": {
+    "blackboards": {
+      "description": "Markdown texts shared by the nodes.",
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "The id of the blackboard, cited by the nodes and used as the placeholder of its text.",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "memory"
+                ]
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "file": {
+                    "description": "A Markdown file, which must exist when the file is checked and start with its header: a `<description>` and a `<purpose>`, each followed by a text, between two `---` lines (`blackboard_header`).",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "access": {
+                    "description": "How to get in. Its content is not defined yet."
+                  },
+                  "url": {
+                    "description": "A URL. It is not supported yet: a node that uses it fails when it runs.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "url"
+                ],
+                "type": "object"
+              }
+            ],
+            "description": "Where the blackboard is kept: `memory`, in the program, empty at the start and lost at the end of the run; a file; or a URL."
+          }
+        },
+        "required": [
+          "id",
+          "source"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "embeddings": {
+      "description": "The models that turn a text into a vector, for the vector databases and the memories.",
+      "items": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "description": "An Ollama server, called with `POST <host>/api/embed`.",
+            "properties": {
+              "host": {
+                "description": "The URL of the server, for example `http://localhost:11434`. Its host must be in `allowed_hosts`.",
+                "type": "string"
+              },
+              "id": {
+                "description": "The id of the embedding model, cited by the vector databases and the memories.",
+                "type": "string"
+              },
+              "model": {
+                "description": "The name of the model at its provider.",
+                "type": "string"
+              },
+              "provider": {
+                "const": "ollama"
+              }
+            },
+            "required": [
+              "provider",
+              "id",
+              "model",
+              "host"
+            ],
+            "type": "object"
+          }
+        ],
+        "properties": {
+          "provider": {
+            "description": "The service the model is reached through. It decides the other keys.",
+            "enum": [
+              "ollama"
+            ]
+          }
+        },
+        "required": [
+          "provider"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "external": {
+      "additionalProperties": false,
+      "description": "The sources outside the program: vector databases, search engines, memories.",
+      "properties": {
+        "memory": {
+          "description": "Memories that keep the conversation of a node between runs.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "chat": {
+                "additionalProperties": false,
+                "description": "The history, with `json_file` only (where it is mandatory).",
+                "properties": {
+                  "embedding": {
+                    "description": "The embedding model that turns the messages of the user into vectors. With it, the history is the exchanges most similar to the new message, instead of the last ones.",
+                    "type": "string"
+                  },
+                  "length": {
+                    "description": "How many exchanges become the history of a call, at least 1.",
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "length"
+                ],
+                "type": "object"
+              },
+              "id": {
+                "description": "The id of the memory, cited by the nodes.",
+                "type": "string"
+              },
+              "path": {
+                "description": "The JSON file, with `json_file` only (where it is mandatory). It is created at the first write.",
+                "type": "string"
+              },
+              "provider": {
+                "description": "Where the memory is kept: `json_file`, a JSON file; `vectordb`, a vector database, which cannot run yet.",
+                "enum": [
+                  "json_file",
+                  "vectordb"
+                ]
+              },
+              "ref": {
+                "description": "The vector database, with `vectordb` only (where it is mandatory).",
+                "type": "string"
+              },
+              "synt": {
+                "additionalProperties": false,
+                "description": "The summary, with `json_file` only. Without it the messages are never summarized, and the memory has no placeholder.",
+                "properties": {
+                  "length": {
+                    "description": "How many exchanges the record of a node reaches before they are summarized, at least 1.",
+                    "type": "integer"
+                  },
+                  "max_tokens": {
+                    "description": "The most tokens of the summary. The default is 4000, since a model that reasons spends part of them before it writes.",
+                    "type": "integer"
+                  },
+                  "model": {
+                    "description": "The model that writes the summary.",
+                    "type": "string"
+                  },
+                  "prompt": {
+                    "description": "The prompt of the summary, which must use both `{{synt}}` (the previous summary) and `{{chat}}` (the exchanges to summarize). Without it the program uses a prompt of its own.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "length",
+                  "model"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "id",
+              "provider"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "search": {
+          "description": "Search engines that are not vector databases. They cannot run yet: a node that uses one fails when it runs.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "access": {
+                "description": "How to get in. Its content is not defined yet."
+              },
+              "id": {
+                "description": "The id of the search engine, cited by the nodes.",
+                "type": "string"
+              },
+              "provider": {
+                "description": "The kind of search engine.",
+                "type": "string"
+              },
+              "url": {
+                "description": "The URL of the search engine. Its host must be in `allowed_hosts`.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "provider",
+              "url"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "vectordb": {
+          "description": "Vector databases the nodes search: what they find becomes `{{chunks}}` in the prompt.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "api_key": {
+                "additionalProperties": false,
+                "description": "The key of the database, read from an environment variable when it is used, and sent as the header `api-key` (`qdrant`) or `x-chroma-token` (`chromadb`).",
+                "properties": {
+                  "env": {
+                    "description": "The name of the environment variable that holds the value.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "env"
+                ],
+                "type": "object"
+              },
+              "collection": {
+                "description": "The collection that is searched. Mandatory.",
+                "type": "string"
+              },
+              "database": {
+                "description": "The database, with `chromadb` only. The default is `default_database`.",
+                "type": "string"
+              },
+              "embedding": {
+                "description": "The embedding model that turns the query into a vector.",
+                "type": "string"
+              },
+              "id": {
+                "description": "The id of the vector database, cited by the nodes and by the memories.",
+                "type": "string"
+              },
+              "provider": {
+                "description": "The kind of database.",
+                "enum": [
+                  "qdrant",
+                  "chromadb"
+                ]
+              },
+              "tenant": {
+                "description": "The tenant, with `chromadb` only. The default is `default_tenant`.",
+                "type": "string"
+              },
+              "text_field": {
+                "description": "The field of the payload that holds the text of a chunk. Mandatory with `qdrant`, not allowed with `chromadb`, which keeps the text in its documents.",
+                "type": "string"
+              },
+              "timeout": {
+                "description": "The seconds a search may take, at least 1. The default is 60.",
+                "type": "integer"
+              },
+              "top_k": {
+                "description": "How many chunks a search gives back. The default is 5.",
+                "type": "integer"
+              },
+              "url": {
+                "description": "The URL of the database. Mandatory; its host must be in `allowed_hosts`.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "provider",
+              "embedding"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [],
+      "type": "object"
+    },
+    "graph": {
+      "additionalProperties": false,
+      "description": "The nodes and the edges that connect them.",
+      "properties": {
+        "edges": {
+          "description": "The order in which the nodes run: a list read in order.",
+          "items": {
+            "$ref": "#/$defs/step"
+          },
+          "type": "array"
+        },
+        "nodes": {
+          "description": "The nodes: each a model, what it uses, where its input comes from and where its output goes.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "blackboard": {
+                "additionalProperties": false,
+                "description": "The one blackboard the node manages.",
+                "properties": {
+                  "cleanup": {
+                    "description": "`true`: when the node is done, everything below the header is removed. Not with an enabled `write` (`cleanup_write`). The default is `false`.",
+                    "type": "boolean"
+                  },
+                  "id": {
+                    "description": "The blackboard.",
+                    "type": "string"
+                  },
+                  "read": {
+                    "description": "`true`: its text goes where the prompt writes `{{<blackboard-id>}}`, which is then mandatory. The default is `false`.",
+                    "type": "boolean"
+                  },
+                  "write": {
+                    "additionalProperties": false,
+                    "description": "After the node answers, its text is added to the blackboard, separated by an empty line.",
+                    "properties": {
+                      "enabled": {
+                        "description": "Whether the node writes.",
+                        "type": "boolean"
+                      },
+                      "place": {
+                        "description": "Where the text is added: at the top or at the bottom of what is already below the header.",
+                        "enum": [
+                          "top",
+                          "bottom"
+                        ]
+                      },
+                      "utility": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        ],
+                        "description": "Utilities that change the text written, after the utilities of `message.output`."
+                      }
+                    },
+                    "required": [
+                      "enabled",
+                      "place"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "id"
+                ],
+                "type": "object"
+              },
+              "external": {
+                "additionalProperties": false,
+                "description": "The vector databases, search engines and memories the node uses.",
+                "properties": {
+                  "memory": {
+                    "description": "The memories the node reads and writes.",
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "id": {
+                          "description": "The memory. Its summary, if it has `synt`, goes where the prompt writes `{{<memory-id>}}`.",
+                          "type": "string"
+                        },
+                        "read": {
+                          "additionalProperties": false,
+                          "description": "Which roles of the saved conversation come back as the history of the call.",
+                          "properties": {
+                            "assistant": {
+                              "description": "The answers of the node.",
+                              "type": "boolean"
+                            },
+                            "user": {
+                              "description": "The messages of the user.",
+                              "type": "boolean"
+                            },
+                            "utility": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "items": {
+                                    "type": "string"
+                                  },
+                                  "type": "array"
+                                }
+                              ],
+                              "description": "Utilities that change, in `read`, each message read back and the summary; in `write`, what is saved, after the utilities of `message.output`."
+                            }
+                          },
+                          "required": [
+                            "user",
+                            "assistant"
+                          ],
+                          "type": "object"
+                        },
+                        "write": {
+                          "additionalProperties": false,
+                          "description": "Which roles of this exchange are saved.",
+                          "properties": {
+                            "assistant": {
+                              "description": "The answers of the node.",
+                              "type": "boolean"
+                            },
+                            "user": {
+                              "description": "The messages of the user.",
+                              "type": "boolean"
+                            },
+                            "utility": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "items": {
+                                    "type": "string"
+                                  },
+                                  "type": "array"
+                                }
+                              ],
+                              "description": "Utilities that change, in `read`, each message read back and the summary; in `write`, what is saved, after the utilities of `message.output`."
+                            }
+                          },
+                          "required": [
+                            "user",
+                            "assistant"
+                          ],
+                          "type": "object"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "read",
+                        "write"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "search": {
+                    "description": "The search engines the node uses. They cannot run yet.",
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "id": {
+                          "description": "The search engine. Its result goes where the prompt writes `{{<search-id>}}`.",
+                          "type": "string"
+                        },
+                        "query": {
+                          "description": "What is searched: `user_message`, the message of the user, or a fixed text.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "query"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "vectordb": {
+                    "description": "The vector databases the node searches, in this order: what they find goes where the prompt writes `{{chunks}}`.",
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "id": {
+                          "description": "The vector database.",
+                          "type": "string"
+                        },
+                        "query": {
+                          "description": "What is searched: `user_message`, the message of the user, or a fixed text.",
+                          "type": "string"
+                        },
+                        "utility": {
+                          "additionalProperties": false,
+                          "description": "Utilities on the query and on the chunks.",
+                          "properties": {
+                            "chunks": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "items": {
+                                    "type": "string"
+                                  },
+                                  "type": "array"
+                                }
+                              ],
+                              "description": "Utilities that change each chunk found, before the prompt."
+                            },
+                            "query": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "items": {
+                                    "type": "string"
+                                  },
+                                  "type": "array"
+                                }
+                              ],
+                              "description": "Utilities that change the query, before it is turned into a vector."
+                            }
+                          },
+                          "required": [],
+                          "type": "object"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "query"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "id": {
+                "description": "The id of the node, cited by the edges.",
+                "type": "string"
+              },
+              "media": {
+                "additionalProperties": false,
+                "description": "The media the node reads and produces.",
+                "properties": {
+                  "input": {
+                    "description": "The media the node reads.",
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "from": {
+                          "description": "`resources`: a media with a `source`. `node`: a media produced by a node connected before (`media_not_from_node`); it arrives only if that node passes it on with `node: true`.",
+                          "enum": [
+                            "resources",
+                            "node"
+                          ]
+                        },
+                        "id": {
+                          "description": "The media.",
+                          "type": "string"
+                        },
+                        "utility": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "items": {
+                                "type": "string"
+                              },
+                              "type": "array"
+                            }
+                          ],
+                          "description": "Utilities the media goes through before the node uses it. The first gets the path of a file; they must end with a text or an image."
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "from"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "output": {
+                    "description": "The media the node produces.",
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "assistant": {
+                          "description": "`true`: the media goes to the final output. The default is `false`.",
+                          "type": "boolean"
+                        },
+                        "from": {
+                          "description": "`model` (the default): the model makes it, so the media must have `generate`. `message`: a utility makes it from the text of the node, so the media must be of type `file` and `utility` is mandatory.",
+                          "enum": [
+                            "model",
+                            "message"
+                          ]
+                        },
+                        "id": {
+                          "description": "The media.",
+                          "type": "string"
+                        },
+                        "node": {
+                          "description": "`true`: the media goes to the node connected after. The default is `false`.",
+                          "type": "boolean"
+                        },
+                        "utility": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "items": {
+                                "type": "string"
+                              },
+                              "type": "array"
+                            }
+                          ],
+                          "description": "Utilities that change the file the model made, or that make the file from the text of the node. They must end with a file."
+                        }
+                      },
+                      "required": [
+                        "id"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "message": {
+                "additionalProperties": false,
+                "description": "Where the text of the node comes from and where its answer goes.",
+                "properties": {
+                  "input": {
+                    "additionalProperties": false,
+                    "description": "Where the text of the node comes from.",
+                    "properties": {
+                      "agent_message": {
+                        "description": "`true`: the node takes what the node connected before sends on. The default is `false`.",
+                        "type": "boolean"
+                      },
+                      "user_message": {
+                        "description": "`true`: the node takes the message of the user, the one given to the command. The default is `false`.",
+                        "type": "boolean"
+                      },
+                      "utility": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        ],
+                        "description": "Utilities that change the incoming text, which is then used everywhere: in the prompt, in the queries and in what the memories save."
+                      }
+                    },
+                    "required": [],
+                    "type": "object"
+                  },
+                  "output": {
+                    "additionalProperties": false,
+                    "description": "Where the answer of the node goes.",
+                    "properties": {
+                      "assistant_message": {
+                        "description": "`true`: the answer goes to the final output. The default is `false`.",
+                        "type": "boolean"
+                      },
+                      "node": {
+                        "description": "`true`: the answer goes to the node connected after, as its `agent_message`. The default is `false`.",
+                        "type": "boolean"
+                      },
+                      "reasoning": {
+                        "description": "`true`: the reasoning of the model goes to the final output too. It never goes to another node. The default is `false`.",
+                        "type": "boolean"
+                      },
+                      "schema": {
+                        "description": "A JSON Schema, written as JSON in a text or as YAML: the model answers in that shape, and the answer is a JSON value."
+                      },
+                      "utility": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        ],
+                        "description": "Utilities that change the answer once, before every destination."
+                      }
+                    },
+                    "required": [],
+                    "type": "object"
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "model": {
+                "additionalProperties": false,
+                "description": "The model of the node and the settings of its calls. Mandatory, except on a validation node, which has it inside `validation-node`.",
+                "properties": {
+                  "id": {
+                    "description": "The model the node calls.",
+                    "type": "string"
+                  },
+                  "max_tokens": {
+                    "description": "The most tokens of the answer: the cap on the cost, set for each node. Mandatory with `anthropic`, and with publisher `anthropic` on `vertex_ai` and `azure_foundry`; without it the provider decides.",
+                    "type": "integer"
+                  },
+                  "reasoning": {
+                    "description": "How much the model reasons, sent in the form of its provider; a level the provider does not have is replaced by the nearest one. Without it nothing is sent. `off` is an error on `gemini` and with publisher `google`.",
+                    "enum": [
+                      "off",
+                      "minimal",
+                      "low",
+                      "medium",
+                      "high",
+                      "max"
+                    ]
+                  },
+                  "temperature": {
+                    "description": "Given to the provider as it is written.",
+                    "type": "number"
+                  },
+                  "top_p": {
+                    "description": "Given to the provider as it is written.",
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "id"
+                ],
+                "type": "object"
+              },
+              "resources": {
+                "additionalProperties": false,
+                "description": "The prompt, the tools, the MCP servers and the skills of the node.",
+                "properties": {
+                  "mcp_servers": {
+                    "description": "The MCP servers whose tools the model may call.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "prompt": {
+                    "description": "The prompt of the node. Without it the model gets no system text and its user text is the message of the node, which needs exactly one of the two messages (`prompt_required`).",
+                    "type": "string"
+                  },
+                  "skills": {
+                    "description": "The skills the model may use.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "tools": {
+                    "description": "The tools the model may call.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "validation-node": {
+                "additionalProperties": false,
+                "description": "Makes the node a validation node, which reads and judges and produces nothing; the node then has only `id` and `validation-node`. Approved, the message it examined goes on unchanged. It stands in the main flow only, never in a group or a `react`.",
+                "properties": {
+                  "blackboard": {
+                    "additionalProperties": false,
+                    "description": "The blackboard the node reads.",
+                    "properties": {
+                      "id": {
+                        "description": "The blackboard, read without writing it.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id"
+                    ],
+                    "type": "object"
+                  },
+                  "external": {
+                    "additionalProperties": false,
+                    "description": "The vector databases, search engines and memories the node reads.",
+                    "properties": {
+                      "memory": {
+                        "description": "The memories the node reads.",
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "id": {
+                              "description": "The memory, read whole, both roles, without writing it.",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id"
+                          ],
+                          "type": "object"
+                        },
+                        "type": "array"
+                      },
+                      "search": {
+                        "description": "The search engines the node uses. They cannot run yet.",
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "id": {
+                              "description": "The search engine. Its result goes where the prompt writes `{{<search-id>}}`.",
+                              "type": "string"
+                            },
+                            "query": {
+                              "description": "What is searched: `user_message`, the message of the user, or a fixed text.",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "query"
+                          ],
+                          "type": "object"
+                        },
+                        "type": "array"
+                      },
+                      "vectordb": {
+                        "description": "The vector databases the node searches, as for a node.",
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "id": {
+                              "description": "The vector database.",
+                              "type": "string"
+                            },
+                            "query": {
+                              "description": "What is searched: `user_message`, the message of the user, or a fixed text.",
+                              "type": "string"
+                            },
+                            "utility": {
+                              "additionalProperties": false,
+                              "description": "Utilities on the query and on the chunks.",
+                              "properties": {
+                                "chunks": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "items": {
+                                        "type": "string"
+                                      },
+                                      "type": "array"
+                                    }
+                                  ],
+                                  "description": "Utilities that change each chunk found, before the prompt."
+                                },
+                                "query": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "items": {
+                                        "type": "string"
+                                      },
+                                      "type": "array"
+                                    }
+                                  ],
+                                  "description": "Utilities that change the query, before it is turned into a vector."
+                                }
+                              },
+                              "required": [],
+                              "type": "object"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "query"
+                          ],
+                          "type": "object"
+                        },
+                        "type": "array"
+                      }
+                    },
+                    "required": [],
+                    "type": "object"
+                  },
+                  "media": {
+                    "additionalProperties": false,
+                    "description": "The media the node reads.",
+                    "properties": {
+                      "input": {
+                        "description": "The media the node reads.",
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "from": {
+                              "description": "`resources`: a media with a `source`. `node`: a media produced by a node connected before (`media_not_from_node`); it arrives only if that node passes it on with `node: true`.",
+                              "enum": [
+                                "resources",
+                                "node"
+                              ]
+                            },
+                            "id": {
+                              "description": "The media.",
+                              "type": "string"
+                            },
+                            "utility": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "items": {
+                                    "type": "string"
+                                  },
+                                  "type": "array"
+                                }
+                              ],
+                              "description": "Utilities the media goes through before the node uses it. The first gets the path of a file; they must end with a text or an image."
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "from"
+                          ],
+                          "type": "object"
+                        },
+                        "type": "array"
+                      }
+                    },
+                    "required": [],
+                    "type": "object"
+                  },
+                  "message": {
+                    "additionalProperties": false,
+                    "description": "Where the text the node judges comes from.",
+                    "properties": {
+                      "input": {
+                        "additionalProperties": false,
+                        "description": "Where the text of the node comes from.",
+                        "properties": {
+                          "agent_message": {
+                            "description": "`true`: the node takes what the node connected before sends on. The default is `false`.",
+                            "type": "boolean"
+                          },
+                          "user_message": {
+                            "description": "`true`: the node takes the message of the user, the one given to the command. The default is `false`.",
+                            "type": "boolean"
+                          },
+                          "utility": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "items": {
+                                  "type": "string"
+                                },
+                                "type": "array"
+                              }
+                            ],
+                            "description": "Utilities that change the incoming text, which is then used everywhere: in the prompt, in the queries and in what the memories save."
+                          }
+                        },
+                        "required": [],
+                        "type": "object"
+                      }
+                    },
+                    "required": [],
+                    "type": "object"
+                  },
+                  "model": {
+                    "additionalProperties": false,
+                    "description": "The model of the node and the settings of its calls.",
+                    "properties": {
+                      "id": {
+                        "description": "The model the node calls.",
+                        "type": "string"
+                      },
+                      "max_tokens": {
+                        "description": "The most tokens of the answer: the cap on the cost, set for each node. Mandatory with `anthropic`, and with publisher `anthropic` on `vertex_ai` and `azure_foundry`; without it the provider decides.",
+                        "type": "integer"
+                      },
+                      "reasoning": {
+                        "description": "How much the model reasons, sent in the form of its provider; a level the provider does not have is replaced by the nearest one. Without it nothing is sent. `off` is an error on `gemini` and with publisher `google`.",
+                        "enum": [
+                          "off",
+                          "minimal",
+                          "low",
+                          "medium",
+                          "high",
+                          "max"
+                        ]
+                      },
+                      "temperature": {
+                        "description": "Given to the provider as it is written.",
+                        "type": "number"
+                      },
+                      "top_p": {
+                        "description": "Given to the provider as it is written.",
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "id"
+                    ],
+                    "type": "object"
+                  },
+                  "on_error": {
+                    "description": "What a refusal does. `stop`: the run ends, and the final output gets the reasons and the log. `node`: the run goes on, and the next node receives the problem as its `agent_message`; it needs a node after it.",
+                    "enum": [
+                      "stop",
+                      "node"
+                    ]
+                  },
+                  "resources": {
+                    "additionalProperties": false,
+                    "description": "The prompt of the node, its only resource.",
+                    "properties": {
+                      "prompt": {
+                        "description": "The prompt of the judgment: its criterion. Mandatory.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "prompt"
+                    ],
+                    "type": "object"
+                  },
+                  "response": {
+                    "description": "Accepted and not used: the answer of a validation node always has the shape `{ validation, reasons, log }`."
+                  }
+                },
+                "required": [
+                  "model",
+                  "resources",
+                  "on_error"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "nodes",
+        "edges"
+      ],
+      "type": "object"
+    },
+    "graph_spec": {
+      "description": "The version of the format of this file.",
+      "enum": [
+        "1.0"
+      ]
+    },
+    "models": {
+      "description": "The language models the nodes call.",
+      "items": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "description": "The Anthropic Messages API (`api.anthropic.com`). A node that uses it must set `max_tokens`.",
+            "properties": {
+              "api_key": {
+                "additionalProperties": false,
+                "description": "The key of the API, read from an environment variable when the file is checked.",
+                "properties": {
+                  "env": {
+                    "description": "The name of the environment variable that holds the value.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "env"
+                ],
+                "type": "object"
+              },
+              "id": {
+                "description": "The id of the model, cited by the nodes.",
+                "type": "string"
+              },
+              "input": {
+                "description": "What the model reads. The program does not check the nodes against this list: what a node sends is checked against what the provider accepts.",
+                "items": {
+                  "enum": [
+                    "text",
+                    "image",
+                    "audio",
+                    "video"
+                  ]
+                },
+                "type": "array"
+              },
+              "model": {
+                "description": "The name of the model at its provider; on `azure_foundry`, the name of the deployment created in the Foundry portal.",
+                "type": "string"
+              },
+              "output": {
+                "description": "What the model produces. On `bedrock`, and with publisher `anthropic`, anything but `text` is an error (`output_not_text`). Otherwise the program does not check the nodes against this list: what a node asks is checked against what the provider can produce.",
+                "items": {
+                  "enum": [
+                    "text",
+                    "image",
+                    "audio",
+                    "video"
+                  ]
+                },
+                "type": "array"
+              },
+              "provider": {
+                "const": "anthropic"
+              },
+              "workspace_id": {
+                "description": "The Anthropic workspace, sent as the header `anthropic-workspace-id`, for a key that is not bound to a workspace. It is an id, not a secret.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "provider",
+              "id",
+              "model",
+              "input",
+              "output",
+              "api_key"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "description": "The OpenAI Responses API (`api.openai.com`).",
+            "properties": {
+              "api_key": {
+                "additionalProperties": false,
+                "description": "The key of the API, read from an environment variable when the file is checked.",
+                "properties": {
+                  "env": {
+                    "description": "The name of the environment variable that holds the value.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "env"
+                ],
+                "type": "object"
+              },
+              "id": {
+                "description": "The id of the model, cited by the nodes.",
+                "type": "string"
+              },
+              "input": {
+                "description": "What the model reads. The program does not check the nodes against this list: what a node sends is checked against what the provider accepts.",
+                "items": {
+                  "enum": [
+                    "text",
+                    "image",
+                    "audio",
+                    "video"
+                  ]
+                },
+                "type": "array"
+              },
+              "model": {
+                "description": "The name of the model at its provider; on `azure_foundry`, the name of the deployment created in the Foundry portal.",
+                "type": "string"
+              },
+              "output": {
+                "description": "What the model produces. On `bedrock`, and with publisher `anthropic`, anything but `text` is an error (`output_not_text`). Otherwise the program does not check the nodes against this list: what a node asks is checked against what the provider can produce.",
+                "items": {
+                  "enum": [
+                    "text",
+                    "image",
+                    "audio",
+                    "video"
+                  ]
+                },
+                "type": "array"
+              },
+              "provider": {
+                "const": "openai"
+              }
+            },
+            "required": [
+              "provider",
+              "id",
+              "model",
+              "input",
+              "output",
+              "api_key"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "description": "The Gemini API with an API key, not Vertex AI (`generativelanguage.googleapis.com`). It has no batch, and reasoning cannot be switched off.",
+            "properties": {
+              "api_key": {
+                "additionalProperties": false,
+                "description": "The key of the API, read from an environment variable when the file is checked.",
+                "properties": {
+                  "env": {
+                    "description": "The name of the environment variable that holds the value.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "env"
+                ],
+                "type": "object"
+              },
+              "id": {
+                "description": "The id of the model, cited by the nodes.",
+                "type": "string"
+              },
+              "input": {
+                "description": "What the model reads. The program does not check the nodes against this list: what a node sends is checked against what the provider accepts.",
+                "items": {
+                  "enum": [
+                    "text",
+                    "image",
+                    "audio",
+                    "video"
+                  ]
+                },
+                "type": "array"
+              },
+              "model": {
+                "description": "The name of the model at its provider; on `azure_foundry`, the name of the deployment created in the Foundry portal.",
+                "type": "string"
+              },
+              "output": {
+                "description": "What the model produces. On `bedrock`, and with publisher `anthropic`, anything but `text` is an error (`output_not_text`). Otherwise the program does not check the nodes against this list: what a node asks is checked against what the provider can produce.",
+                "items": {
+                  "enum": [
+                    "text",
+                    "image",
+                    "audio",
+                    "video"
+                  ]
+                },
+                "type": "array"
+              },
+              "provider": {
+                "const": "gemini"
+              }
+            },
+            "required": [
+              "provider",
+              "id",
+              "model",
+              "input",
+              "output",
+              "api_key"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "description": "The Mistral API (`api.mistral.ai`).",
+            "properties": {
+              "api_key": {
+                "additionalProperties": false,
+                "description": "The key of the API, read from an environment variable when the file is checked.",
+                "properties": {
+                  "env": {
+                    "description": "The name of the environment variable that holds the value.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "env"
+                ],
+                "type": "object"
+              },
+              "id": {
+                "description": "The id of the model, cited by the nodes.",
+                "type": "string"
+              },
+              "input": {
+                "description": "What the model reads. The program does not check the nodes against this list: what a node sends is checked against what the provider accepts.",
+                "items": {
+                  "enum": [
+                    "text",
+                    "image",
+                    "audio",
+                    "video"
+                  ]
+                },
+                "type": "array"
+              },
+              "model": {
+                "description": "The name of the model at its provider; on `azure_foundry`, the name of the deployment created in the Foundry portal.",
+                "type": "string"
+              },
+              "output": {
+                "description": "What the model produces. On `bedrock`, and with publisher `anthropic`, anything but `text` is an error (`output_not_text`). Otherwise the program does not check the nodes against this list: what a node asks is checked against what the provider can produce.",
+                "items": {
+                  "enum": [
+                    "text",
+                    "image",
+                    "audio",
+                    "video"
+                  ]
+                },
+                "type": "array"
+              },
+              "provider": {
+                "const": "mistral"
+              }
+            },
+            "required": [
+              "provider",
+              "id",
+              "model",
+              "input",
+              "output",
+              "api_key"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "description": "Amazon Bedrock, through the Converse API (`bedrock-runtime.<region>.amazonaws.com`). It produces text only.",
+            "properties": {
+              "batch": {
+                "additionalProperties": false,
+                "description": "Needed only by a `batch` group. The job is created on the Bedrock control API (`bedrock.<region>.amazonaws.com`), which must be in `allowed_hosts`. A batch cannot have tools or an output `schema`.",
+                "properties": {
+                  "input_s3_uri": {
+                    "description": "The S3 folder the requests are written to, as `s3://<bucket>/<prefix>`. Its bucket must be in `allowed_hosts`.",
+                    "type": "string"
+                  },
+                  "output_s3_uri": {
+                    "description": "The S3 folder the answers are written to, as `s3://<bucket>/<prefix>`. Its bucket must be in `allowed_hosts`.",
+                    "type": "string"
+                  },
+                  "role_arn": {
+                    "description": "The IAM role the batch job runs with.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "input_s3_uri",
+                  "output_s3_uri",
+                  "role_arn"
+                ],
+                "type": "object"
+              },
+              "credentials": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "ambient"
+                    ]
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "access_key": {
+                        "additionalProperties": false,
+                        "description": "The AWS access key id.",
+                        "properties": {
+                          "env": {
+                            "description": "The name of the environment variable that holds the value.",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "env"
+                        ],
+                        "type": "object"
+                      },
+                      "secret_key": {
+                        "additionalProperties": false,
+                        "description": "The AWS secret access key.",
+                        "properties": {
+                          "env": {
+                            "description": "The name of the environment variable that holds the value.",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "env"
+                        ],
+                        "type": "object"
+                      },
+                      "session_token": {
+                        "additionalProperties": false,
+                        "description": "The session token, only for temporary credentials.",
+                        "properties": {
+                          "env": {
+                            "description": "The name of the environment variable that holds the value.",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "env"
+                        ],
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "access_key",
+                      "secret_key"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "description": "`ambient`: the default chain of the AWS SDK, resolved at the first call; the traffic it needs is not checked against `allowed_hosts`. Or the keys, each read from an environment variable when the file is checked."
+              },
+              "id": {
+                "description": "The id of the model, cited by the nodes.",
+                "type": "string"
+              },
+              "input": {
+                "description": "What the model reads. The program does not check the nodes against this list: what a node sends is checked against what the provider accepts.",
+                "items": {
+                  "enum": [
+                    "text",
+                    "image",
+                    "audio",
+                    "video"
+                  ]
+                },
+                "type": "array"
+              },
+              "model": {
+                "description": "The name of the model at its provider; on `azure_foundry`, the name of the deployment created in the Foundry portal.",
+                "type": "string"
+              },
+              "output": {
+                "description": "What the model produces. On `bedrock`, and with publisher `anthropic`, anything but `text` is an error (`output_not_text`). Otherwise the program does not check the nodes against this list: what a node asks is checked against what the provider can produce.",
+                "items": {
+                  "enum": [
+                    "text",
+                    "image",
+                    "audio",
+                    "video"
+                  ]
+                },
+                "type": "array"
+              },
+              "provider": {
+                "const": "bedrock"
+              },
+              "region": {
+                "description": "The AWS region the model runs in, for example `eu-west-1`.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "provider",
+              "id",
+              "model",
+              "input",
+              "output",
+              "region",
+              "credentials"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "description": "Google Cloud Vertex AI. With publisher `anthropic` it works as `anthropic` and produces text only; with `google` as `gemini`. Neither has a batch yet.",
+            "properties": {
+              "batch": {
+                "additionalProperties": false,
+                "description": "Accepted only with publisher `google` (`batch_not_allowed`), whose batch is not available yet.",
+                "properties": {
+                  "input_uri": {
+                    "description": "Where the requests of the batch are read from.",
+                    "type": "string"
+                  },
+                  "output_uri_prefix": {
+                    "description": "Where the answers of the batch are written.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "input_uri",
+                  "output_uri_prefix"
+                ],
+                "type": "object"
+              },
+              "credentials": {
+                "description": "The Google Application Default Credentials, resolved at the first call; the traffic they need is not checked against `allowed_hosts`.",
+                "enum": [
+                  "ambient"
+                ]
+              },
+              "id": {
+                "description": "The id of the model, cited by the nodes.",
+                "type": "string"
+              },
+              "input": {
+                "description": "What the model reads. The program does not check the nodes against this list: what a node sends is checked against what the provider accepts.",
+                "items": {
+                  "enum": [
+                    "text",
+                    "image",
+                    "audio",
+                    "video"
+                  ]
+                },
+                "type": "array"
+              },
+              "location": {
+                "description": "Where the model runs: `global` (`aiplatform.googleapis.com`), `us` or `eu` (`aiplatform.<location>.rep.googleapis.com`), or a region (`<location>-aiplatform.googleapis.com`).",
+                "type": "string"
+              },
+              "model": {
+                "description": "The name of the model at its provider; on `azure_foundry`, the name of the deployment created in the Foundry portal.",
+                "type": "string"
+              },
+              "output": {
+                "description": "What the model produces. On `bedrock`, and with publisher `anthropic`, anything but `text` is an error (`output_not_text`). Otherwise the program does not check the nodes against this list: what a node asks is checked against what the provider can produce.",
+                "items": {
+                  "enum": [
+                    "text",
+                    "image",
+                    "audio",
+                    "video"
+                  ]
+                },
+                "type": "array"
+              },
+              "project": {
+                "description": "The Google Cloud project.",
+                "type": "string"
+              },
+              "provider": {
+                "const": "vertex_ai"
+              },
+              "publisher": {
+                "description": "Whose model it is: it decides the format of the requests and what the model can do.",
+                "enum": [
+                  "anthropic",
+                  "google"
+                ]
+              }
+            },
+            "required": [
+              "provider",
+              "id",
+              "model",
+              "input",
+              "output",
+              "publisher",
+              "project",
+              "location",
+              "credentials"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "description": "Microsoft Foundry. With publisher `anthropic` it works as `anthropic`, produces text only and has no batch; with `openai` as `openai`.",
+            "properties": {
+              "batch": {
+                "additionalProperties": false,
+                "description": "Accepted only with publisher `openai` (`batch_not_allowed`).",
+                "properties": {
+                  "deployment": {
+                    "description": "The Global-Batch deployment the batch is sent to.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "deployment"
+                ],
+                "type": "object"
+              },
+              "credentials": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "ambient"
+                    ]
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "api_key": {
+                        "additionalProperties": false,
+                        "description": "The key of the resource, read from an environment variable when the file is checked.",
+                        "properties": {
+                          "env": {
+                            "description": "The name of the environment variable that holds the value.",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "env"
+                        ],
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "api_key"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "description": "`ambient`: in this order, the managed identity of an Azure resource, the Azure CLI and the Azure Developer CLI, resolved at the first call; the traffic they need is not checked against `allowed_hosts`. Or an `api_key`."
+              },
+              "id": {
+                "description": "The id of the model, cited by the nodes.",
+                "type": "string"
+              },
+              "input": {
+                "description": "What the model reads. The program does not check the nodes against this list: what a node sends is checked against what the provider accepts.",
+                "items": {
+                  "enum": [
+                    "text",
+                    "image",
+                    "audio",
+                    "video"
+                  ]
+                },
+                "type": "array"
+              },
+              "model": {
+                "description": "The name of the model at its provider; on `azure_foundry`, the name of the deployment created in the Foundry portal.",
+                "type": "string"
+              },
+              "output": {
+                "description": "What the model produces. On `bedrock`, and with publisher `anthropic`, anything but `text` is an error (`output_not_text`). Otherwise the program does not check the nodes against this list: what a node asks is checked against what the provider can produce.",
+                "items": {
+                  "enum": [
+                    "text",
+                    "image",
+                    "audio",
+                    "video"
+                  ]
+                },
+                "type": "array"
+              },
+              "provider": {
+                "const": "azure_foundry"
+              },
+              "publisher": {
+                "description": "Whose model it is: it decides the format of the requests and what the model can do.",
+                "enum": [
+                  "anthropic",
+                  "openai"
+                ]
+              },
+              "resource": {
+                "description": "The name of the Foundry resource: the host is `<resource>.services.ai.azure.com` for `anthropic`, `<resource>.openai.azure.com` for `openai`.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "provider",
+              "id",
+              "model",
+              "input",
+              "output",
+              "publisher",
+              "resource",
+              "credentials"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "description": "An Ollama server.",
+            "properties": {
+              "host": {
+                "description": "The URL of the server, for example `http://localhost:11434`. Its host must be in `allowed_hosts`.",
+                "type": "string"
+              },
+              "id": {
+                "description": "The id of the model, cited by the nodes.",
+                "type": "string"
+              },
+              "input": {
+                "description": "What the model reads. The program does not check the nodes against this list: what a node sends is checked against what the provider accepts.",
+                "items": {
+                  "enum": [
+                    "text",
+                    "image",
+                    "audio",
+                    "video"
+                  ]
+                },
+                "type": "array"
+              },
+              "model": {
+                "description": "The name of the model at its provider; on `azure_foundry`, the name of the deployment created in the Foundry portal.",
+                "type": "string"
+              },
+              "output": {
+                "description": "What the model produces. On `bedrock`, and with publisher `anthropic`, anything but `text` is an error (`output_not_text`). Otherwise the program does not check the nodes against this list: what a node asks is checked against what the provider can produce.",
+                "items": {
+                  "enum": [
+                    "text",
+                    "image",
+                    "audio",
+                    "video"
+                  ]
+                },
+                "type": "array"
+              },
+              "provider": {
+                "const": "ollama"
+              }
+            },
+            "required": [
+              "provider",
+              "id",
+              "model",
+              "input",
+              "output",
+              "host"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "description": "A model server of your own, called with `POST <host>/api/chat` in the format of the Ollama API.",
+            "properties": {
+              "host": {
+                "description": "The URL of the server, for example `http://localhost:11434`. Its host must be in `allowed_hosts`.",
+                "type": "string"
+              },
+              "id": {
+                "description": "The id of the model, cited by the nodes.",
+                "type": "string"
+              },
+              "input": {
+                "description": "What the model reads. The program does not check the nodes against this list: what a node sends is checked against what the provider accepts.",
+                "items": {
+                  "enum": [
+                    "text",
+                    "image",
+                    "audio",
+                    "video"
+                  ]
+                },
+                "type": "array"
+              },
+              "model": {
+                "description": "The name of the model at its provider; on `azure_foundry`, the name of the deployment created in the Foundry portal.",
+                "type": "string"
+              },
+              "output": {
+                "description": "What the model produces. On `bedrock`, and with publisher `anthropic`, anything but `text` is an error (`output_not_text`). Otherwise the program does not check the nodes against this list: what a node asks is checked against what the provider can produce.",
+                "items": {
+                  "enum": [
+                    "text",
+                    "image",
+                    "audio",
+                    "video"
+                  ]
+                },
+                "type": "array"
+              },
+              "provider": {
+                "const": "custom"
+              }
+            },
+            "required": [
+              "provider",
+              "id",
+              "model",
+              "input",
+              "output",
+              "host"
+            ],
+            "type": "object"
+          }
+        ],
+        "properties": {
+          "provider": {
+            "description": "The service the model is reached through. It decides the other keys.",
+            "enum": [
+              "anthropic",
+              "openai",
+              "gemini",
+              "mistral",
+              "bedrock",
+              "vertex_ai",
+              "azure_foundry",
+              "ollama",
+              "custom"
+            ]
+          }
+        },
+        "required": [
+          "provider"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "observability": {
+      "additionalProperties": false,
+      "description": "The log: structured records of what the program does, for machines.",
+      "properties": {
+        "level": {
+          "description": "The lowest level written: `info` writes the run, the nodes and the groups, `debug` also the calls, `warn` and `error` only the problems.",
+          "enum": [
+            "debug",
+            "info",
+            "warn",
+            "error"
+          ]
+        },
+        "output": {
+          "anyOf": [
+            {
+              "enum": [
+                "stdout",
+                "stderr"
+              ]
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "file": {
+                  "description": "The file the log is added to, created if it does not exist.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "file"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "headers": {
+                  "additionalProperties": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "env": {
+                        "description": "The name of the environment variable that holds the value.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "env"
+                    ],
+                    "type": "object"
+                  },
+                  "description": "The headers of the POSTs, each read from an environment variable.",
+                  "type": "object"
+                },
+                "url": {
+                  "description": "The HTTP endpoint the log is sent to, as POSTs of `application/x-ndjson` with at most 100 events each.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "url"
+              ],
+              "type": "object"
+            }
+          ],
+          "description": "Where the log goes: `stderr` (the default), with the errors, so that the standard output holds only the result; `stdout`, mixed with the result; a file; or an HTTP endpoint. A log that cannot be written never stops the run."
+        }
+      },
+      "required": [
+        "level"
+      ],
+      "type": "object"
+    },
+    "passport": {
+      "additionalProperties": false,
+      "description": "The identity of the graph, in the ADL 0.3.0 format (https://www.adl-spec.org/), with the hosts it may reach.",
+      "properties": {
+        "adl": {
+          "additionalProperties": false,
+          "description": "The passport, in the ADL format (https://www.adl-spec.org/). The key names are those of ADL.",
+          "properties": {
+            "adl_spec": {
+              "description": "The version of ADL the passport is written in: `\"0.3.0\"`.",
+              "type": "string"
+            },
+            "data_classification": {
+              "additionalProperties": false,
+              "description": "How sensitive the data of the graph are. It decides whether the contents (prompts, answers, results) are written in the log, the trace and the display.",
+              "properties": {
+                "categories": {
+                  "description": "The kinds of regulated data the graph handles. Any category hides the contents.",
+                  "items": {
+                    "enum": [
+                      "pii",
+                      "phi",
+                      "financial",
+                      "credentials",
+                      "intellectual_property",
+                      "regulatory"
+                    ]
+                  },
+                  "type": "array"
+                },
+                "sensitivity": {
+                  "description": "The level of sensitivity of the data. The contents are written only with `public` and no `categories`.",
+                  "enum": [
+                    "public",
+                    "internal",
+                    "confidential",
+                    "restricted"
+                  ]
+                }
+              },
+              "required": [
+                "sensitivity"
+              ],
+              "type": "object"
+            },
+            "description": {
+              "description": "What the agent does.",
+              "type": "string"
+            },
+            "lifecycle": {
+              "additionalProperties": false,
+              "description": "The stage of life of the agent. The program does not act on it.",
+              "properties": {
+                "status": {
+                  "description": "The stage the agent is in.",
+                  "enum": [
+                    "draft",
+                    "active",
+                    "deprecated",
+                    "retired"
+                  ]
+                },
+                "sunset_date": {
+                  "description": "When the agent is retired, in RFC 3339 with a time zone (for example `2027-01-01T00:00:00Z`).",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "status"
+              ],
+              "type": "object"
+            },
+            "name": {
+              "description": "The name of the agent. The trace uses it as the name of the service.",
+              "type": "string"
+            },
+            "permissions": {
+              "additionalProperties": false,
+              "description": "What the graph is allowed to do. Without it, no host is allowed.",
+              "properties": {
+                "network": {
+                  "additionalProperties": false,
+                  "description": "The network the graph may reach. Without it, no host is allowed.",
+                  "properties": {
+                    "allowed_hosts": {
+                      "description": "The hosts the graph may reach: host names, not URLs (`api.anthropic.com`, not `https://api.anthropic.com/v1`), compared without regard to case. Every destination of the file is checked against this list before anything runs.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "allowed_hosts"
+                  ],
+                  "type": "object"
+                }
+              },
+              "required": [],
+              "type": "object"
+            },
+            "version": {
+              "description": "The version of the agent, as a semantic version of three numbers (for example `\"1.0.0\"`).",
+              "type": "string"
+            }
+          },
+          "required": [
+            "adl_spec",
+            "name",
+            "description",
+            "version",
+            "data_classification"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "adl"
+      ],
+      "type": "object"
+    },
+    "resources": {
+      "additionalProperties": false,
+      "description": "What the nodes use: prompts, tools, MCP servers, media, skills.",
+      "properties": {
+        "mcp_servers": {
+          "description": "Servers of the Model Context Protocol, connected when the run starts. Only their tools are used, never their resources or prompts.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "args": {
+                "description": "The arguments of `command`, with `transport: stdio` only.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "command": {
+                "description": "The program to start, with `transport: stdio` only (where it is mandatory).",
+                "type": "string"
+              },
+              "env": {
+                "additionalProperties": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "env": {
+                      "description": "The name of the environment variable that holds the value.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "env"
+                  ],
+                  "type": "object"
+                },
+                "description": "The environment variables of the program, with `transport: stdio` only, each read from an environment variable when the server is started.",
+                "type": "object"
+              },
+              "headers": {
+                "additionalProperties": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "env": {
+                      "description": "The name of the environment variable that holds the value.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "env"
+                  ],
+                  "type": "object"
+                },
+                "description": "The headers of the requests, with `transport: http` only, each read from an environment variable when the server is connected.",
+                "type": "object"
+              },
+              "id": {
+                "description": "The id of the server, cited by the nodes.",
+                "type": "string"
+              },
+              "max_iter": {
+                "description": "The most calls to the tools of the server, any of them, in one run of a node, at least 1. One more call fails the run (`tool_limit`).",
+                "type": "integer"
+              },
+              "timeout": {
+                "description": "The seconds one call may take, at least 1. After that the model is told that the call failed.",
+                "type": "integer"
+              },
+              "transport": {
+                "description": "`stdio`: the program `command` is started when the run starts. `http`: the server at `url`, reached with Streamable HTTP.",
+                "enum": [
+                  "stdio",
+                  "http"
+                ]
+              },
+              "url": {
+                "description": "The URL of the server, with `transport: http` only (where it is mandatory). Its host must be in `allowed_hosts`.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "transport",
+              "max_iter",
+              "timeout"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "media": {
+          "description": "Everything that is not the text of a message: documents, images, audio, read or produced by the nodes.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "generate": {
+                "additionalProperties": false,
+                "description": "How a model makes the media. Every value is given to the provider as it is written; a value it does not accept is an error when the file is checked (`not_supported`). A media is one image or one audio, written by one node only (`media_two_writers`).",
+                "properties": {
+                  "background": {
+                    "description": "`true` a transparent background, `false` an opaque one; without it the provider decides. A transparent background needs an image of type `png` or `webp` (`media_type_unsupported`).",
+                    "type": "boolean"
+                  },
+                  "language_code": {
+                    "description": "The language of an audio. No provider accepts it at present.",
+                    "type": "string"
+                  },
+                  "quality": {
+                    "description": "The quality of an image. The values depend on the model.",
+                    "type": "string"
+                  },
+                  "size": {
+                    "additionalProperties": false,
+                    "description": "The size of an image. The provider may accept only some pairs.",
+                    "properties": {
+                      "height": {
+                        "description": "The height, in pixels.",
+                        "type": "integer"
+                      },
+                      "width": {
+                        "description": "The width, in pixels.",
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "width",
+                      "height"
+                    ],
+                    "type": "object"
+                  },
+                  "voice": {
+                    "description": "The voice of an audio. Mandatory for an audio on OpenAI.",
+                    "type": "string"
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "id": {
+                "description": "The id of the media, cited by the nodes that read or produce it.",
+                "type": "string"
+              },
+              "provider": {
+                "additionalProperties": false,
+                "description": "Settings of one family of providers only (`exactly_one`): the family of the model of the node that writes the media.",
+                "properties": {
+                  "gemini": {
+                    "additionalProperties": false,
+                    "description": "For a model of Gemini, also through `vertex_ai` with publisher `google`.",
+                    "properties": {
+                      "aspect_ratio": {
+                        "description": "The ratio of width to height, for example `16:9`.",
+                        "type": "string"
+                      },
+                      "image_size": {
+                        "description": "The size of the image.",
+                        "enum": [
+                          "512",
+                          "1K",
+                          "2K",
+                          "4K",
+                          512
+                        ]
+                      }
+                    },
+                    "required": [],
+                    "type": "object"
+                  },
+                  "openai": {
+                    "additionalProperties": false,
+                    "description": "For a model of OpenAI, also through `azure_foundry` with publisher `openai`.",
+                    "properties": {
+                      "moderation": {
+                        "description": "How strict the moderation of the image is.",
+                        "enum": [
+                          "low",
+                          "auto"
+                        ]
+                      },
+                      "output_compression": {
+                        "description": "From 0 to 100, for an image of type `jpeg` or `webp`.",
+                        "type": "integer"
+                      },
+                      "style": {
+                        "description": "The style of the image. Not together with the other two (`media_provider_conflict`).",
+                        "enum": [
+                          "vivid",
+                          "natural"
+                        ]
+                      }
+                    },
+                    "required": [],
+                    "type": "object"
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "source": {
+                "additionalProperties": false,
+                "description": "Where a media that is read comes from: exactly one of `path`, `url` and `base64`. A media has exactly one of `source` and `generate`, except one of type `file`, which has neither.",
+                "properties": {
+                  "access": {
+                    "description": "How to get in at the `url`, with `url` only. Its content is not defined yet."
+                  },
+                  "base64": {
+                    "description": "The content itself, in base64. Only for a media.",
+                    "type": "string"
+                  },
+                  "path": {
+                    "description": "A file, relative to the folder the command is run from.",
+                    "type": "string"
+                  },
+                  "url": {
+                    "description": "A URL. It is not read yet: a node that uses it fails when it runs.",
+                    "type": "string"
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "type": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "md",
+                      "file"
+                    ]
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "img": {
+                        "description": "The format of the image: `png`, `jpeg`, `gif`, `webp`...",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "img"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "audio": {
+                        "description": "The format of the audio: `wav`, `mp3`...",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "audio"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "video": {
+                        "description": "The format of the video: `mp4`...",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "video"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "description": "What the media is: `md` a text (a file of another format, such as a PDF, is declared `md` and read through a utility that changes it into text); `file` a file of any format made by a utility, delivered in base64; or an image, an audio or a video with its format."
+              }
+            },
+            "required": [
+              "id",
+              "type"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "prompts": {
+          "description": "The texts the nodes send to their models, with their placeholders.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "content": {
+                "additionalProperties": false,
+                "description": "The texts of the prompt, written in the file. A prompt has exactly one of `content` and `source`.",
+                "properties": {
+                  "system": {
+                    "description": "The system text, with its placeholders.",
+                    "type": "string"
+                  },
+                  "user": {
+                    "description": "The user text, with its placeholders.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "system",
+                  "user"
+                ],
+                "type": "object"
+              },
+              "id": {
+                "description": "The id of the prompt, cited by the nodes.",
+                "type": "string"
+              },
+              "source": {
+                "additionalProperties": false,
+                "description": "Where the prompt is read from: exactly one of `path`, a `.yml` file with the same `content: { system, user }` (not Markdown, which could not be split into the two texts), and `url`.",
+                "properties": {
+                  "access": {
+                    "description": "How to get in at the `url`, with `url` only. Its content is not defined yet."
+                  },
+                  "base64": {
+                    "description": "The content itself, in base64. Only for a media.",
+                    "type": "string"
+                  },
+                  "path": {
+                    "description": "A file, relative to the folder the command is run from.",
+                    "type": "string"
+                  },
+                  "url": {
+                    "description": "A URL. It is not read yet: a node that uses it fails when it runs.",
+                    "type": "string"
+                  }
+                },
+                "required": [],
+                "type": "object"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "skills": {
+          "description": "Folders in the Agent Skills format (https://agentskills.io/specification): instructions for a task, with their files and scripts, that the model reads when it needs them.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "description": "The id of the skill, cited by the nodes.",
+                "type": "string"
+              },
+              "max_depth": {
+                "description": "The most levels of sub-folders listed when the skill is activated. The default is 6, at least 1.",
+                "type": "integer"
+              },
+              "max_file_bytes": {
+                "description": "The largest file the model may read, and the most bytes kept of the output of a script. The default is 100000, at least 1.",
+                "type": "integer"
+              },
+              "max_files": {
+                "description": "The most files listed when the skill is activated. The default is 200, at least 1.",
+                "type": "integer"
+              },
+              "max_iter": {
+                "description": "The most reads of files and runs of scripts together, for this skill, in one run of a node. The default is 20, at least 1; the activation is not counted. One more fails the run (`tool_limit`).",
+                "type": "integer"
+              },
+              "path": {
+                "description": "The folder of the skill, with its `SKILL.md`. Its name and description are written in `SKILL.md`, not here.",
+                "type": "string"
+              },
+              "run_scripts": {
+                "description": "Whether the model may run the scripts in the folder `scripts/` of the skill. The default is `true`.",
+                "type": "boolean"
+              },
+              "timeout": {
+                "description": "The seconds a script may take. The default is 30, at least 1.",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "path"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "tools": {
+          "description": "Programs and services of yours that the model may call while a node runs. The model decides whether to call them; the program makes the call.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "args": {
+                "description": "The arguments of `command`, with `transport: stdio` only.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "command": {
+                "description": "The program to start, with `transport: stdio` only (where it is mandatory).",
+                "type": "string"
+              },
+              "description": {
+                "description": "What the tool does, told to the model.",
+                "type": "string"
+              },
+              "headers": {
+                "additionalProperties": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "env": {
+                      "description": "The name of the environment variable that holds the value.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "env"
+                  ],
+                  "type": "object"
+                },
+                "description": "The headers of the POSTs, with `transport: http` only, each read from an environment variable when the file is checked.",
+                "type": "object"
+              },
+              "id": {
+                "description": "The id of the tool: the name the model calls it by, and the id the nodes cite.",
+                "type": "string"
+              },
+              "max_iter": {
+                "description": "The most calls of this tool in one run of a node, at least 1, failures included. The count starts again for each node and each appearance of the node in the edges; one more call fails the run (`tool_limit`).",
+                "type": "integer"
+              },
+              "parameters": {
+                "description": "The JSON Schema of the arguments, an object, given to the provider as it is written."
+              },
+              "timeout": {
+                "description": "The seconds one call may take, at least 1. After that the program is killed or the request abandoned, and the model is told, as for any other failure.",
+                "type": "integer"
+              },
+              "transport": {
+                "description": "`stdio`: the program `command` is started for each call, gets the arguments on its standard input and writes the result on its standard output. `http`: the arguments are POSTed to `url` and the result is the body of the answer.",
+                "enum": [
+                  "stdio",
+                  "http"
+                ]
+              },
+              "url": {
+                "description": "The URL the calls are POSTed to, with `transport: http` only (where it is mandatory). Its host must be in `allowed_hosts`.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "description",
+              "transport",
+              "max_iter",
+              "timeout",
+              "parameters"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [],
+      "type": "object"
+    },
+    "trace": {
+      "additionalProperties": false,
+      "description": "The timeline of the run, sent to a collector when the run ends. Without this block there is no trace.",
+      "properties": {
+        "endpoint": {
+          "description": "The OpenTelemetry collector, as the exact URL of the POST (for example `http://host:4318/v1/traces`). At the end of the run, also when it fails, the whole timeline is sent in one POST, in OTLP over HTTP with JSON. A POST that fails is tried again up to 3 times; what cannot be delivered is dropped, with a notice on the standard error.",
+          "type": "string"
+        },
+        "headers": {
+          "additionalProperties": {
+            "additionalProperties": false,
+            "properties": {
+              "env": {
+                "description": "The name of the environment variable that holds the value.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "env"
+            ],
+            "type": "object"
+          },
+          "description": "The headers of the POST, each read from an environment variable.",
+          "type": "object"
+        }
+      },
+      "required": [
+        "endpoint"
+      ],
+      "type": "object"
+    },
+    "utilities": {
+      "description": "Programs and services that the program, never the model, calls to change the data of a node.",
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "args": {
+            "description": "The arguments of `command`, with `transport: stdio` only.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "command": {
+            "description": "The program to start, with `transport: stdio` only (where it is mandatory).",
+            "type": "string"
+          },
+          "headers": {
+            "additionalProperties": {
+              "additionalProperties": false,
+              "properties": {
+                "env": {
+                  "description": "The name of the environment variable that holds the value.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "env"
+              ],
+              "type": "object"
+            },
+            "description": "The headers of the POSTs, with `transport: http` only, each read from an environment variable when the file is checked.",
+            "type": "object"
+          },
+          "id": {
+            "description": "The id of the utility, cited by the nodes where they want their data changed.",
+            "type": "string"
+          },
+          "timeout": {
+            "description": "The seconds a call may take, at least 1. After that the program is stopped or the request abandoned, and the run fails.",
+            "type": "integer"
+          },
+          "transport": {
+            "description": "`stdio`: the program `command` is started for each call. `http`: a service already running, which the program does not start or stop.",
+            "enum": [
+              "stdio",
+              "http"
+            ]
+          },
+          "url": {
+            "description": "The URL the calls are POSTed to, with `transport: http` only (where it is mandatory). Its host must be in `allowed_hosts`.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "transport",
+          "timeout"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "verbose": {
+      "additionalProperties": false,
+      "description": "The live display of the run, for a person, on the standard error.",
+      "properties": {
+        "level": {
+          "description": "What is shown: `off` nothing; `steps` the run, the nodes and the groups as they start and end, and the errors and warnings; `detail` also the calls, the readings and the contents, as the passport allows.",
+          "enum": [
+            "off",
+            "steps",
+            "detail"
+          ]
+        }
+      },
+      "required": [
+        "level"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "graph_spec",
+    "passport",
+    "observability",
+    "verbose",
+    "models",
+    "graph"
+  ],
+  "title": "a-graph graph file",
+  "type": "object"
+}

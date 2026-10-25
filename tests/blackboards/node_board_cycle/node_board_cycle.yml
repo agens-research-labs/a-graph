@@ -1,0 +1,36 @@
+# One node `n`, the model is a mock server on port 18108 (the test starts it). The node reads its board, which is a copy of blackboards/board.md made by the test in target/test-boards/, and writes below.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:18108
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: pr
+      content: { system: "Board: {{bb}}", user: "{{user_message}}" }
+blackboards:
+  - id: bb
+    source: { file: ./target/test-boards/run_node_rw.md }
+graph:
+  nodes:
+    - id: n
+      model: { id: m }
+      resources: { prompt: pr }
+      blackboard: { id: bb, read: true, write: { enabled: true, place: bottom } }
+      message: { input: { user_message: true }, output: { assistant_message: true } }
+  edges:
+    - start: n
+    - end: n

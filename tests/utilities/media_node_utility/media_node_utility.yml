@@ -1,0 +1,57 @@
+# A media made by the node before, changed by a utility (model mock 19932).
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1, api.openai.com] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:19932
+    input: [text, image]
+    output: [text]
+  - id: smart
+    provider: openai
+    model: gpt-image-1
+    input: [text]
+    output: [text, image]
+    api_key: { env: OPENAI_API_KEY }
+utilities:
+  - id: conv
+    transport: stdio
+    command: /bin/sh
+    args: ["tests/utilities/media_node_utility/files/scripts/conv.sh"]
+    timeout: 5
+resources:
+  media:
+    - id: cover
+      type: { img: png }
+      generate: {}
+  prompts:
+    - id: pr
+      content:
+        system: "Be brief."
+        user: "Q: {{user_message}}"
+graph:
+  nodes:
+    - id: a
+      model: { id: smart }
+      media: { output: [ { id: cover, node: true } ] }
+      message: { input: { user_message: true } }
+    - id: n
+      model: { id: m, max_tokens: 50 }
+      resources: { prompt: pr }
+      media: { input: [ { id: cover, from: node, utility: [conv] } ] }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true }
+  edges:
+    - start: a
+    - end: n

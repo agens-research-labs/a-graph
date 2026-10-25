@@ -1,0 +1,52 @@
+# The memory has `read.utility: [up]`: the history and the summary it gives are changed (model mock 19923).
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:19923
+    input: [text]
+    output: [text]
+external:
+  memory:
+    - id: session
+      provider: json_file
+      path: ./tests/utilities/memory_read_utility/files/session.json
+      synt: { length: 9, model: m }
+      chat: { length: 5 }
+utilities:
+  - id: up
+    transport: stdio
+    command: /bin/sh
+    args: ["tests/utilities/memory_read_utility/files/scripts/up.sh"]
+    timeout: 5
+resources:
+  prompts:
+    - id: pr
+      content:
+        system: "Be brief."
+        user: "Q: {{user_message}} / S: {{session}}"
+graph:
+  nodes:
+    - id: n
+      model: { id: m, max_tokens: 50 }
+      resources: { prompt: pr }
+      external:
+        memory:
+          - { id: session, read: { user: true, assistant: true, utility: [up] }, write: { user: false, assistant: false } }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true }
+  edges:
+    - start: n
+    - end: n

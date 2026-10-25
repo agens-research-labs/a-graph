@@ -1,0 +1,10 @@
+[
+  {
+    "id": "c",
+    "timestamp": "2026-10-17_10:00:00",
+    "chat": [
+      { "role": "user", "content": "I am Anna and I am vegetarian" },
+      { "role": "assistant", "content": "Nice to meet you, Anna" }
+    ]
+  }
+]

@@ -1,0 +1,72 @@
+# A react whose controller `c` has a memory of one exchange (read only). A mock model (port 18308, started by the test) plays the controller by a script and answers the text it was asked to the other nodes.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:18308
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: p_s
+      content: { system: "", user: "S({{user_message}})" }
+    - id: p_c
+      content: { system: "", user: "C({{agent_message}})" }
+    - id: p_w1
+      content: { system: "", user: "W1({{agent_message}})" }
+    - id: p_z
+      content: { system: "", user: "Z({{agent_message}})" }
+external:
+  memory:
+    - id: session
+      provider: json_file
+      path: ./tests/react/controller_memory/files/session.json
+      chat: { length: 1 }
+graph:
+  nodes:
+    - id: s
+      model: { id: m }
+      resources: { prompt: p_s }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true, node: true }
+    - id: c
+      model: { id: m }
+      resources: { prompt: p_c }
+      external:
+        memory:
+          - { id: session, read: { user: true, assistant: true }, write: { user: false, assistant: false } }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: w1
+      model: { id: m }
+      resources: { prompt: p_w1 }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: z
+      model: { id: m }
+      resources: { prompt: p_z }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+  edges:
+    - start: s
+    - react:
+        controller: c
+        max_iterations: 3
+        components:
+          - worker: w1
+    - end: z

@@ -1,0 +1,33 @@
+# One node `n`, the model is a mock server on port 18110 (the test starts it). The node reads a Markdown media.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:18110
+    input: [text]
+    output: [text]
+resources:
+  media:
+    - id: doc
+      type: md
+      source: { path: ./tests/media/media_markdown/files/run_node/doc.md }
+graph:
+  nodes:
+    - id: n
+      model: { id: m }
+      media: { input: [ { id: doc, from: resources } ] }
+      message: { input: { user_message: true }, output: { assistant_message: true } }
+  edges:
+    - start: n
+    - end: n

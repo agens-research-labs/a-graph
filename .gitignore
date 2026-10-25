@@ -1,0 +1,18 @@
+# build output and everything the tests write while they run
+/target
+/tests/mcp_server/target
+
+# environment files with keys: never in the repository
+.env
+.env.*
+*.pem
+*.key
+
+# editors and the system
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# files the examples create when they are run
+/examples/*/memory.json

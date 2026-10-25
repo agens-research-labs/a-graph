@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "The configuration of the service, `a-graph --serve service.yml`. Generated from the code by `a-graph --print-service-schema`: do not edit it by hand.",
+  "properties": {
+    "allowed_hosts": {
+      "description": "The only hosts a graph may reach, compared without regard to case. The `allowed_hosts` of the passport of a graph can only be a part of this list: a graph that names another host is refused.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "data_dir": {
+      "description": "The folder of the sessions. Each session has its own folder, `<data_dir>/<session>/`, and every path of a graph sent to the service is moved inside it.",
+      "type": "string"
+    },
+    "port": {
+      "description": "The port the service listens on, on all interfaces.",
+      "type": "integer"
+    },
+    "retention_seconds": {
+      "description": "How long a run is kept after it ends, so that it can still be watched and asked for; then it is forgotten. The default is 600, at least 1.",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "port",
+    "data_dir",
+    "allowed_hosts"
+  ],
+  "title": "a-graph service file",
+  "type": "object"
+}

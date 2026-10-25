@@ -1,0 +1,52 @@
+# Live: a real Chroma server (127.0.0.1:8000) and a real Ollama with embeddinggemma; the model is a mock (port 19101) so the test can read the prompt it gets.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1, localhost] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:19101
+    input: [text]
+    output: [text]
+embeddings:
+  - id: emb
+    provider: ollama
+    model: embeddinggemma
+    host: http://localhost:11434
+resources:
+  prompts:
+    - id: pr
+      content:
+        system: "Answer with the context."
+        user: "Context: {{chunks}} / Question: {{user_message}}"
+external:
+  vectordb:
+    - id: leases
+      provider: chromadb
+      url: http://127.0.0.1:8000
+      collection: a_graph_live_leases
+      top_k: 2
+      embedding: emb
+graph:
+  nodes:
+    - id: n
+      model: { id: m, max_tokens: 50 }
+      resources: { prompt: pr }
+      external:
+        vectordb:
+          - { id: leases, query: user_message }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true }
+  edges:
+    - start: n
+    - end: n

@@ -1,0 +1,92 @@
+# A graph on the local Ollama (model qwen3.5:4b). Two nodes answer the same question in parallel and a last one sums up.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [localhost] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: qwen3.5:4b
+    host: http://localhost:11434
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: p_start
+      content:
+        system: "Reply with one country name only."
+        user: "Name a country that starts with the letter {{user_message}}."
+    - id: p_input
+      content:
+        system: "Repeat the country name, nothing else."
+        user: "{{agent_message}}"
+    - id: p_capital
+      content:
+        system: "Reply with the capital city only, one word."
+        user: "The capital of {{agent_message}}"
+    - id: p_continent
+      content:
+        system: "Reply with the continent only, one word."
+        user: "The continent of {{agent_message}}"
+    - id: p_summary
+      content:
+        system: "Write one short sentence using every fact you are given."
+        user: "{{agent_message}}"
+    - id: p_end
+      content:
+        system: "Repeat the text you are given."
+        user: "{{agent_message}}"
+graph:
+  nodes:
+    - id: start
+      model: { id: m, reasoning: off, max_tokens: 150 }
+      resources: { prompt: p_start }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true, node: true }
+    - id: input
+      model: { id: m, reasoning: off, max_tokens: 150 }
+      resources: { prompt: p_input }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: capital
+      model: { id: m, reasoning: off, max_tokens: 150 }
+      resources: { prompt: p_capital }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: continent
+      model: { id: m, reasoning: off, max_tokens: 150 }
+      resources: { prompt: p_continent }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: summary
+      model: { id: m, reasoning: off, max_tokens: 150 }
+      resources: { prompt: p_summary }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: end
+      model: { id: m, reasoning: off, max_tokens: 150 }
+      resources: { prompt: p_end }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+  edges:
+    - start: start
+    - parallel:
+        - in: input
+        - fan:
+            - next: capital
+            - next: continent
+        - out: summary
+    - end: end

@@ -1,0 +1,449 @@
+{
+  "components": {
+    "schemas": {
+      "Error": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "path": {
+            "description": "Where in the graph, for example `models[0].api_key`.",
+            "type": "string"
+          },
+          "phase": {
+            "enum": [
+              "validation",
+              "interpretation",
+              "execution"
+            ]
+          },
+          "rule": {
+            "description": "A stable code, for example `missing_field`.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "phase",
+          "path",
+          "rule",
+          "message"
+        ],
+        "type": "object"
+      },
+      "Errors": {
+        "additionalProperties": false,
+        "properties": {
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "errors"
+        ],
+        "type": "object"
+      },
+      "Item": {
+        "additionalProperties": false,
+        "properties": {
+          "media": {
+            "description": "The media the node sent to the final output.",
+            "items": {
+              "$ref": "#/components/schemas/Media"
+            },
+            "type": "array"
+          },
+          "message": {
+            "description": "The text of the node, a JSON value when the node has an output `schema`, or `null` when the node gave no text."
+          },
+          "node": {
+            "description": "The id of the node.",
+            "type": "string"
+          },
+          "reasoning": {
+            "description": "The reasoning of the model, when the node asks to show it.",
+            "type": "array"
+          }
+        },
+        "required": [
+          "node",
+          "message",
+          "media",
+          "reasoning"
+        ],
+        "type": "object"
+      },
+      "Media": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "description": "The content, in base64.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The id of the media in the graph.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mime_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "mime_type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "Request": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "description": "The message of the user.",
+            "type": "string"
+          },
+          "session": {
+            "default": "default",
+            "description": "The session: the folder, inside `data_dir`, where the files of the graph are. Letters, digits, `-`, `_` and `.`, at most 64, not dots only.",
+            "pattern": "^(?!\\.+$)[A-Za-z0-9._-]{1,64}$",
+            "type": "string"
+          },
+          "yml": {
+            "description": "The text of the graph, sent every time.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "yml",
+          "message"
+        ],
+        "type": "object"
+      },
+      "Result": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "description": "What the nodes sent to the final output, in the order it was produced.",
+            "items": {
+              "$ref": "#/components/schemas/Item"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "State": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "state": {
+                "const": "running"
+              }
+            },
+            "required": [
+              "state"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "result": {
+                "$ref": "#/components/schemas/Result"
+              },
+              "state": {
+                "const": "done"
+              }
+            },
+            "required": [
+              "state",
+              "result"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "errors": {
+                "items": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "type": "array"
+              },
+              "state": {
+                "const": "failed"
+              }
+            },
+            "required": [
+              "state",
+              "errors"
+            ],
+            "type": "object"
+          }
+        ]
+      }
+    }
+  },
+  "info": {
+    "description": "The HTTP service of a-graph, `a-graph --serve service.yml`: it runs the graphs it is sent. Generated from the code by `a-graph --print-service-api`: do not edit it by hand.",
+    "title": "a-graph service",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "status": {
+                      "const": "ok"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The service is up."
+          }
+        },
+        "summary": "Whether the service is up."
+      }
+    },
+    "/run": {
+      "post": {
+        "description": "The graph is built again for each request: requests share nothing but the folders of their sessions.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result"
+                }
+              }
+            },
+            "description": "The run ended well: its result, the same JSON as the command line writes."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            },
+            "description": "The body is not a JSON object with `yml`, `message` and, if wanted, `session` (an unknown key too), or `session` is not a name."
+          },
+          "413": {
+            "description": "The body is larger than 64 MiB."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            },
+            "description": "The graph is not valid, or it breaks a rule of the service."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            },
+            "description": "The folder of the session cannot be created."
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            },
+            "description": "The run failed: a model, a utility, a tool."
+          }
+        },
+        "summary": "Runs a graph and answers when it is done."
+      }
+    },
+    "/runs": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "run": {
+                      "description": "The id of the run, random: whoever knows it can watch the run.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "run"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The run started. The refusals of `POST /run` happen here, before any run is created."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            },
+            "description": "The body is not a JSON object with `yml`, `message` and, if wanted, `session` (an unknown key too), or `session` is not a name."
+          },
+          "413": {
+            "description": "The body is larger than 64 MiB."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            },
+            "description": "The graph is not valid, or it breaks a rule of the service."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            },
+            "description": "The folder of the session cannot be created."
+          }
+        },
+        "summary": "Starts a graph and answers at once with the id of the run, to watch it while it goes."
+      }
+    },
+    "/runs/{id}": {
+      "get": {
+        "parameters": [
+          {
+            "description": "The id of the run, as `POST /runs` gave it.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/State"
+                }
+              }
+            },
+            "description": "The state of the run."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            },
+            "description": "There is no such run: it never existed, or it was forgotten (see `retention_seconds`)."
+          }
+        },
+        "summary": "The state of a run."
+      }
+    },
+    "/runs/{id}/events": {
+      "get": {
+        "description": "The events already happened, then the new ones as they come, and at the end the event `result` (its data is the JSON of `POST /run`) or `error` (its data is `{ \"errors\": [...] }`); then the stream closes. Connecting again gives it all again. The events are those of the `verbose` of the graph, at its level: with `off` only the last one; with `steps` `run.start`, `run.end`, `node.start`, `node.end`, `group.start`, `group.end` and the warnings and errors; with `detail` also `model.call`, `tool.call`, `utility.call`, `read.vectordb` and `read.memory`. The data of an event is a JSON object with its fields and `node`; its contents only as the passport of the graph allows, otherwise `content_redacted: true`.",
+        "parameters": [
+          {
+            "description": "The id of the run, as `POST /runs` gave it.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The stream of the events."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            },
+            "description": "There is no such run: it never existed, or it was forgotten (see `retention_seconds`)."
+          }
+        },
+        "summary": "The events of a run, as Server-Sent Events."
+      }
+    }
+  }
+}

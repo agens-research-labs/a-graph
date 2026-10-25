@@ -1,0 +1,4 @@
+# The configuration of the service for this test (port 19971); the sessions keep their files in target/test-service/run_ok.
+port: 19971
+data_dir: target/test-service/run_ok
+allowed_hosts: [127.0.0.1]
