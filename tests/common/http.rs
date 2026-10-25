@@ -40,23 +40,29 @@ pub async fn serve_at(port: u16, handler: impl Fn(&Req) -> Resp + Send + Sync + 
 /// Like `serve_at`, and every answer waits `delay` first (without blocking a thread: a handler that sleeps
 /// would hold up the other tasks of the test).
 pub async fn serve_at_slowly(port: u16, delay: std::time::Duration, handler: impl Fn(&Req) -> Resp + Send + Sync + 'static) -> (String, Arc<Mutex<Vec<Req>>>) {
+    serve_with(&format!("127.0.0.1:{port}"), move |_| delay, handler).await
+}
+
+/// Like `serve_at`, and every answer waits `delay(request)` first, without blocking a thread.
+pub async fn serve_at_delayed(port: u16, delay: impl Fn(&Req) -> std::time::Duration + Send + Sync + 'static, handler: impl Fn(&Req) -> Resp + Send + Sync + 'static) -> (String, Arc<Mutex<Vec<Req>>>) {
     serve_with(&format!("127.0.0.1:{port}"), delay, handler).await
 }
 
 async fn serve_on(addr: &str, handler: impl Fn(&Req) -> Resp + Send + Sync + 'static) -> (String, Arc<Mutex<Vec<Req>>>) {
-    serve_with(addr, std::time::Duration::ZERO, handler).await
+    serve_with(addr, |_| std::time::Duration::ZERO, handler).await
 }
 
-async fn serve_with(addr: &str, delay: std::time::Duration, handler: impl Fn(&Req) -> Resp + Send + Sync + 'static) -> (String, Arc<Mutex<Vec<Req>>>) {
+async fn serve_with(addr: &str, delay: impl Fn(&Req) -> std::time::Duration + Send + Sync + 'static, handler: impl Fn(&Req) -> Resp + Send + Sync + 'static) -> (String, Arc<Mutex<Vec<Req>>>) {
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap_or_else(|e| panic!("cannot listen on {addr} (a port named by a fixture is in use?): {e}"));
     let base = format!("http://{}", listener.local_addr().unwrap());
     let seen = Arc::new(Mutex::new(Vec::new()));
     let handler = Arc::new(handler);
+    let delay = Arc::new(delay);
     let log = seen.clone();
     tokio::spawn(async move {
         loop {
             let (mut sock, _) = listener.accept().await.unwrap();
-            let (handler, log) = (handler.clone(), log.clone());
+            let (handler, log, delay) = (handler.clone(), log.clone(), delay.clone());
             tokio::spawn(async move {
                 let mut buf = Vec::new();
                 let mut chunk = [0u8; 8192];
@@ -78,9 +84,10 @@ async fn serve_with(addr: &str, delay: std::time::Duration, handler: impl Fn(&Re
                         let mut first = head.lines().next().unwrap().split(' ');
                         let req = Req { method: first.next().unwrap().into(), path: first.next().unwrap().into(), headers: lower, body };
                         let resp = handler(&req);
+                        let wait = delay(&req);
                         log.lock().unwrap().push(req);
-                        if !delay.is_zero() {
-                            tokio::time::sleep(delay).await;
+                        if !wait.is_zero() {
+                            tokio::time::sleep(wait).await;
                         }
                         let out = format!("HTTP/1.1 {} X\r\ncontent-type: application/json\r\ncontent-length: {}\r\n\r\n{}", resp.status, resp.body.len(), resp.body);
                         sock.write_all(out.as_bytes()).await.unwrap();

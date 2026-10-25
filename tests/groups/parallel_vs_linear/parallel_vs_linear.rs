@@ -7,12 +7,12 @@ fn here() -> &'static std::path::Path {
 /// Parallel branches go together and linear ones do not.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn parallel_vs_linear() {
-    let (p, _) = program(here(), "parallel_slow", slow).await;
+    let (p, _) = program_slow(here(), "parallel_slow").await;
     let started = Instant::now();
     p.run("hi").await.unwrap();
     let parallel = started.elapsed();
 
-    let (p, _) = program(here(), "linear_slow", slow).await;
+    let (p, _) = program_slow(here(), "linear_slow").await;
     let started = Instant::now();
     p.run("hi").await.unwrap();
     let linear = started.elapsed();
