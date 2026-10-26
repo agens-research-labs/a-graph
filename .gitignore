@@ -16,3 +16,6 @@
 
 # files the examples create when they are run
 /examples/*/memory.json
+
+# leftovers of tools that save a copy before changing a file
+*.orig
