@@ -1,0 +1,54 @@
+# The HTTP service of a-graph: `docker compose up -d`, then `curl localhost:8080/health`.
+#   A_GRAPH_PORT=9090 docker compose up -d        another port of your computer, if 8080 is taken
+#   docker compose --profile ollama up -d         also Ollama, in a container of its own (see below)
+# The services share the network `a-graph`: another container on it reaches the service as http://a-graph:8080
+# (`docker run --network a-graph_a-graph ...`, or add your service to this file). The keys of the models come
+# from your shell or from a `.env` file next to this one (never in the repository).
+name: a-graph
+
+services:
+  a-graph:
+    build: .
+    image: a-graph
+    ports:
+      - "${A_GRAPH_PORT:-8080}:8080"
+    configs:
+      - source: service
+        target: /etc/a-graph/service.yml
+    volumes:
+      - a-graph-data:/data          # a named volume: the container writes as uid 10001, a folder of yours would refuse it on Linux
+    environment:
+      - ANTHROPIC_API_KEY
+      - OPENAI_API_KEY
+    extra_hosts:
+      - host.docker.internal:host-gateway   # Ollama on your computer; Docker Desktop has the name already, this adds it on Linux
+    networks:
+      - a-graph
+
+  # Ollama in a container, only with `--profile ollama`: a graph reaches it as http://ollama:11434. It is for a
+  # Linux machine; on macOS a container has no GPU and the model is slow, keep Ollama on your computer instead.
+  # The models live in the volume `ollama-models`: `docker compose exec ollama ollama pull qwen3.5:4b` once.
+  ollama:
+    image: ollama/ollama:0.40.6
+    profiles: [ollama]
+    volumes:
+      - ollama-models:/root/.ollama
+    networks:
+      - a-graph
+
+configs:
+  service:
+    file: ./service.yml             # Compose refuses to start if the file is missing
+    # Your own configuration, not in the repository: copy service.yml to service.local.yml, change it,
+    # and write a compose.override.yml with these lines (Compose reads it by itself; both files are ignored by git):
+    #   configs:
+    #     service:
+    #       file: ./service.local.yml
+
+networks:
+  a-graph:
+    driver: bridge
+
+volumes:
+  a-graph-data:
+  ollama-models:
