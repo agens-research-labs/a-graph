@@ -33,8 +33,9 @@ fails when it runs. How the two messages reach the prompt is explained in [promp
    the blackboard if it reads it, the media of `media.input`.
 3. The placeholders of the prompt are filled, and the model is called.
 4. If the model asks for tools, MCP tools or skills, they are called and the model is called again with their
-   results, until it gives its final answer (see [tools](tools.md)). This loop is not part of `message`: from the point
-   of view of the graph, the node gives only its final answer.
+   results, until it gives its final answer (see [tools](tools.md)). The loop has at most `resources.max_rounds` rounds
+   (20 by default); one more fails the run. This loop is not part of `message`: from the point of view of the graph,
+   the node gives only its final answer.
 5. The answer is delivered.
 
 ## Where the answer goes
