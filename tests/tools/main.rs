@@ -54,6 +54,9 @@ mod tool_over_max_iter;
 #[path = "tool_params_object/tool_params_object.rs"]
 mod tool_params_object;
 
+#[path = "tool_params_not_json/tool_params_not_json.rs"]
+mod tool_params_not_json;
+
 #[path = "tool_params_schema/tool_params_schema.rs"]
 mod tool_params_schema;
 

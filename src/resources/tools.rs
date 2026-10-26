@@ -86,7 +86,10 @@ impl ToolsManager {
                         errs.add(&at.key(key::PARAMETERS), Rule::BadValue, format!("parameters is not a valid JSON Schema: {e}"));
                         None
                     }
-                    Err(_) => None,
+                    Err(e) => {
+                        errs.add(&at.key(key::PARAMETERS), Rule::BadValue, format!("parameters cannot be converted to JSON: {e}"));
+                        None
+                    }
                 },
                 _ => {
                     errs.add(&at.key(key::PARAMETERS), Rule::BadValue, "parameters must be a JSON Schema object");
