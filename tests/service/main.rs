@@ -15,6 +15,9 @@ mod config_rules;
 #[path = "health/health.rs"]
 mod health;
 
+#[path = "host_ports/host_ports.rs"]
+mod host_ports;
+
 #[path = "host_refused/host_refused.rs"]
 mod host_refused;
 

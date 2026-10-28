@@ -51,7 +51,9 @@ if it breaks one of these rules:
   (`not_supported`). A file the graph reads must therefore already be in the folder of the session; a media can come
   inside the graph instead, as `source: { base64 }`.
 - **Hosts.** Every host in the `allowed_hosts` of the passport of the graph must be in the `allowed_hosts` of the
-  service (`network_not_allowed`): a graph can only restrict the hosts of the service.
+  service (`network_not_allowed`): a graph can only restrict the hosts of the service. An entry of the graph,
+  `host` or `host:port`, is accepted when the service lists the same entry or the host alone. An entry `host` is
+  refused when the service lists the host only with a port, because the graph would allow every port.
 
 Then the graph is checked as by `--check`: a graph that is not valid is refused (422) with all its errors, in the form
 `{ "errors": [ { "phase", "path", "rule", "message" } ] }`.
