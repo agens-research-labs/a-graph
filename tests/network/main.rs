@@ -33,5 +33,8 @@ mod resource_hosts;
 #[path = "url_no_host/url_no_host.rs"]
 mod url_no_host;
 
+#[path = "url_parsed/url_parsed.rs"]
+mod url_parsed;
+
 #[path = "valid_hosts_ok/valid_hosts_ok.rs"]
 mod valid_hosts_ok;
