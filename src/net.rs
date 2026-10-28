@@ -11,33 +11,17 @@ pub(crate) fn host_of(url: &str) -> Option<String> {
     host_port_of(url).map(|(host, _)| host)
 }
 
-/// Lowercase host and port of `scheme://[user@]host[:port][/...]`. The port is the one written,
-/// or the one of the scheme (`http` 80, `https` 443); `None` for a scheme without a known port.
+/// Lowercase host and port of a URL, as the `url` crate reads it: reqwest reads it the same way, so
+/// the host checked is the host called. The port is the one written, or the one of the scheme
+/// (`http` 80, `https` 443); `None` for a scheme without a known port (`s3://`). An IPv6 host keeps
+/// its brackets (`[::1]`). A URL with blanks or control characters is refused: the parser would drop them.
 pub(crate) fn host_port_of(url: &str) -> Option<(String, Option<u16>)> {
-    let (scheme, rest) = url.split_once("://")?;
-    let authority = rest.split(['/', '?', '#']).next()?;
-    let host_port = authority.rsplit('@').next()?;
-    let (host, port) = if host_port.starts_with('[') {
-        let (h, after) = host_port.split_once(']')?;
-        (format!("{h}]"), after.strip_prefix(':'))
-    } else {
-        match host_port.split_once(':') {
-            Some((h, p)) => (h.to_string(), Some(p)),
-            None => (host_port.to_string(), None),
-        }
-    };
-    if host.is_empty() {
+    if url.chars().any(|c| c.is_whitespace() || c.is_control()) {
         return None;
     }
-    let port = match port {
-        Some(p) if !p.is_empty() => p.parse().ok(),
-        _ => match scheme.to_lowercase().as_str() {
-            "http" => Some(80),
-            "https" => Some(443),
-            _ => None,
-        },
-    };
-    Some((host.to_lowercase(), port))
+    let parsed = url::Url::parse(url).ok()?;
+    let host = parsed.host_str().filter(|h| !h.is_empty())?;
+    Some((host.to_lowercase(), parsed.port_or_known_default()))
 }
 
 /// An entry of `allowed_hosts`, `host` or `host:port` (`[::1]:8080` for IPv6): its lowercase host

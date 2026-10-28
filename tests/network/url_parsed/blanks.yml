@@ -1,0 +1,32 @@
+# A tab and a control character inside the authority: the parser would drop them, so the URLs are refused.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [allowed.example.com, api.anthropic.com] } }
+observability:
+  level: error
+  output: { url: "http://allowed.example.com\u0001/log" }
+trace:
+  endpoint: "http://allowed.exa\tmple.com/"
+verbose: { level: off }
+models:
+  - id: fast
+    provider: anthropic
+    model: claude-haiku-4-5
+    input: [text]
+    output: [text]
+    api_key: { env: ANTHROPIC_API_KEY }
+graph:
+  nodes:
+    - id: a
+      model: { id: fast }
+    - id: b
+      model: { id: fast }
+  edges:
+    - start: a
+    - end: b
