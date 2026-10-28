@@ -8,6 +8,7 @@ use serde_norway::Value;
 
 use super::ServiceConfig;
 use crate::error::{Error, Path, Phase, Rule};
+use crate::net::{allowed_entry, entry_text};
 
 fn refuse(at: Path, rule: Rule, msg: impl Into<String>) -> Error {
     Error::new(Phase::Validation, at, rule, msg)
@@ -85,15 +86,20 @@ fn no_programs(root: &Value, errs: &mut Vec<Error>) {
     }
 }
 
-/// The hosts the yml allows must all be hosts the service allows: the yml can only restrict.
+/// The hosts the yml allows must all be hosts the service allows: the yml can only restrict. An
+/// entry `host` or `host:port` of the yml is allowed by the same entry, or by `host` alone; `host`
+/// alone is not allowed by `host:port` (it would allow every port).
 fn only_allowed_hosts(root: &Value, config: &ServiceConfig, errs: &mut Vec<Error>) {
     let keys = ["passport", "adl", "permissions", "network", "allowed_hosts"];
     if let Some(Value::Sequence(hosts)) = get(root, &keys) {
         for (i, h) in hosts.iter().enumerate() {
-            if let Some(host) = h.as_str() {
-                if !config.allowed_hosts.contains(&host.to_lowercase()) {
-                    errs.push(refuse(path_of(&keys).idx(i), Rule::NetworkNotAllowed, format!("host `{host}` is not allowed by this service")));
+            let Some(entry) = h.as_str() else { continue };
+            match allowed_entry(entry) {
+                Err(why) => errs.push(refuse(path_of(&keys).idx(i), Rule::BadValue, why)),
+                Ok((host, port)) if !config.allowed_hosts.contains(&host) && !config.allowed_hosts.contains(&entry_text(&host, port)) => {
+                    errs.push(refuse(path_of(&keys).idx(i), Rule::NetworkNotAllowed, format!("host `{entry}` is not allowed by this service")));
                 }
+                Ok(_) => {}
             }
         }
     }

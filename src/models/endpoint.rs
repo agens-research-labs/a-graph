@@ -32,7 +32,11 @@ impl Model {
     /// Every destination of the model, `at` being where it is in the yml: its endpoint and, for a
     /// Bedrock batch, the control API and the S3 buckets. The other batches use the endpoint.
     pub fn destinations(&self, at: &Path) -> Vec<Destination> {
-        let mut out = vec![Destination::host(at.clone(), self.host())];
+        let mut out = vec![match self {
+            // a local server has a URL, whose port counts
+            Model::Ollama(l) | Model::Custom(l) => Destination::url(at.clone(), &l.host),
+            _ => Destination::host(at.clone(), self.host()),
+        }];
         if let Model::Bedrock(BedrockModel { region, batch: Some(b), .. }) = self {
             let at = at.key(key::BATCH);
             out.push(Destination::host(at.clone(), bedrock::control_host(region)));

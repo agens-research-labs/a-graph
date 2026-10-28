@@ -59,8 +59,14 @@ The graph may reach only the hosts listed in `passport.adl.permissions.network.a
 `permissions`, no host is allowed.
 
 The list holds host names, not URLs: `api.anthropic.com`, not `https://api.anthropic.com/v1`. Hosts are compared
-without the scheme, the port and the path, and without regard to case. A local server is a host too: a model served
-at `http://localhost:11434` needs `localhost` in the list.
+without the scheme and the path, and without regard to case. A local server is a host too: a model served at
+`http://localhost:11434` needs `localhost` in the list.
+
+An entry can also name a port, as `host:port` (`localhost:11434`; an IPv6 address in brackets, as `[::1]:8080`).
+An entry without a port allows every port of the host. An entry with a port allows that port only. The port of a
+destination is the one written in its URL, or the one of its scheme (80 for `http`, 443 for `https`). The host of a
+provider (`api.anthropic.com`, the Bedrock and S3 hosts) is reached on 443. A URL whose scheme has no known port is
+allowed only by an entry without a port. A port that is not a number from 1 to 65535 is an error (`bad_value`).
 
 Redirects are not followed: an answer that sends the call to another place is reported like any other failed
 answer, with its status.
@@ -74,8 +80,8 @@ Every destination written in the file is checked, before anything runs:
 - the `url` of vector databases and search engines;
 - `observability.output.url` and `trace.endpoint`.
 
-A destination whose host is not in the list is an error (`network_not_allowed`). The standard output, files and the
-verbose display are not network.
+A destination whose host and port are not allowed by the list is an error (`network_not_allowed`). The standard
+output, files and the verbose display are not network.
 
 The check covers the destinations the file names. It does not cover the traffic that the SDKs of the cloud
 providers make to resolve `credentials: ambient` (metadata servers, token endpoints).

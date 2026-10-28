@@ -4,7 +4,7 @@
   "description": "The configuration of the service, `a-graph --serve service.yml`. Generated from the code by `a-graph --print-service-schema`: do not edit it by hand.",
   "properties": {
     "allowed_hosts": {
-      "description": "The only hosts a graph may reach, compared without regard to case. The `allowed_hosts` of the passport of a graph can only be a part of this list: a graph that names another host is refused.",
+      "description": "The only hosts a graph may reach, compared without regard to case. An entry `host` allows every port of the host; an entry `host:port` allows that port only. The `allowed_hosts` of the passport of a graph can only be a part of this list: an entry of the graph is accepted when this list has the same entry or the host alone. A graph that names another host, or a host without a port that this list allows only on a port, is refused.",
       "items": {
         "type": "string"
       },

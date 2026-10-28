@@ -1,6 +1,7 @@
 //! The network permission: every destination the file reaches must be in
 //! `passport.adl.permissions.network.allowed_hosts`. Absent `permissions` = nothing is allowed.
-//! stdout, files and the verbose display are not network. Hosts, not full URLs.
+//! stdout, files and the verbose display are not network. Hosts, not full URLs: an entry `host`
+//! allows every port of the host, an entry `host:port` that port only.
 //!
 //! The managers say where they go (`destinations()`); this module only compares.
 
@@ -10,7 +11,7 @@ use serde_norway::Value;
 
 use crate::build::{Errs, Obj};
 use crate::error::{Error, Errors, Path, Phase, Rule};
-use crate::net::host_of;
+use crate::net::{allowed_entry, entry_text, host_port_of};
 use crate::schema::key;
 
 /// Where a network call goes.
@@ -39,31 +40,43 @@ impl Destination {
     }
 }
 
-/// `passport.adl.permissions.network.allowed_hosts`, lowercase.
+/// `passport.adl.permissions.network.allowed_hosts`, lowercase, each `host` or `host:port`.
 pub fn allowed_hosts(passport: Option<Value>) -> Result<HashSet<String>, Errors> {
     let mut errs = Errs::default();
     let read = |passport: Value, errs: &mut Errs| -> Option<HashSet<String>> {
         let mut p = Obj::new(passport, Path::root().key(key::PASSPORT), errs)?;
         let mut adl = p.req_sub(key::ADL, errs)?;
         let hosts = adl.sub(key::PERMISSIONS, errs).and_then(|mut perm| perm.sub(key::NETWORK, errs)).and_then(|mut n| n.opt::<Vec<String>>(key::ALLOWED_HOSTS, errs));
-        Some(hosts.unwrap_or_default().into_iter().map(|h| h.to_lowercase()).collect())
+        let at = Path::root().key(key::PASSPORT).key(key::ADL).key(key::PERMISSIONS).key(key::NETWORK).key(key::ALLOWED_HOSTS);
+        let mut out = HashSet::new();
+        for (i, entry) in hosts.unwrap_or_default().iter().enumerate() {
+            match allowed_entry(entry) {
+                Ok((host, port)) => _ = out.insert(entry_text(&host, port)),
+                Err(why) => errs.add(&at.idx(i), Rule::BadValue, why),
+            }
+        }
+        Some(out)
     };
     let hosts = passport.and_then(|p| read(p, &mut errs));
     errs.finish(hosts.unwrap_or_default())
 }
 
-/// Every destination whose host is not allowed, or cannot be read, is an error.
+/// Every destination whose host and port are not allowed, or cannot be read, is an error. A
+/// provider host is reached on https, port 443.
 pub fn check(allowed: &HashSet<String>, destinations: impl IntoIterator<Item = Destination>) -> Vec<Error> {
     let not_allowed = "is not in passport.adl.permissions.network.allowed_hosts";
     let mut errors = Vec::new();
     for d in destinations {
         let host = match &d.target {
-            Target::Url(url) => host_of(url).ok_or_else(|| format!("`{url}` is not a URL with a host")),
-            Target::Host(h) => h.clone(),
+            Target::Url(url) => host_port_of(url).ok_or_else(|| format!("`{url}` is not a URL with a host")),
+            Target::Host(h) => h.clone().map(|h| (h, Some(443))),
         };
         match host {
             Err(why) => errors.push(Error::new(Phase::Interpretation, d.path, Rule::BadValue, why)),
-            Ok(h) if !allowed.contains(&h) => errors.push(Error::new(Phase::Interpretation, d.path, Rule::NetworkNotAllowed, format!("host `{h}` {not_allowed}"))),
+            // an entry without a port allows every port
+            Ok((h, port)) if !allowed.contains(&h) && !port.is_some_and(|p| allowed.contains(&entry_text(&h, Some(p)))) => {
+                errors.push(Error::new(Phase::Interpretation, d.path, Rule::NetworkNotAllowed, format!("host `{}` {not_allowed}", entry_text(&h, port))))
+            }
             Ok(_) => {}
         }
     }

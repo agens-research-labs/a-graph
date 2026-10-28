@@ -12,6 +12,9 @@ mod destinations_listed;
 #[path = "file_not_network/file_not_network.rs"]
 mod file_not_network;
 
+#[path = "host_ports/host_ports.rs"]
+mod host_ports;
+
 #[path = "hosts_lowercase/hosts_lowercase.rs"]
 mod hosts_lowercase;
 

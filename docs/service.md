@@ -14,5 +14,5 @@ names as always, `api_key: { env: ANTHROPIC_API_KEY }`. The HTTP API of the serv
 |---|---|---|---|
 | `port` | yes | whole number | The port the service listens on, on all interfaces. |
 | `data_dir` | yes | text | The folder of the sessions. Each session has its own folder, `<data_dir>/<session>/`, and every path of a graph sent to the service is moved inside it. |
-| `allowed_hosts` | yes | list of: text | The only hosts a graph may reach, compared without regard to case. The `allowed_hosts` of the passport of a graph can only be a part of this list: a graph that names another host is refused. |
+| `allowed_hosts` | yes | list of: text | The only hosts a graph may reach, compared without regard to case. An entry `host` allows every port of the host; an entry `host:port` allows that port only. The `allowed_hosts` of the passport of a graph can only be a part of this list: an entry of the graph is accepted when this list has the same entry or the host alone. A graph that names another host, or a host without a port that this list allows only on a port, is refused. |
 | `retention_seconds` | no | whole number | How long a run is kept after it ends, so that it can still be watched and asked for; then it is forgotten. The default is 600, at least 1. |

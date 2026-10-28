@@ -1,0 +1,36 @@
+# An IPv6 address with a port, in brackets.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: ["[::1]:11434", "collector.example.com:443", "api.anthropic.com:443"] } }
+observability: { level: error }
+trace:
+  endpoint: https://collector.example.com/v1/traces
+verbose: { level: off }
+models:
+  - id: fast
+    provider: anthropic
+    model: claude-haiku-4-5
+    input: [text]
+    output: [text]
+    api_key: { env: ANTHROPIC_API_KEY }
+  - id: local
+    provider: ollama
+    model: m
+    host: http://[::1]:11434
+    input: [text]
+    output: [text]
+graph:
+  nodes:
+    - id: a
+      model: { id: fast }
+    - id: b
+      model: { id: local }
+  edges:
+    - start: a
+    - end: b

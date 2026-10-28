@@ -66,7 +66,7 @@ its value.
 
 | Key | Required | Value | Description |
 |---|---|---|---|
-| `allowed_hosts` | yes | list of: text | The hosts the graph may reach: host names, not URLs (`api.anthropic.com`, not `https://api.anthropic.com/v1`), compared without regard to case. Every destination of the file is checked against this list before anything runs. |
+| `allowed_hosts` | yes | list of: text | The hosts the graph may reach: host names, not URLs (`api.anthropic.com`, not `https://api.anthropic.com/v1`), compared without regard to case. An entry `host` allows every port of the host; an entry `host:port` (`localhost:11434`, `[::1]:8080`) allows that port only. The port of a URL is the one written in it, or 80 for `http` and 443 for `https`; the host of a provider is reached on 443. Every destination of the file is checked against this list before anything runs. |
 
 ## `observability`
 
