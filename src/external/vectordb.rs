@@ -98,7 +98,13 @@ impl VectordbManager {
                 databases.push(Vectordb { id, backend, api_key, collection, top_k, timeout, embedding });
             }
         }
-        errs.finish(VectordbManager { databases, client: reqwest::Client::new() })
+        match crate::net::client().build() {
+            Ok(client) => errs.finish(VectordbManager { databases, client }),
+            Err(e) => {
+                errs.add(&Path::root().key(key::EXTERNAL).key(key::VECTORDB), Rule::Io, format!("cannot build the HTTP client: {e}"));
+                Err(Errors(errs.0))
+            }
+        }
     }
 
     /// The urls of the vector databases, for the network permission.

@@ -70,7 +70,7 @@ trait WithErrorType {
 impl WithErrorType for Resp {
     // the AWS SDK reads the error type from this header
     fn with_error_type(self, kind: &str) -> Self {
-        Resp { status: self.status, body: json!({ "__type": kind, "message": serde_json::from_str::<Value>(&self.body).unwrap()["message"] }).to_string() }
+        Resp::status(self.status, json!({ "__type": kind, "message": serde_json::from_str::<Value>(&self.body).unwrap()["message"] }).to_string())
     }
 }
 

@@ -1,4 +1,10 @@
-//! Small URL helpers shared by the blocks.
+//! Small URL helpers shared by the blocks, and the HTTP client they all start from.
+
+/// The builder of every HTTP client. Redirects are not followed: the host of a redirect is not
+/// checked against `allowed_hosts`, so a 3xx is an answer like any other non-2xx.
+pub(crate) fn client() -> reqwest::ClientBuilder {
+    reqwest::Client::builder().redirect(reqwest::redirect::Policy::none())
+}
 
 /// Lowercase host of `scheme://[user@]host[:port][/...]`.
 pub(crate) fn host_of(url: &str) -> Option<String> {

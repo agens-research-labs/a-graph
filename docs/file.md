@@ -62,6 +62,9 @@ The list holds host names, not URLs: `api.anthropic.com`, not `https://api.anthr
 without the scheme, the port and the path, and without regard to case. A local server is a host too: a model served
 at `http://localhost:11434` needs `localhost` in the list.
 
+Redirects are not followed: an answer that sends the call to another place is reported like any other failed
+answer, with its status.
+
 Every destination written in the file is checked, before anything runs:
 
 - the host of every model and embedding provider, and for a `bedrock` model with a `batch` block also the Bedrock

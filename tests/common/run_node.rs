@@ -30,7 +30,7 @@ pub async fn program(dir: &std::path::Path, name: &str, answer: Resp) -> (Progra
     let answer = Arc::new(Mutex::new(answer));
     let (_, seen) = serve_at(port_of(&yml), move |_| {
         let a = answer.lock().unwrap();
-        Resp { status: a.status, body: a.body.clone() }
+        Resp::status(a.status, a.body.clone())
     })
     .await;
     (build(&yml).unwrap_or_else(|e| panic!("{e}")), seen)

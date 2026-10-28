@@ -57,7 +57,8 @@ pub(crate) async fn stdio(command: &str, args: &[String], arguments: &Value) -> 
 }
 
 pub(crate) async fn http(url: &str, headers: &std::collections::BTreeMap<String, String>, arguments: &Value) -> Result<ToolOutcome, String> {
-    let mut request = reqwest::Client::new().post(url).json(arguments);
+    let client = crate::net::client().build().map_err(|e| format!("cannot build the HTTP client: {e}"))?;
+    let mut request = client.post(url).json(arguments);
     for (name, var) in headers {
         let value = std::env::var(var).map_err(|_| format!("environment variable `{var}` is not set"))?;
         request = request.header(name, value);
