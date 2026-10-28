@@ -24,6 +24,10 @@ services:
       - host.docker.internal:host-gateway   # Ollama on your computer; Docker Desktop has the name already, this adds it on Linux
     networks:
       - a-graph
+    # the program writes only in /data and needs no capability: the container gets nothing else
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
 
   # Ollama in a container, only with `--profile ollama`: a graph reaches it as http://ollama:11434. It is for a
   # Linux machine; on macOS a container has no GPU and the model is slow, keep Ollama on your computer instead.
