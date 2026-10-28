@@ -5,6 +5,8 @@ use std::convert::Infallible;
 use std::sync::Arc;
 use std::time::Duration;
 
+use tokio::time::Instant;
+
 use axum::Router;
 use axum::extract::{DefaultBodyLimit, Path as UrlPath, State};
 use axum::http::StatusCode;
@@ -24,6 +26,10 @@ use crate::run::{Program, build};
 /// The most a request may weigh: a graph and, in base64, the files it reads.
 const BODY_LIMIT: usize = 64 * 1024 * 1024;
 
+/// How long the service waits, once told to stop, for the requests and the runs going on to end. Then it stops
+/// anyway and they are cut. Docker waits only 10 seconds by default (`stop_grace_period`) before it kills.
+const SHUTDOWN_SECONDS: u64 = 30;
+
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Request {
@@ -39,9 +45,12 @@ struct App {
     permits: Arc<Semaphore>,
 }
 
-/// Listens on the port of the config until the process ends.
-pub async fn serve(config: ServiceConfig) -> Result<(), String> {
+/// Listens on the port of the config until `shutdown` is ready. Then it takes no new request, and waits at most
+/// `SHUTDOWN_SECONDS` for the requests and the runs going on (those of `POST /runs` too) to end.
+pub async fn serve(config: ServiceConfig, shutdown: impl Future<Output = ()> + Send + 'static) -> Result<(), String> {
     let port = config.port;
+    let max_runs = config.max_runs;
+    let permits = Arc::new(Semaphore::new(max_runs));
     let runs = Runs::new(Duration::from_secs(config.retention_seconds), Duration::from_secs(config.run_timeout_seconds));
     let sweeping = runs.clone();
     tokio::spawn(async move {
@@ -57,9 +66,41 @@ pub async fn serve(config: ServiceConfig) -> Result<(), String> {
     }
     let app = app
         .layer(DefaultBodyLimit::max(BODY_LIMIT))
-        .with_state(Arc::new(App { permits: Arc::new(Semaphore::new(config.max_runs)), config, runs }));
+        .with_state(Arc::new(App { permits: permits.clone(), config, runs }));
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await.map_err(|e| format!("cannot listen on port {port}: {e}"))?;
-    axum::serve(listener, app).await.map_err(|e| format!("the service stopped: {e}"))
+
+    // the time to stop is known when the signal comes
+    let (told, mut deadline) = tokio::sync::watch::channel(None::<Instant>);
+    let signal = async move {
+        shutdown.await;
+        eprintln!("a-graph: shutting down");
+        let _ = told.send(Some(Instant::now() + Duration::from_secs(SHUTDOWN_SECONDS)));
+    };
+    let server = axum::serve(listener, app).with_graceful_shutdown(signal).into_future();
+    // a request that does not end (a watcher of a long run) must not hold the service past the deadline
+    let late = async {
+        match deadline.wait_for(Option::is_some).await {
+            Ok(at) => {
+                let at = at.unwrap_or_else(Instant::now);
+                tokio::time::sleep_until(at).await;
+            }
+            Err(_) => std::future::pending().await,
+        }
+    };
+    tokio::select! {
+        served = server => served.map_err(|e| format!("the service stopped: {e}"))?,
+        _ = late => {}
+    }
+    // every run going on holds a permit: they are all back when no run is left
+    let at = deadline.borrow().unwrap_or_else(Instant::now);
+    while permits.available_permits() < max_runs && Instant::now() < at {
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    let cut = max_runs - permits.available_permits();
+    if cut > 0 {
+        eprintln!("a-graph: {cut} runs cut");
+    }
+    Ok(())
 }
 
 /// The handler of a route, on the method the API gives it.

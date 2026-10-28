@@ -6,7 +6,7 @@ pub use super::http::{Resp, serve_at, serve_at_slowly};
 
 /// A running service; it is killed when this is dropped.
 pub struct Service {
-    _child: tokio::process::Child,
+    child: tokio::process::Child,
     pub port: u16,
 }
 
@@ -22,7 +22,7 @@ pub async fn start(config: &str, port: u16) -> Service {
         .expect("cannot start a-graph");
     for _ in 0..100 {
         if reqwest::get(format!("http://127.0.0.1:{port}/health")).await.is_ok() {
-            return Service { _child: child, port };
+            return Service { child, port };
         }
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
     }
@@ -30,6 +30,20 @@ pub async fn start(config: &str, port: u16) -> Service {
 }
 
 impl Service {
+    /// Sends `SIGTERM` to the service, as `docker stop` does.
+    #[cfg(unix)]
+    pub fn terminate(&self) {
+        let pid = self.child.id().expect("the service already ended").to_string();
+        let status = std::process::Command::new("kill").args(["-TERM", &pid]).status().expect("cannot run kill");
+        assert!(status.success(), "kill -TERM {pid} failed");
+    }
+
+    /// Waits at most `seconds` for the service to end, and gives its exit code.
+    pub async fn exited(&mut self, seconds: u64) -> Option<i32> {
+        let status = tokio::time::timeout(std::time::Duration::from_secs(seconds), self.child.wait()).await.expect("the service did not end in time").unwrap();
+        status.code()
+    }
+
     /// GET this path: the status and the JSON.
     pub async fn get(&self, path: &str) -> (u16, Value) {
         let r = reqwest::get(format!("http://127.0.0.1:{}{path}", self.port)).await.unwrap();

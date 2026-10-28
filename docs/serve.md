@@ -21,6 +21,22 @@ as always, `api_key: { env: ANTHROPIC_API_KEY }`.
 
 The service has no authentication of its own: whoever reaches its port can run graphs on it.
 
+## Stopping
+
+`SIGTERM` (what `docker stop` sends) or `SIGINT` (Ctrl-C) stops the service gently. It writes `a-graph: shutting
+down`, takes no new request, and waits for the requests and the runs going on to end, those of `POST /runs` too.
+It waits at most 30 seconds: then it writes how many runs it cut, `a-graph: N runs cut`, and stops anyway. Either
+way it ends with 0.
+
+Docker kills a container 10 seconds after `docker stop` by default. To give the runs their 30 seconds, set
+`stop_grace_period` higher in the compose file:
+
+```yaml
+services:
+  a-graph:
+    stop_grace_period: 40s
+```
+
 ## Running a graph
 
 - `POST /run` runs the graph and answers when it is done.

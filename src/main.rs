@@ -154,11 +154,45 @@ async fn serve(source: &str) -> ExitCode {
         }
     };
     eprintln!("a-graph: listening on port {}", config.port);
-    match a_graph::service::serve(config).await {
+    match a_graph::service::serve(config, stop()).await {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("a-graph: {e}");
             ExitCode::from(FAILED)
+        }
+    }
+}
+
+/// Ready when the service is told to stop: `SIGINT` (Ctrl-C) or, on unix, `SIGTERM` (what `docker stop` sends).
+/// The handler of `SIGTERM` is set at once, before the service listens, so no signal is missed. A signal that
+/// cannot be listened for is written and never comes.
+fn stop() -> impl Future<Output = ()> + Send + 'static {
+    #[cfg(unix)]
+    let terminate = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate());
+    async move {
+        let interrupt = async {
+            if let Err(e) = tokio::signal::ctrl_c().await {
+                eprintln!("a-graph: cannot listen for SIGINT: {e}");
+                std::future::pending::<()>().await;
+            }
+        };
+        #[cfg(unix)]
+        let terminate = async {
+            match terminate {
+                Ok(mut s) => {
+                    s.recv().await;
+                }
+                Err(e) => {
+                    eprintln!("a-graph: cannot listen for SIGTERM: {e}");
+                    std::future::pending::<()>().await;
+                }
+            }
+        };
+        #[cfg(not(unix))]
+        let terminate = std::future::pending::<()>();
+        tokio::select! {
+            _ = interrupt => {}
+            _ = terminate => {}
         }
     }
 }
