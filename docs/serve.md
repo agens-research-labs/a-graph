@@ -31,7 +31,15 @@ The service has no authentication of its own: whoever reaches its port can run g
 
 At most `max_runs` runs go on at once (8 when the file does not say), those of `POST /run` and of `POST /runs`
 together. A request beyond it is checked as always, then refused with 503 (`too_many_runs`): it is not queued, the
-caller tries again later.
+caller tries again later. A run of `POST /run` whose caller hangs up goes on to its end, and holds its place
+until then.
+
+A run lasts at most `run_timeout_seconds` (an hour when the file does not say). Then it is stopped and ends as
+failed, with the rule `run_timeout`: `POST /run` answers 502, and a run of `POST /runs` ends with the state `failed`
+and the event `error`.
+
+A run keeps its last 1000 events. A watcher that comes after older ones were dropped first gets the event `dropped`,
+`{ "count": n }`, with how many it missed, then the events kept.
 
 The graph is checked and built again for each request: requests share nothing but the folders of their sessions. A
 request weighs at most 64 MiB.

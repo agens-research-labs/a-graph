@@ -299,24 +299,21 @@ impl Program {
     async fn spawn_branches(self: &Arc<Self>, g: &Group, input: &Carry, user: &str) -> Result<Vec<Branch>, Error> {
         let permits = g.limit.map_or(g.fan.len(), |l| l as usize).clamp(1, g.fan.len().max(1));
         let gate = Arc::new(Semaphore::new(permits));
-        let mut handles: Vec<JoinHandle<Result<Branch, Error>>> = Vec::with_capacity(g.fan.len());
+        let mut handles = Branches(Vec::with_capacity(g.fan.len()));
         for step in g.fan.iter().cloned() {
             let (this, gate, input, user) = (self.clone(), gate.clone(), input.clone(), user.to_string());
-            handles.push(tokio::spawn(CTX.scope(here(), async move {
+            handles.0.push(tokio::spawn(CTX.scope(here(), async move {
                 let _permit = gate.acquire_owned().await.map_err(|e| fail(Rule::Io, e.to_string()))?;
                 this.run_branch(step, input, user).await
             })));
         }
-        let mut done = Vec::with_capacity(handles.len());
-        for i in 0..handles.len() {
-            let result = (&mut handles[i]).await.map_err(|e| fail(Rule::Io, format!("a branch stopped: {e}"))).and_then(|r| r);
+        let mut done = Vec::with_capacity(handles.0.len());
+        for i in 0..handles.0.len() {
+            let result = (&mut handles.0[i]).await.map_err(|e| fail(Rule::Io, format!("a branch stopped: {e}"))).and_then(|r| r);
             match result {
                 Ok(b) => done.push(b),
-                Err(e) => {
-                    // the first error ends the run: the branches still going are stopped
-                    handles[i + 1..].iter().for_each(JoinHandle::abort);
-                    return Err(e);
-                }
+                // the first error ends the run: the branches still going are stopped when `handles` is dropped
+                Err(e) => return Err(e),
             }
         }
         Ok(done)
@@ -460,4 +457,14 @@ fn refuse(steps: &[Step], inside_react: bool) -> Result<(), Error> {
         }
     }
     Ok(())
+}
+
+/// The tasks of the branches of a group. They are stopped when it is dropped: when a branch fails, and when the
+/// run itself is dropped (the service stops a run that lasts too long), so no branch goes on alone.
+struct Branches(Vec<JoinHandle<Result<Branch, Error>>>);
+
+impl Drop for Branches {
+    fn drop(&mut self) {
+        self.0.iter().for_each(JoinHandle::abort);
+    }
 }

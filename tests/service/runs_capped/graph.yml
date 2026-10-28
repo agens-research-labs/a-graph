@@ -33,4 +33,3 @@ graph:
         output: { assistant_message: true }
   edges:
     - start: a
-    - end: a

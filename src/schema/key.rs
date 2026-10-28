@@ -40,6 +40,7 @@ keys! {
     DATA_DIR = "data_dir",
     RETENTION_SECONDS = "retention_seconds",
     MAX_RUNS = "max_runs",
+    RUN_TIMEOUT_SECONDS = "run_timeout_seconds",
 
     // observability, trace, verbose
     LEVEL = "level",

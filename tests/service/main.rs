@@ -39,8 +39,14 @@ mod run_fails;
 #[path = "run_ok/run_ok.rs"]
 mod run_ok;
 
+#[path = "run_timeout/run_timeout.rs"]
+mod run_timeout;
+
 #[path = "runs_capped/runs_capped.rs"]
 mod runs_capped;
+
+#[path = "runs_capped_detached/runs_capped_detached.rs"]
+mod runs_capped_detached;
 
 #[path = "runs_events/runs_events.rs"]
 mod runs_events;

@@ -58,7 +58,7 @@ impl Endpoint {
             Endpoint::Run => {
                 let mut ok = serde_json::Map::new();
                 ok.insert("200".into(), json!({ "description": "The run ended well: its result, the same JSON as the command line writes.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Result" } } } }));
-                ok.insert("502".into(), errors("The run failed: a model, a utility, a tool."));
+                ok.insert("502".into(), errors("The run failed: a model, a utility, a tool, or it lasted more than `run_timeout_seconds` (`run_timeout`)."));
                 json!({
                     "summary": "Runs a graph and answers when it is done.",
                     "description": "The graph is built again for each request: requests share nothing but the folders of their sessions.",
@@ -87,7 +87,7 @@ impl Endpoint {
             }),
             Endpoint::Events => json!({
                 "summary": "The events of a run, as Server-Sent Events.",
-                "description": "The events already happened, then the new ones as they come, and at the end the event `result` (its data is the JSON of `POST /run`) or `error` (its data is `{ \"errors\": [...] }`); then the stream closes. Connecting again gives it all again. The events are those of the `verbose` of the graph, at its level: with `off` only the last one; with `steps` `run.start`, `run.end`, `node.start`, `node.end`, `group.start`, `group.end` and the warnings and errors; with `detail` also `model.call`, `tool.call`, `utility.call`, `read.vectordb` and `read.memory`. The data of an event is a JSON object with its fields and `node`; its contents only as the passport of the graph allows, otherwise `content_redacted: true`.",
+                "description": "The events already happened, then the new ones as they come, and at the end the event `result` (its data is the JSON of `POST /run`) or `error` (its data is `{ \"errors\": [...] }`); then the stream closes. Connecting again gives it all again. A run keeps its last 1000 events: a watcher that comes after older ones were dropped first gets the event `dropped`, `{ \"count\": n }`, with how many it missed. The events are those of the `verbose` of the graph, at its level: with `off` only the last one; with `steps` `run.start`, `run.end`, `node.start`, `node.end`, `group.start`, `group.end` and the warnings and errors; with `detail` also `model.call`, `tool.call`, `utility.call`, `read.vectordb` and `read.memory`. The data of an event is a JSON object with its fields and `node`; its contents only as the passport of the graph allows, otherwise `content_redacted: true`.",
                 "parameters": id,
                 "responses": {
                     "200": { "description": "The stream of the events.", "content": { "text/event-stream": { "schema": { "type": "string" } } } },

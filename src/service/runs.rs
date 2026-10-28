@@ -1,16 +1,19 @@
 //! The runs that are going on or just finished: what a caller can watch and ask for after it started one.
 //! A run keeps its events and its outcome in memory for a while after the end, then it is forgotten.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use serde_json::{Value, json};
 use tokio::sync::{Notify, OwnedSemaphorePermit};
 
-use crate::error::Error;
+use crate::error::{Error, Path, Phase, Rule};
 use crate::logging::stream_event;
-use crate::run::Program;
+use crate::run::{Program, RunOutput};
+
+/// The most events a run keeps: beyond it, the oldest are dropped, so a long run does not fill the memory.
+const MAX_EVENTS: usize = 1000;
 
 pub(super) enum Outcome {
     Done(Value),
@@ -22,6 +25,8 @@ pub(super) enum Next {
     Event(String, Value),
     /// The last one: `result` or `error`.
     Last(String, Value),
+    /// The events from the index asked for were dropped, this many: the stream goes on after them.
+    Dropped(usize),
     Wait,
 }
 
@@ -31,18 +36,28 @@ pub(super) struct RunState {
 }
 
 struct Inner {
-    events: Vec<(String, Value)>,
+    /// The events kept; the first has the index `dropped`.
+    events: VecDeque<(String, Value)>,
+    /// How many events were dropped, the oldest, to keep at most `max_events`.
+    dropped: usize,
+    max_events: usize,
     outcome: Option<Outcome>,
     finished: Option<Instant>,
 }
 
 impl RunState {
-    fn new() -> Arc<Self> {
-        Arc::new(RunState { inner: Mutex::new(Inner { events: Vec::new(), outcome: None, finished: None }), notify: Notify::new() })
+    fn new(max_events: usize) -> Arc<Self> {
+        Arc::new(RunState { inner: Mutex::new(Inner { events: VecDeque::new(), dropped: 0, max_events, outcome: None, finished: None }), notify: Notify::new() })
     }
 
     fn push(&self, name: String, data: Value) {
-        self.inner.lock().unwrap().events.push((name, data));
+        let mut inner = self.inner.lock().unwrap();
+        inner.events.push_back((name, data));
+        if inner.events.len() > inner.max_events {
+            inner.events.pop_front();
+            inner.dropped += 1;
+        }
+        drop(inner);
         self.notify.notify_waiters();
     }
 
@@ -54,10 +69,14 @@ impl RunState {
         self.notify.notify_waiters();
     }
 
-    /// The event number `index`, or the last one, or nothing yet.
+    /// The event number `index` (counted from the first of the run, dropped or not), or how many were dropped
+    /// from there, or the last one, or nothing yet.
     pub(super) fn next(&self, index: usize) -> Next {
         let inner = self.inner.lock().unwrap();
-        if let Some((name, data)) = inner.events.get(index) {
+        if index < inner.dropped {
+            return Next::Dropped(inner.dropped - index);
+        }
+        if let Some((name, data)) = inner.events.get(index - inner.dropped) {
             return Next::Event(name.clone(), data.clone());
         }
         match &inner.outcome {
@@ -85,11 +104,13 @@ impl RunState {
 pub(super) struct Runs {
     map: Mutex<HashMap<String, Arc<RunState>>>,
     retention: Duration,
+    /// The longest a run may last.
+    run_timeout: Duration,
 }
 
 impl Runs {
-    pub(super) fn new(retention: Duration) -> Arc<Self> {
-        Arc::new(Runs { map: Mutex::new(HashMap::new()), retention })
+    pub(super) fn new(retention: Duration, run_timeout: Duration) -> Arc<Self> {
+        Arc::new(Runs { map: Mutex::new(HashMap::new()), retention, run_timeout })
     }
 
     pub(super) fn get(&self, id: &str) -> Option<Arc<RunState>> {
@@ -106,7 +127,7 @@ impl Runs {
     /// are kept as the run goes; the outcome is kept when it ends. The permit is given back at the end.
     pub(super) fn start(self: &Arc<Self>, mut program: Program, message: String, permit: OwnedSemaphorePermit) -> String {
         let id = format!("r-{}", &uuid::Uuid::new_v4().simple().to_string()[..16]);
-        let state = RunState::new();
+        let state = RunState::new(MAX_EVENTS);
         self.map.lock().unwrap().insert(id.clone(), state.clone());
 
         let (level, allow) = (program.verbose.level(), program.verbose.allow_content());
@@ -116,13 +137,10 @@ impl Runs {
                 hear.push(name, data);
             }
         }));
+        let run_timeout = self.run_timeout;
         tokio::spawn(async move {
             let _permit = permit;
-            let program = Arc::new(program);
-            let outcome = program.run(&message).await;
-            if let Some(p) = Arc::into_inner(program) {
-                p.logger.close().await;
-            }
+            let outcome = run_within(program, &message, run_timeout).await;
             state.finish(match outcome {
                 Ok(output) => Outcome::Done(output.to_json()),
                 Err(e) => Outcome::Failed(errors_json(&[e])),
@@ -132,8 +150,75 @@ impl Runs {
     }
 }
 
+/// Runs the program to its end, or until `timeout` has passed (`run_timeout`); then closes its log.
+pub(super) async fn run_within(program: Program, message: &str, timeout: Duration) -> Result<RunOutput, Error> {
+    let program = Arc::new(program);
+    // the run is dropped when the time is up, so the program is ours alone again and its log can be closed
+    let outcome = match tokio::time::timeout(timeout, program.run(message)).await {
+        Ok(outcome) => outcome,
+        Err(_) => Err(Error::new(Phase::Execution, Path::root(), Rule::RunTimeout, format!("the run did not end within {} seconds (run_timeout_seconds)", timeout.as_secs()))),
+    };
+    // the branches of a stopped run are aborted and let go of the program a moment later: wait for them, at most a second
+    let mut program = program;
+    for _ in 0..100 {
+        match Arc::try_unwrap(program) {
+            Ok(p) => {
+                p.logger.close().await;
+                break;
+            }
+            Err(still) => {
+                program = still;
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        }
+    }
+    outcome
+}
+
 /// `{ "errors": [ { "phase", "path", "rule", "message" } ] }`.
 pub(super) fn errors_json(errors: &[Error]) -> Value {
     let list: Vec<Value> = errors.iter().map(|e| json!({ "phase": e.phase.to_string(), "path": e.path.to_string(), "rule": e.rule.code(), "message": e.message })).collect();
     json!({ "errors": list })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn names(state: &RunState, mut index: usize) -> Vec<String> {
+        let mut seen = Vec::new();
+        loop {
+            match state.next(index) {
+                Next::Event(name, _) => {
+                    seen.push(name);
+                    index += 1;
+                }
+                Next::Dropped(count) => {
+                    seen.push(format!("dropped {count}"));
+                    index += count;
+                }
+                Next::Last(name, _) => {
+                    seen.push(name);
+                    return seen;
+                }
+                Next::Wait => return seen,
+            }
+        }
+    }
+
+    #[test]
+    fn events_capped() {
+        let state = RunState::new(3);
+        for name in ["e0", "e1", "e2"] {
+            state.push(name.into(), json!({}));
+        }
+        assert_eq!(names(&state, 0), ["e0", "e1", "e2"], "up to the cap nothing is dropped");
+        state.push("e3".into(), json!({}));
+        state.push("e4".into(), json!({}));
+        assert_eq!(names(&state, 0), ["dropped 2", "e2", "e3", "e4"], "a watcher from the start is told what it missed");
+        assert_eq!(names(&state, 1), ["dropped 1", "e2", "e3", "e4"]);
+        assert_eq!(names(&state, 3), ["e3", "e4"], "a watcher after the dropped ones misses nothing");
+        state.finish(Outcome::Done(json!({ "items": [] })));
+        assert_eq!(names(&state, 0), ["dropped 2", "e2", "e3", "e4", "result"]);
+    }
 }

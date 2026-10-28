@@ -16,7 +16,7 @@ use serde_json::{Value, json};
 use tokio::sync::Semaphore;
 
 use super::api::Endpoint;
-use super::runs::{Next, Runs, errors_json};
+use super::runs::{Next, Runs, errors_json, run_within};
 use super::{ServiceConfig, prepare};
 use crate::error::{Error, Path, Phase, Rule};
 use crate::run::{Program, build};
@@ -42,7 +42,7 @@ struct App {
 /// Listens on the port of the config until the process ends.
 pub async fn serve(config: ServiceConfig) -> Result<(), String> {
     let port = config.port;
-    let runs = Runs::new(Duration::from_secs(config.retention_seconds));
+    let runs = Runs::new(Duration::from_secs(config.retention_seconds), Duration::from_secs(config.run_timeout_seconds));
     let sweeping = runs.clone();
     tokio::spawn(async move {
         loop {
@@ -124,12 +124,15 @@ async fn run(State(app): State<Arc<App>>, body: axum::body::Bytes) -> Response {
         Err(refusal) => return refusal,
     };
     // taken without waiting, held until the run ends
-    let Ok(_permit) = app.permits.clone().try_acquire_owned() else { return busy(app.config.max_runs) };
-    let program = Arc::new(program);
-    let outcome = program.run(&message).await;
-    if let Some(p) = Arc::into_inner(program) {
-        p.logger.close().await;
-    }
+    let Ok(permit) = app.permits.clone().try_acquire_owned() else { return busy(app.config.max_runs) };
+    // the run is a task of its own that holds the permit: a caller that hangs up drops this handler, not the
+    // run, so the permit is given back only when the run really ends (or is stopped by its timeout)
+    let timeout = Duration::from_secs(app.config.run_timeout_seconds);
+    let task = tokio::spawn(async move {
+        let _permit = permit;
+        run_within(program, &message, timeout).await
+    });
+    let outcome = task.await.unwrap_or_else(|e| Err(Error::new(Phase::Execution, Path::root(), Rule::Io, format!("the run stopped: {e}"))));
     match outcome {
         Ok(output) => Json200(output.to_json()).into_response(),
         Err(e) => failure(StatusCode::BAD_GATEWAY, &[e]),
@@ -183,6 +186,11 @@ async fn events(State(app): State<Arc<App>>, UrlPath(id): UrlPath<String>) -> Re
                 Some(Next::Event(name, data)) => {
                     let event: Result<SseEvent, Infallible> = Ok(SseEvent::default().event(name).data(data.to_string()));
                     return Some((event, (run, index + 1, false)));
+                }
+                Some(Next::Dropped(count)) => {
+                    // the watcher came after these were dropped: it is told how many, and goes on from the first kept
+                    let event: Result<SseEvent, Infallible> = Ok(SseEvent::default().event("dropped").data(json!({ "count": count }).to_string()));
+                    return Some((event, (run, index + count, false)));
                 }
                 Some(Next::Last(name, data)) => {
                     let event: Result<SseEvent, Infallible> = Ok(SseEvent::default().event(name).data(data.to_string()));

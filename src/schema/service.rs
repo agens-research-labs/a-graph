@@ -15,4 +15,5 @@ pub const SERVICE: &[Field] = &[
     ),
     Field::opt(RETENTION_SECONDS, Shape::Int).doc("How long a run is kept after it ends, so that it can still be watched and asked for; then it is forgotten. The default is 600, at least 1."),
     Field::opt(MAX_RUNS, Shape::Int).doc("The most runs going on at once, those of `POST /run` and of `POST /runs` together. A request beyond it is refused with 503 (`too_many_runs`), not queued. The default is 8, at least 1."),
+    Field::opt(RUN_TIMEOUT_SECONDS, Shape::Int).doc("The longest a run may last. Then it is stopped and ends as failed (`run_timeout`). The default is 3600, at least 1."),
 ];
