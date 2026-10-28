@@ -9,7 +9,7 @@ use super::identity::Identity;
 const CALL_TIMEOUT: Duration = Duration::from_secs(600);
 
 pub(crate) fn client() -> Result<reqwest::Client, reqwest::Error> {
-    reqwest::Client::builder().timeout(CALL_TIMEOUT).build()
+    crate::net::client().timeout(CALL_TIMEOUT).build()
 }
 
 /// Sends the request and reads the whole body. A non-2xx answer becomes the `ModelError` that

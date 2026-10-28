@@ -16,14 +16,19 @@ pub struct Req {
 pub struct Resp {
     pub status: u16,
     pub body: String,
+    /// The `location` header, for a redirect.
+    pub location: Option<String>,
 }
 
 impl Resp {
     pub fn ok(body: impl Into<String>) -> Self {
-        Resp { status: 200, body: body.into() }
+        Resp { status: 200, body: body.into(), location: None }
     }
     pub fn status(status: u16, body: impl Into<String>) -> Self {
-        Resp { status, body: body.into() }
+        Resp { status, body: body.into(), location: None }
+    }
+    pub fn redirect(status: u16, to: impl Into<String>) -> Self {
+        Resp { status, body: String::new(), location: Some(to.into()) }
     }
 }
 
@@ -89,7 +94,8 @@ async fn serve_with(addr: &str, delay: impl Fn(&Req) -> std::time::Duration + Se
                         if !wait.is_zero() {
                             tokio::time::sleep(wait).await;
                         }
-                        let out = format!("HTTP/1.1 {} X\r\ncontent-type: application/json\r\ncontent-length: {}\r\n\r\n{}", resp.status, resp.body.len(), resp.body);
+                        let location = resp.location.map(|l| format!("location: {l}\r\n")).unwrap_or_default();
+                        let out = format!("HTTP/1.1 {} X\r\ncontent-type: application/json\r\n{location}content-length: {}\r\n\r\n{}", resp.status, resp.body.len(), resp.body);
                         sock.write_all(out.as_bytes()).await.unwrap();
                     }
                 }

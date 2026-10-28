@@ -149,7 +149,8 @@ async fn open(server: &McpServer) -> Result<Service, String> {
         McpTransport::Http { url, headers } => {
             let mut config = StreamableHttpClientTransportConfig::with_uri(url.as_str());
             config.custom_headers = header_map(headers)?;
-            let transport = StreamableHttpClientTransport::from_config(config);
+            let client = crate::net::client().build().map_err(|e| format!("cannot build the HTTP client: {e}"))?;
+            let transport = StreamableHttpClientTransport::with_client(client, config);
             ().serve_with_lifecycle(transport, mode).await.map_err(|e| format!("cannot connect: {e}"))
         }
     }

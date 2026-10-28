@@ -66,7 +66,7 @@ impl Tracer {
         }
         map.insert(reqwest::header::CONTENT_TYPE, reqwest::header::HeaderValue::from_static("application/json"));
         let delivery = Delivery::default();
-        let client = match reqwest::Client::builder().timeout(delivery.timeout).build() {
+        let client = match crate::net::client().timeout(delivery.timeout).build() {
             Ok(c) => Some(c),
             Err(e) => {
                 errs.add(&base, Rule::Io, format!("cannot build the HTTP client: {e}"));

@@ -47,7 +47,7 @@ impl Logger {
             map.insert(n, v);
         }
         map.insert(reqwest::header::CONTENT_TYPE, reqwest::header::HeaderValue::from_static("application/x-ndjson"));
-        let client = reqwest::Client::builder()
+        let client = crate::net::client()
             .timeout(delivery.timeout)
             .build()
             .map_err(|e| fail("url", Rule::Io, format!("cannot build the HTTP client: {e}")))?;

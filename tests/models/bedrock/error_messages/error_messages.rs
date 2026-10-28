@@ -3,7 +3,7 @@ use super::*;
 /// Errors say what failed and pass bedrocks message.
 #[tokio::test]
 async fn error_messages() {
-    let err = |status: u16, kind: &str, msg: &str| Resp { status, body: json!({ "message": msg }).to_string() }.with_error_type(kind);
+    let err = |status: u16, kind: &str, msg: &str| Resp::status(status, json!({ "message": msg }).to_string()).with_error_type(kind);
 
     let (r, _) = one_call(call("q"), err(403, "AccessDeniedException", "You don't have access to the model")).await;
     assert!(matches!(&r, Err(ModelError::Credentials { detail, .. }) if detail.contains("AccessDeniedException") && detail.contains("don't have access")), "{r:?}");

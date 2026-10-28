@@ -12,6 +12,9 @@ mod http_failure;
 #[path = "http_post_header/http_post_header.rs"]
 mod http_post_header;
 
+#[path = "http_redirect/http_redirect.rs"]
+mod http_redirect;
+
 #[path = "http_timeout/http_timeout.rs"]
 mod http_timeout;
 
