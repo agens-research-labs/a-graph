@@ -10,11 +10,17 @@
 # The keys are variables of the container: name here the ones the graphs use, their values come
 # from your shell (or `--env-file`). There is nothing in the image but the program.
 
-FROM rust:1-bookworm AS build
+# the minor is pinned, the patch is not: a patch of the toolchain is a fix, never a change of the language
+FROM rust:1.98-bookworm AS build
 WORKDIR /src
 COPY Cargo.toml Cargo.lock ./
 COPY src ./src
-RUN cargo build --release --locked
+# the registry and the build folder are caches of BuildKit, kept from one build to the next: after a change
+# in src/ only the crate itself is compiled again. A cache is not part of the image, so the binary is copied out.
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/src/target \
+    cargo build --release --locked \
+    && cp target/release/a-graph /usr/local/bin/a-graph
 
 FROM debian:bookworm-slim
 # the certificates are the ones the program needs to talk https; a pinned version of the package would
@@ -25,7 +31,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --system --uid 10001 --home /data a-graph \
     && mkdir /data && chown 10001 /data
-COPY --from=build /src/target/release/a-graph /usr/local/bin/a-graph
+COPY --from=build /usr/local/bin/a-graph /usr/local/bin/a-graph
 # a number, so that an orchestrator can check that the container does not run as root
 USER 10001
 VOLUME /data
