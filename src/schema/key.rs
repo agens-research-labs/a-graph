@@ -39,6 +39,7 @@ keys! {
     PORT = "port",
     DATA_DIR = "data_dir",
     RETENTION_SECONDS = "retention_seconds",
+    MAX_RUNS = "max_runs",
 
     // observability, trace, verbose
     LEVEL = "level",

@@ -6,6 +6,9 @@ mod common;
 #[path = "bad_request/bad_request.rs"]
 mod bad_request;
 
+#[path = "config_limits/config_limits.rs"]
+mod config_limits;
+
 #[path = "config_retention/config_retention.rs"]
 mod config_retention;
 
@@ -35,6 +38,9 @@ mod run_fails;
 
 #[path = "run_ok/run_ok.rs"]
 mod run_ok;
+
+#[path = "runs_capped/runs_capped.rs"]
+mod runs_capped;
 
 #[path = "runs_events/runs_events.rs"]
 mod runs_events;

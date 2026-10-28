@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use serde_json::{Value, json};
-use tokio::sync::Notify;
+use tokio::sync::{Notify, OwnedSemaphorePermit};
 
 use crate::error::Error;
 use crate::logging::stream_event;
@@ -103,8 +103,8 @@ impl Runs {
     }
 
     /// Starts the run and gives back its id at once. The events the graph asks to show (its `verbose`)
-    /// are kept as the run goes; the outcome is kept when it ends.
-    pub(super) fn start(self: &Arc<Self>, mut program: Program, message: String) -> String {
+    /// are kept as the run goes; the outcome is kept when it ends. The permit is given back at the end.
+    pub(super) fn start(self: &Arc<Self>, mut program: Program, message: String, permit: OwnedSemaphorePermit) -> String {
         let id = format!("r-{}", &uuid::Uuid::new_v4().simple().to_string()[..16]);
         let state = RunState::new();
         self.map.lock().unwrap().insert(id.clone(), state.clone());
@@ -117,6 +117,7 @@ impl Runs {
             }
         }));
         tokio::spawn(async move {
+            let _permit = permit;
             let program = Arc::new(program);
             let outcome = program.run(&message).await;
             if let Some(p) = Arc::into_inner(program) {

@@ -1,0 +1,5 @@
+# The configuration of the service for this test (port 17402); one run at a time.
+port: 17402
+data_dir: target/test-service/runs_capped
+allowed_hosts: [127.0.0.1]
+max_runs: 1

@@ -293,6 +293,16 @@
               }
             },
             "description": "The run failed: a model, a utility, a tool."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            },
+            "description": "The service is running its most runs, `max_runs` (`too_many_runs`): try again later."
           }
         },
         "summary": "Runs a graph and answers when it is done."
@@ -363,6 +373,16 @@
               }
             },
             "description": "The folder of the session cannot be created."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            },
+            "description": "The service is running its most runs, `max_runs` (`too_many_runs`): try again later."
           }
         },
         "summary": "Starts a graph and answers at once with the id of the run, to watch it while it goes."

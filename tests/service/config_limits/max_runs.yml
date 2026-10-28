@@ -1,0 +1,5 @@
+# `max_runs` of 0.
+port: 17403
+data_dir: target/test-service/config_limits
+allowed_hosts: [127.0.0.1]
+max_runs: 0

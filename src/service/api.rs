@@ -45,6 +45,7 @@ impl Endpoint {
             responses.insert("413".into(), json!({ "description": "The body is larger than 64 MiB." }));
             responses.insert("422".into(), errors("The graph is not valid, or it breaks a rule of the service."));
             responses.insert("500".into(), errors("The folder of the session cannot be created."));
+            responses.insert("503".into(), errors("The service is running its most runs, `max_runs` (`too_many_runs`): try again later."));
             Value::Object(responses)
         };
         match self {

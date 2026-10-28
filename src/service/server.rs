@@ -13,6 +13,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{MethodFilter, MethodRouter, on};
 use serde::Deserialize;
 use serde_json::{Value, json};
+use tokio::sync::Semaphore;
 
 use super::api::Endpoint;
 use super::runs::{Next, Runs, errors_json};
@@ -34,6 +35,8 @@ struct Request {
 struct App {
     config: ServiceConfig,
     runs: Arc<Runs>,
+    /// One permit for each run that may go on, held until the run ends.
+    permits: Arc<Semaphore>,
 }
 
 /// Listens on the port of the config until the process ends.
@@ -54,7 +57,7 @@ pub async fn serve(config: ServiceConfig) -> Result<(), String> {
     }
     let app = app
         .layer(DefaultBodyLimit::max(BODY_LIMIT))
-        .with_state(Arc::new(App { config, runs }));
+        .with_state(Arc::new(App { permits: Arc::new(Semaphore::new(config.max_runs)), config, runs }));
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await.map_err(|e| format!("cannot listen on port {port}: {e}"))?;
     axum::serve(listener, app).await.map_err(|e| format!("the service stopped: {e}"))
 }
@@ -109,11 +112,19 @@ fn accept(config: &ServiceConfig, body: &[u8]) -> Result<(Program, String), Resp
     Ok((program, request.message))
 }
 
+/// The answer that refuses a request when every permit to run is taken (503).
+fn busy(max_runs: usize) -> Response {
+    let message = format!("the service is running its most runs (max_runs: {max_runs}): try again later");
+    failure(StatusCode::SERVICE_UNAVAILABLE, &[Error::new(Phase::Execution, Path::root(), Rule::TooManyRuns, message)])
+}
+
 async fn run(State(app): State<Arc<App>>, body: axum::body::Bytes) -> Response {
     let (program, message) = match accept(&app.config, &body) {
         Ok(x) => x,
         Err(refusal) => return refusal,
     };
+    // taken without waiting, held until the run ends
+    let Ok(_permit) = app.permits.clone().try_acquire_owned() else { return busy(app.config.max_runs) };
     let program = Arc::new(program);
     let outcome = program.run(&message).await;
     if let Some(p) = Arc::into_inner(program) {
@@ -130,7 +141,8 @@ async fn start(State(app): State<Arc<App>>, body: axum::body::Bytes) -> Response
         Ok(x) => x,
         Err(refusal) => return refusal,
     };
-    let id = app.runs.start(program, message);
+    let Ok(permit) = app.permits.clone().try_acquire_owned() else { return busy(app.config.max_runs) };
+    let id = app.runs.start(program, message, permit);
     (StatusCode::ACCEPTED, axum::Json(json!({ "run": id }))).into_response()
 }
 

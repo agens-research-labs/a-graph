@@ -29,6 +29,10 @@ The service has no authentication of its own: whoever reaches its port can run g
   after it ends, then it is forgotten. Its id is random: whoever knows it can watch the run.
 - `GET /health` tells that the service is up.
 
+At most `max_runs` runs go on at once (8 when the file does not say), those of `POST /run` and of `POST /runs`
+together. A request beyond it is checked as always, then refused with 503 (`too_many_runs`): it is not queued, the
+caller tries again later.
+
 The graph is checked and built again for each request: requests share nothing but the folders of their sessions. A
 request weighs at most 64 MiB.
 
