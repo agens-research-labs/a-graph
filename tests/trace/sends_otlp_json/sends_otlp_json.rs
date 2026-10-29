@@ -8,8 +8,8 @@ fn here() -> &'static std::path::Path {
 /// At the end of the run one POST of OTLP in JSON goes to the endpoint, with the headers of the yml.
 #[tokio::test]
 async fn sends_otlp_json() {
-    let (_, collector) = serve_at(19811, |_| Resp::ok("{}")).await;
-    let (p, _) = program(here(), "sends_otlp_json", echo).await;
+    let (collector_port, collector) = listen(|_| Resp::ok("{}")).await;
+    let (p, _) = program_with(here(), "sends_otlp_json", &[("collector", collector_port)], echo).await;
     p.run("hi").await.unwrap();
 
     let sent = collector.lock().unwrap();

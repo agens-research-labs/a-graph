@@ -1,4 +1,4 @@
-# Same graph (model mock 19802, collector mock 19812): the spans are nested like the run.
+# Same graph (model mock {{port:model}}, collector mock {{port:collector}}): the spans are nested like the run.
 graph_spec: "1.0"
 passport:
   adl:
@@ -10,7 +10,7 @@ passport:
     permissions: { network: { allowed_hosts: [127.0.0.1] } }
 observability: { level: error }
 trace:
-  endpoint: http://127.0.0.1:19812/v1/traces
+  endpoint: http://127.0.0.1:{{port:collector}}/v1/traces
   headers:
     Authorization: { env: TRACE_TOKEN }
 verbose: { level: off }
@@ -18,7 +18,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19802
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

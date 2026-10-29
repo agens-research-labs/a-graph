@@ -8,8 +8,8 @@ fn here() -> &'static std::path::Path {
 /// The branches of a parallel group are side by side on the timeline: they overlap.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn parallel_overlap() {
-    let (_, collector) = serve_at(19814, |_| Resp::ok("{}")).await;
-    let (p, _) = program_slow(here(), "parallel_overlap").await;
+    let (collector_port, collector) = listen(|_| Resp::ok("{}")).await;
+    let (p, _) = program_slow(here(), "parallel_overlap", &[("collector", collector_port)]).await;
     p.run("hi").await.unwrap();
     let spans = spans_of(&collector);
     let (i, d) = (named(&spans, "node i"), named(&spans, "node d"));

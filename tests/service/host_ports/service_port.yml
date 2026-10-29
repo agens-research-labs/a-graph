@@ -1,4 +1,4 @@
-# A service that allows 127.0.0.1 on port 17463 only (port 17462); the sessions keep their files in target/test-service/host_ports_port.
-port: 17462
+# A service that allows 127.0.0.1 on {{port:model}} only ({{port:service}}); the sessions keep their files in target/test-service/host_ports_port.
+port: {{port:service}}
 data_dir: target/test-service/host_ports_port
-allowed_hosts: ["127.0.0.1:17463"]
+allowed_hosts: ["127.0.0.1:{{port:model}}"]

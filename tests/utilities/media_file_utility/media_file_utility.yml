@@ -1,4 +1,4 @@
-# A media from the resources, a file `contract.pdf`, changed by a utility into text (model mock 19931).
+# A media from the resources, a file `contract.pdf`, changed by a utility into text (model mock {{port:model}}).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19931
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 utilities:

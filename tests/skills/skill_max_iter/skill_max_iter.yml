@@ -1,4 +1,4 @@
-# A skill with `max_iter: 2`; the model reads a file and runs a script, again and again (model on port 18830, started by the test).
+# A skill with `max_iter: 2`; the model reads a file and runs a script, again and again (model on {{port:model}}, started by the test).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:18830
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

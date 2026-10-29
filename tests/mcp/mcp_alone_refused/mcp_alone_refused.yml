@@ -1,4 +1,4 @@
-# One node `n`, the model is a mock server on port 18113 (the test starts it). The node has an MCP server, which cannot be run yet.
+# One node `n`, the model is a mock server on {{port:model}} (the test starts it). The node has an MCP server, which cannot be run yet.
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:18113
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

@@ -7,8 +7,8 @@ fn path() -> String {
 /// The log goes to the standard error by default: the standard output is only the result.
 #[tokio::test]
 async fn log_on_stderr() {
-    serve_at(19958, |_| Resp::ok(answer("ok"))).await;
-    let r = a_graph(&[&path(), "x"], None).await;
+    let (model, _) = listen(|_| Resp::ok(answer("ok"))).await;
+    let r = a_graph(&[&ported(&path(), &[("model", model)]), "x"], None).await;
     assert_eq!(r.code, 0, "{}", r.stderr);
     serde_json::from_str::<Value>(&r.stdout).unwrap_or_else(|e| panic!("the standard output is not only the result ({e}): {}", r.stdout));
     assert!(r.stderr.contains("\"code\":\"run.start\"") && r.stderr.contains("\"code\":\"model.call\""), "{}", r.stderr);

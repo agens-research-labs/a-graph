@@ -9,7 +9,7 @@ pub use serde_json::{Value, json};
 pub use a_graph::Path;
 pub use a_graph::models::{Anthropic, AnthropicModel, Common, Modality};
 pub use a_graph::run::{Content, Program, build};
-pub use super::run::{yml_in};
+pub use super::run::{yml_in, yml_with};
 pub use super::http::{Req, Resp, serve};
 
 /// What the mock knows: the jobs it was given (id -> (custom_id, text) of each request) and the

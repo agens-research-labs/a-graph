@@ -1,4 +1,4 @@
-# One node `n`, the model is a mock server on port 18109 (the test starts it). The node cleans its board once done; the board is a copy made by the test in target/test-boards/.
+# One node `n`, the model is a mock server on {{port:model}} (the test starts it). The node cleans its board once done; the board is a copy made by the test in target/test-boards/.
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:18109
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 blackboards:

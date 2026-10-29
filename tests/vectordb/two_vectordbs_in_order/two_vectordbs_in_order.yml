@@ -1,4 +1,4 @@
-# A node that lists a chromadb and then a qdrant vectordb: the chunks come in that order (model 19007, embedding 19008, chroma 19009, qdrant 19010).
+# A node that lists a chromadb and then a qdrant vectordb: the chunks come in that order (model {{port:model}}, embedding {{port:embedding}}, chroma {{port:chroma}}, qdrant {{port:qdrant}}).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,14 +14,14 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19007
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 embeddings:
   - id: emb
     provider: ollama
     model: embeddinggemma
-    host: http://127.0.0.1:19008
+    host: http://127.0.0.1:{{port:embedding}}
 resources:
   prompts:
     - id: pr
@@ -32,14 +32,14 @@ external:
   vectordb:
     - id: qdrant_db
       provider: qdrant
-      url: http://127.0.0.1:19010
+      url: http://127.0.0.1:{{port:qdrant}}
       collection: contracts
       top_k: 2
       embedding: emb
       text_field: text
     - id: chroma_db
       provider: chromadb
-      url: http://127.0.0.1:19009
+      url: http://127.0.0.1:{{port:chroma}}
       collection: contracts
       top_k: 3
       embedding: emb

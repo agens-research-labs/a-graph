@@ -1,4 +1,4 @@
-# A tool on stdio that exits with 3 (model on port 18502, started by the test).
+# A tool on stdio that exits with 3 (model on {{port:model}}, started by the test).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:18502
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

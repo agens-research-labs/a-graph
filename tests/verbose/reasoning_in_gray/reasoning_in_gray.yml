@@ -1,4 +1,4 @@
-# The mock answers with a reasoning (port 19709): `detail` shows it in gray.
+# The mock answers with a reasoning ({{port:model}}): `detail` shows it in gray.
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19709
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

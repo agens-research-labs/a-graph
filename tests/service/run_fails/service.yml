@@ -1,4 +1,4 @@
-# The configuration of the service for this test (port 19974); the sessions keep their files in target/test-service/run_fails.
-port: 19974
+# The configuration of the service for this test ({{port:service}}); the sessions keep their files in target/test-service/run_fails.
+port: {{port:service}}
 data_dir: target/test-service/run_fails
 allowed_hosts: [127.0.0.1]

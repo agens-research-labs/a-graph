@@ -10,13 +10,13 @@ fn here() -> &'static std::path::Path {
 async fn makes_summary() {
     let path = "target/test-memory/makes_summary.json";
     fresh_copy(here(), "files/session.json", path);
-    let (_, seen) = serve_at(19606, |r| {
+    let (model_port, seen) = listen(|r| {
         let body: Value = serde_json::from_str(&r.body).unwrap();
         let text = body["messages"].as_array().unwrap().last().unwrap()["content"].as_str().unwrap().to_string();
         Resp::ok(chat(if text.starts_with("Previous summary") { "THE SUMMARY" } else { "a2" }, None))
     })
     .await;
-    let p = build(&yml_in(here(), "makes_summary")).unwrap_or_else(|e| panic!("{e}"));
+    let p = build(&yml_with(here(), "makes_summary", &[("model", model_port)])).unwrap_or_else(|e| panic!("{e}"));
     p.run_node(entity(&p), user("q2")).await.unwrap();
 
     let seen = seen.lock().unwrap();

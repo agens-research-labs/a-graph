@@ -5,8 +5,8 @@ fn dir() -> &'static std::path::Path {
 }
 
 #[allow(dead_code)]
-fn read(name: &str) -> String {
-    std::fs::read_to_string(dir().join(name)).unwrap()
+fn read(name: &str, ports: &[(&str, u16)]) -> String {
+    with_ports(&std::fs::read_to_string(dir().join(name)).unwrap(), ports)
 }
 
 fn config_path() -> String {
@@ -16,9 +16,9 @@ fn config_path() -> String {
 /// Someone who connects after the end gets the same events, and the result.
 #[tokio::test]
 async fn runs_replay() {
-    serve_at(19982, |_| Resp::ok(answer("ok"))).await;
-    let s = start(&config_path(), 19962).await;
-    let (_, body) = s.start_run(json!({ "yml": read("graph.yml"), "message": "how long?" })).await;
+    let (model, _) = listen(|_| Resp::ok(answer("ok"))).await;
+    let s = start(&config_path()).await;
+    let (_, body) = s.start_run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "how long?" })).await;
     let id = body["run"].as_str().unwrap().to_string();
     let live = s.events(&id).await;
     s.finished(&id).await;

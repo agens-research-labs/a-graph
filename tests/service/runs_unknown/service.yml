@@ -1,4 +1,4 @@
-# The configuration of the service for this test (port 19969); the sessions keep their files in target/test-service/runs_unknown.
-port: 19969
+# The configuration of the service for this test ({{port:service}}); the sessions keep their files in target/test-service/runs_unknown.
+port: {{port:service}}
 data_dir: target/test-service/runs_unknown
 allowed_hosts: [127.0.0.1]

@@ -5,8 +5,8 @@ fn dir() -> &'static std::path::Path {
 }
 
 #[allow(dead_code)]
-fn read(name: &str) -> String {
-    std::fs::read_to_string(dir().join(name)).unwrap()
+fn read(name: &str, ports: &[(&str, u16)]) -> String {
+    with_ports(&std::fs::read_to_string(dir().join(name)).unwrap(), ports)
 }
 
 fn config_path(name: &str) -> String {
@@ -17,16 +17,16 @@ fn config_path(name: &str) -> String {
 /// is refused by a service that allows only `host:port`, because it would allow every port.
 #[tokio::test]
 async fn host_ports() {
-    let (_, _) = serve_at(17463, |_| Resp::ok(answer("ok"))).await;
-    let any_port = start(&config_path("service_host.yml"), 17461).await;
-    let one_port = start(&config_path("service_port.yml"), 17462).await;
+    let (model, _) = listen(|_| Resp::ok(answer("ok"))).await;
+    let any_port = start(&config_path("service_host.yml")).await;
+    let one_port = start_with(&config_path("service_port.yml"), &[("model", model)]).await;
 
-    let (status, body) = any_port.run(json!({ "yml": read("graph_port.yml"), "message": "x" })).await;
+    let (status, body) = any_port.run(json!({ "yml": read("graph_port.yml", &[("model", model)]), "message": "x" })).await;
     assert_eq!(status, 200, "{body}");
-    let (status, body) = one_port.run(json!({ "yml": read("graph_port.yml"), "message": "x" })).await;
+    let (status, body) = one_port.run(json!({ "yml": read("graph_port.yml", &[("model", model)]), "message": "x" })).await;
     assert_eq!(status, 200, "{body}");
 
-    let (status, body) = one_port.run(json!({ "yml": read("graph_host.yml"), "message": "x" })).await;
+    let (status, body) = one_port.run(json!({ "yml": read("graph_host.yml", &[("model", model)]), "message": "x" })).await;
     assert_eq!(status, 422, "{body}");
     let e = &body["errors"][0];
     assert_eq!((e["rule"].as_str(), e["path"].as_str()), (Some("network_not_allowed"), Some("passport.adl.permissions.network.allowed_hosts[0]")));

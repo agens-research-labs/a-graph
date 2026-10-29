@@ -7,7 +7,7 @@ fn here() -> &'static std::path::Path {
 /// Without a `trace` block there is no tracer and nothing is sent.
 #[tokio::test]
 async fn no_trace_block() {
-    let (_, collector) = serve_at(19818, |_| Resp::ok("{}")).await;
+    let (_, collector) = listen(|_| Resp::ok("{}")).await;
     let (p, _) = program(here(), "no_trace_block", echo).await;
     assert!(p.tracer.is_none());
     p.run("hi").await.unwrap();

@@ -1,4 +1,4 @@
-# The memory reaches `synt.length` 2 exchanges: the model writes the summary and the exchanges leave `chat` (model mock 19606; the summary comes from the same mock).
+# The memory reaches `synt.length` 2 exchanges: the model writes the summary and the exchanges leave `chat` (model mock {{port:model}}; the summary comes from the same mock).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19606
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

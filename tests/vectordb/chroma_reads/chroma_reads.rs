@@ -7,12 +7,12 @@ fn here() -> &'static std::path::Path {
 /// Chroma: the collection is found by name, then queried by id; its documents fill `{{chunks}}`.
 #[tokio::test]
 async fn chroma_reads() {
-    serve_at(19005, |_| Resp::ok(r#"{"embeddings":[[0.5,0.25,1.0]]}"#)).await;
-    let (_, db) = serve_at(19006, |r| match r.method.as_str() {
+    let (embedding_port, _) = listen(|_| Resp::ok(r#"{"embeddings":[[0.5,0.25,1.0]]}"#)).await;
+    let (vectordb_port, db) = listen(|r| match r.method.as_str() {
         "GET" => Resp::ok(r#"{"id":"c-123","name":"contracts"}"#),
         _ => Resp::ok(r#"{"ids":[["a","b"]],"documents":[["The rent is 800 euro.","The deposit is two months."]],"distances":[[0.1,0.2]]}"#),
     }).await;
-    let (p, seen) = program(here(), "chroma_reads", Resp::ok(chat("ok", None))).await;
+    let (p, seen) = program_with(here(), "chroma_reads", &[("vectordb", vectordb_port), ("embedding", embedding_port)], Resp::ok(chat("ok", None))).await;
     p.run_node(entity(&p), user("rent?")).await.unwrap();
 
     let db = db.lock().unwrap();

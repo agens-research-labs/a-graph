@@ -1,12 +1,12 @@
 //! A validation node. Every test is a folder with its own graph; the model is a mock
-//! server (on the port the file names) that answers the text it was asked to the ordinary nodes and
+//! server (on a free port) that answers the text it was asked to the ordinary nodes and
 //! a verdict to the judge, which is the request that carries the schema of the verdict.
 
 pub use std::sync::{Arc, Mutex};
 pub use serde_json::{Value, json};
 pub use a_graph::run::{Content, NodeInput, Program, RunOutput, build};
-pub use super::run::{yml_in};
-pub use super::http::{Req, Resp, serve_at};
+pub use super::run::{yml_in, yml_with};
+pub use super::http::{Req, Resp, listen};
 
 pub fn chat(text: &str) -> String {
     json!({ "model": "m", "message": { "role": "assistant", "content": text }, "done": true, "done_reason": "stop", "prompt_eval_count": 1, "eval_count": 1 }).to_string()
@@ -36,15 +36,10 @@ pub fn refused() -> Value {
     json!({ "validation": false, "reasons": "too long", "log": "checked the length" })
 }
 
-pub fn port_of(yml: &str) -> u16 {
-    let rest = yml.split("host: http://127.0.0.1:").nth(1).expect("the fixture names no port");
-    rest.chars().take_while(char::is_ascii_digit).collect::<String>().parse().unwrap()
-}
-
-/// The program of `<dir>/<name>.yml`, with the mock on the port the file names.
+/// The program of `<dir>/<name>.yml`, with the mock model on a free port.
 pub async fn program(dir: &std::path::Path, name: &str, verdict: Value) -> (Arc<Program>, Arc<Mutex<Vec<Req>>>) {
-    let yml = yml_in(dir, name);
-    let (_, seen) = serve_at(port_of(&yml), mock(verdict)).await;
+    let (port, seen) = listen(mock(verdict)).await;
+    let yml = yml_with(dir, name, &[("model", port)]);
     (Arc::new(build(&yml).unwrap_or_else(|e| panic!("{e}"))), seen)
 }
 

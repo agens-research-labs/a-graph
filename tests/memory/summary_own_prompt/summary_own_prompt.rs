@@ -10,8 +10,8 @@ fn here() -> &'static std::path::Path {
 async fn summary_own_prompt() {
     let path = "target/test-memory/summary_own_prompt.json";
     clean_output(path);
-    let (_, seen) = serve_at(19607, |_| Resp::ok(chat("S", None))).await;
-    let p = build(&yml_in(here(), "summary_own_prompt")).unwrap_or_else(|e| panic!("{e}"));
+    let (model_port, seen) = listen(|_| Resp::ok(chat("S", None))).await;
+    let p = build(&yml_with(here(), "summary_own_prompt", &[("model", model_port)])).unwrap_or_else(|e| panic!("{e}"));
     p.run_node(entity(&p), user("question")).await.unwrap();
     let seen = seen.lock().unwrap();
     let asked: Value = serde_json::from_str(&seen[1].body).unwrap();

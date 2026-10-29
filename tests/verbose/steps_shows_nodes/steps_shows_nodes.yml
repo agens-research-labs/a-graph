@@ -1,4 +1,4 @@
-# The graph of groups/nested_group_origin on a mock (port 19701): `verbose` at `steps` shows the nodes and the groups.
+# The graph of groups/nested_group_origin on a mock ({{port:model}}): `verbose` at `steps` shows the nodes and the groups.
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19701
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

@@ -5,8 +5,8 @@ fn dir() -> &'static std::path::Path {
 }
 
 #[allow(dead_code)]
-fn read(name: &str) -> String {
-    std::fs::read_to_string(dir().join(name)).unwrap()
+fn read(name: &str, ports: &[(&str, u16)]) -> String {
+    with_ports(&std::fs::read_to_string(dir().join(name)).unwrap(), ports)
 }
 
 fn config_path() -> String {
@@ -16,7 +16,7 @@ fn config_path() -> String {
 /// `GET /health` answers 200.
 #[tokio::test]
 async fn health() {
-    let s = start(&config_path(), 19970).await;
+    let s = start(&config_path()).await;
     let r = reqwest::get(format!("http://127.0.0.1:{}/health", s.port)).await.unwrap();
     assert_eq!(r.status().as_u16(), 200);
     assert_eq!(r.json::<Value>().await.unwrap(), json!({ "status": "ok" }));

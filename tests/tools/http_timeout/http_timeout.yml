@@ -1,4 +1,4 @@
-# A tool on http that takes longer than its `timeout: 1` (model on port 18512, tool service on port 18612, started by the test).
+# A tool on http that takes longer than its `timeout: 1` (model on {{port:model}}, tool service on {{port:tool}}, started by the test).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:18512
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:
@@ -33,7 +33,7 @@ resources:
       max_iter: 3
       timeout: 1
       transport: http
-      url: http://127.0.0.1:18612/weather
+      url: http://127.0.0.1:{{port:tool}}/weather
       parameters: { type: object, properties: { city: { type: string } }, required: [city] }
 graph:
   nodes:

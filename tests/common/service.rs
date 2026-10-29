@@ -2,7 +2,8 @@
 //! called over HTTP. The model of a graph is a mock server of the test (`tests/common/http.rs`).
 
 pub use serde_json::{Value, json};
-pub use super::http::{Resp, serve_at, serve_at_slowly};
+pub use super::http::{Resp, listen, listen_slowly};
+pub use super::with_ports;
 
 /// A running service; it is killed when this is dropped.
 pub struct Service {
@@ -10,23 +11,40 @@ pub struct Service {
     pub port: u16,
 }
 
-/// Starts the service with the config file and waits until it answers `/health`.
-pub async fn start(config: &str, port: u16) -> Service {
-    let child = tokio::process::Command::new(env!("CARGO_BIN_EXE_a-graph"))
-        .args(["--serve", config])
-        .stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .kill_on_drop(true)
-        .spawn()
-        .expect("cannot start a-graph");
-    for _ in 0..100 {
-        if reqwest::get(format!("http://127.0.0.1:{port}/health")).await.is_ok() {
-            return Service { _child: child, port };
+/// Starts the service with the config file, on a free port (its `{{port:service}}`), and waits until it
+/// answers `/health`. The port is free when it is chosen; if another program takes it before the
+/// service does, the service ends and is started again on another one.
+pub async fn start(config: &str) -> Service {
+    start_with(config, &[]).await
+}
+
+/// Like `start`, with the ports of the mock servers the config names too.
+pub async fn start_with(config: &str, ports: &[(&str, u16)]) -> Service {
+    let text = std::fs::read_to_string(config).unwrap_or_else(|e| panic!("cannot read {config}: {e}"));
+    let path = std::path::Path::new(config);
+    let stem = format!("service-{}-{}", path.parent().unwrap().file_name().unwrap().to_string_lossy(), path.file_stem().unwrap().to_string_lossy());
+    for _ in 0..5 {
+        let port = std::net::TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
+        let file = super::ported_file(&stem, &with_ports(&text, &[ports, &[("service", port)]].concat()));
+        let mut child = tokio::process::Command::new(env!("CARGO_BIN_EXE_a-graph"))
+            .args(["--serve", &file])
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .kill_on_drop(true)
+            .spawn()
+            .expect("cannot start a-graph");
+        for _ in 0..100 {
+            if reqwest::get(format!("http://127.0.0.1:{port}/health")).await.is_ok() {
+                return Service { _child: child, port };
+            }
+            if child.try_wait().unwrap().is_some() {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
         }
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
     }
-    panic!("the service did not start on port {port}");
+    panic!("the service of {config} did not start");
 }
 
 impl Service {

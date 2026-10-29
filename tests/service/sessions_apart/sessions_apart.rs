@@ -5,8 +5,8 @@ fn dir() -> &'static std::path::Path {
 }
 
 #[allow(dead_code)]
-fn read(name: &str) -> String {
-    std::fs::read_to_string(dir().join(name)).unwrap()
+fn read(name: &str, ports: &[(&str, u16)]) -> String {
+    with_ports(&std::fs::read_to_string(dir().join(name)).unwrap(), ports)
 }
 
 fn config_path() -> String {
@@ -18,10 +18,10 @@ fn config_path() -> String {
 async fn sessions_apart() {
     // the sessions keep their files on disk: start from nothing
     let _ = std::fs::remove_dir_all("target/test-service/sessions_apart");
-    let (_, seen) = serve_at(19998, |_| Resp::ok(answer("ok"))).await;
-    let s = start(&config_path(), 19978).await;
+    let (model, seen) = listen(|_| Resp::ok(answer("ok"))).await;
+    let s = start(&config_path()).await;
     let ask = |session: Option<&str>, message: &str| {
-        let mut body = json!({ "yml": read("graph.yml"), "message": message });
+        let mut body = json!({ "yml": read("graph.yml", &[("model", model)]), "message": message });
         if let Some(name) = session {
             body["session"] = json!(name);
         }

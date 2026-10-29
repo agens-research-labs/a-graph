@@ -10,13 +10,13 @@ fn here() -> &'static std::path::Path {
 async fn reasoning_not_saved() {
     let path = "target/test-memory/reasoning_not_saved.json";
     clean_output(path);
-    let (_, seen) = serve_at(19611, |r| {
+    let (model_port, seen) = listen(|r| {
         let body: Value = serde_json::from_str(&r.body).unwrap();
         let text = body["messages"].as_array().unwrap().last().unwrap()["content"].as_str().unwrap().to_string();
         Resp::ok(chat(if text.starts_with("Previous summary") { "THE SUMMARY" } else { "the answer" }, Some("SECRET THOUGHTS")))
     })
     .await;
-    let p = build(&yml_in(here(), "reasoning_not_saved")).unwrap_or_else(|e| panic!("{e}"));
+    let p = build(&yml_with(here(), "reasoning_not_saved", &[("model", model_port)])).unwrap_or_else(|e| panic!("{e}"));
     p.run_node(entity(&p), user("the question")).await.unwrap();
 
     // the summary call got the exchange without the thoughts

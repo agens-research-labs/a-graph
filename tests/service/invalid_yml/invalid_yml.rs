@@ -5,8 +5,8 @@ fn dir() -> &'static std::path::Path {
 }
 
 #[allow(dead_code)]
-fn read(name: &str) -> String {
-    std::fs::read_to_string(dir().join(name)).unwrap()
+fn read(name: &str, ports: &[(&str, u16)]) -> String {
+    with_ports(&std::fs::read_to_string(dir().join(name)).unwrap(), ports)
 }
 
 fn config_path() -> String {
@@ -16,9 +16,9 @@ fn config_path() -> String {
 /// A graph whose node cites a model that is not declared is refused with 422 and its errors.
 #[tokio::test]
 async fn invalid_yml() {
-    let (_, seen) = serve_at(19993, |_| Resp::ok(answer("ok"))).await;
-    let s = start(&config_path(), 19973).await;
-    let (status, body) = s.run(json!({ "yml": read("graph.yml"), "message": "x" })).await;
+    let (model, seen) = listen(|_| Resp::ok(answer("ok"))).await;
+    let s = start(&config_path()).await;
+    let (status, body) = s.run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "x" })).await;
     assert_eq!(status, 422);
     let first = &body["errors"][0];
     assert_eq!((first["rule"].as_str(), first["path"].as_str()), (Some("unknown_ref"), Some("graph.nodes[0].model.id")));

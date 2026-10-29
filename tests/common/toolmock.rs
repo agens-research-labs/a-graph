@@ -1,7 +1,7 @@
 pub use serde_json::{Value, json};
 pub use a_graph::run::{Content, Program, RunOutput, build};
-pub use super::run::{yml_in};
-pub use super::http::{Req, Resp, serve_at};
+pub use super::run::{yml_in, yml_with};
+pub use super::http::{Req, Resp, listen};
 
 pub fn body_of(req: &Req) -> Value {
     serde_json::from_str(&req.body).unwrap()
@@ -36,11 +36,6 @@ pub fn model(calls: Vec<(&'static str, Value)>, always: bool) -> impl Fn(&Req) -
             chat(json!({ "role": "assistant", "content": user_of(req) }))
         }
     }
-}
-
-pub fn port_of(yml: &str) -> u16 {
-    let rest = yml.split("host: http://127.0.0.1:").nth(1).expect("the fixture names no port");
-    rest.chars().take_while(char::is_ascii_digit).collect::<String>().parse().unwrap()
 }
 
 /// The final output as (agent id, text).

@@ -10,9 +10,9 @@ async fn vectordb_read_logged() {
     // SAFETY: the name of the variable the yml writes; nothing else reads it.
     unsafe { std::env::set_var("VECTORDB_TEST_KEY", "secret") };
     crate::common::clean_output("target/test-output/vectordb_read_logged.log");
-    serve_at(19742, |_| Resp::ok(r#"{"embeddings":[[0.5,0.25,1.0]]}"#)).await;
-    serve_at(19743, |_| Resp::ok(r#"{"result":{"points":[{"payload":{"text":"one"}},{"payload":{"text":"two"}}]}}"#)).await;
-    let (p, _) = program(here(), "vectordb_read_logged", Resp::ok(chat("ok", None))).await;
+    let (embedding_port, _) = listen(|_| Resp::ok(r#"{"embeddings":[[0.5,0.25,1.0]]}"#)).await;
+    let (vectordb_port, _) = listen(|_| Resp::ok(r#"{"result":{"points":[{"payload":{"text":"one"}},{"payload":{"text":"two"}}]}}"#)).await;
+    let (p, _) = program_with(here(), "vectordb_read_logged", &[("embedding", embedding_port), ("vectordb", vectordb_port)], Resp::ok(chat("ok", None))).await;
     p.run_node(entity(&p), user("q")).await.unwrap();
     let lines = crate::common::run::log_lines("vectordb_read_logged");
     let read = lines.iter().find(|l| l["code"] == "read.vectordb").expect("a read.vectordb event");

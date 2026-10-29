@@ -1,4 +1,4 @@
-# The model mock answers 500 (port 19956).
+# The model mock answers 500 ({{port:model}}).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19956
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

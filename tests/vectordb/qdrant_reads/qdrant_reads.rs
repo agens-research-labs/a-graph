@@ -9,9 +9,9 @@ fn here() -> &'static std::path::Path {
 async fn qdrant_reads() {
     // SAFETY: the name of the variable the yml writes; nothing else reads it.
     unsafe { std::env::set_var("VECTORDB_TEST_KEY", "secret") };
-    let (_, emb) = serve_at(19002, |_| Resp::ok(r#"{"embeddings":[[0.5,0.25,1.0]]}"#)).await;
-    let (_, db) = serve_at(19003, |_| Resp::ok(r#"{"result":{"points":[{"id":1,"score":0.9,"payload":{"text":"The lease lasts 12 months."}},{"id":2,"score":0.8,"payload":{"text":"The notice goes by registered mail."}}]}}"#)).await;
-    let (p, seen) = program(here(), "qdrant_reads", Resp::ok(chat("ok", None))).await;
+    let (embedding_port, emb) = listen(|_| Resp::ok(r#"{"embeddings":[[0.5,0.25,1.0]]}"#)).await;
+    let (vectordb_port, db) = listen(|_| Resp::ok(r#"{"result":{"points":[{"id":1,"score":0.9,"payload":{"text":"The lease lasts 12 months."}},{"id":2,"score":0.8,"payload":{"text":"The notice goes by registered mail."}}]}}"#)).await;
+    let (p, seen) = program_with(here(), "qdrant_reads", &[("embedding", embedding_port), ("vectordb", vectordb_port)], Resp::ok(chat("ok", None))).await;
     p.run_node(entity(&p), user("how long is the lease?")).await.unwrap();
 
     let emb = emb.lock().unwrap();

@@ -80,7 +80,7 @@ embeddings:
   - id: emb_gemma
     provider: ollama
     model: embeddinggemma
-    host: http://127.0.0.1:18902
+    host: http://127.0.0.1:{{port:embedding}}
 resources:
   prompts:
     - id: analyst

@@ -5,8 +5,8 @@ fn dir() -> &'static std::path::Path {
 }
 
 #[allow(dead_code)]
-fn read(name: &str) -> String {
-    std::fs::read_to_string(dir().join(name)).unwrap()
+fn read(name: &str, ports: &[(&str, u16)]) -> String {
+    with_ports(&std::fs::read_to_string(dir().join(name)).unwrap(), ports)
 }
 
 fn config_path() -> String {
@@ -16,9 +16,9 @@ fn config_path() -> String {
 /// The model answers 500: the state is `failed` and the stream ends with an `error` event.
 #[tokio::test]
 async fn runs_fails() {
-    serve_at(19987, |_| Resp::status(500, "broken")).await;
-    let s = start(&config_path(), 19967).await;
-    let (_, body) = s.start_run(json!({ "yml": read("graph.yml"), "message": "how long?" })).await;
+    let (model, _) = listen(|_| Resp::status(500, "broken")).await;
+    let s = start(&config_path()).await;
+    let (_, body) = s.start_run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "how long?" })).await;
     let id = body["run"].as_str().unwrap().to_string();
     let events = s.events(&id).await;
     let last = events.last().unwrap();

@@ -8,8 +8,8 @@ fn here() -> &'static std::path::Path {
 /// A span begins and ends inside the one it hangs from, and no span ends before it begins.
 #[tokio::test]
 async fn times_nest() {
-    let (_, collector) = serve_at(19813, |_| Resp::ok("{}")).await;
-    let (p, _) = program(here(), "times_nest", echo).await;
+    let (collector_port, collector) = listen(|_| Resp::ok("{}")).await;
+    let (p, _) = program_with(here(), "times_nest", &[("collector", collector_port)], echo).await;
     p.run("hi").await.unwrap();
     let spans = spans_of(&collector);
     for s in &spans {

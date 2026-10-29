@@ -32,34 +32,27 @@ impl Resp {
     }
 }
 
-/// Starts the server; returns its base URL and the recorded requests.
+/// Starts the server on a free port; returns its base URL and the recorded requests.
 pub async fn serve(handler: impl Fn(&Req) -> Resp + Send + Sync + 'static) -> (String, Arc<Mutex<Vec<Req>>>) {
-    serve_on("127.0.0.1:0", handler).await
+    let (port, seen) = listen(handler).await;
+    (format!("http://127.0.0.1:{port}"), seen)
 }
 
-/// Like `serve`, on the port the yml of the test names.
-pub async fn serve_at(port: u16, handler: impl Fn(&Req) -> Resp + Send + Sync + 'static) -> (String, Arc<Mutex<Vec<Req>>>) {
-    serve_on(&format!("127.0.0.1:{port}"), handler).await
+/// Like `serve`, and gives the port instead of the URL: the port a fixture names with `{{port:<name>}}`.
+pub async fn listen(handler: impl Fn(&Req) -> Resp + Send + Sync + 'static) -> (u16, Arc<Mutex<Vec<Req>>>) {
+    listen_slowly(std::time::Duration::ZERO, handler).await
 }
 
-/// Like `serve_at`, and every answer waits `delay` first (without blocking a thread: a handler that sleeps
+/// Like `listen`, and every answer waits `delay` first (without blocking a thread: a handler that sleeps
 /// would hold up the other tasks of the test).
-pub async fn serve_at_slowly(port: u16, delay: std::time::Duration, handler: impl Fn(&Req) -> Resp + Send + Sync + 'static) -> (String, Arc<Mutex<Vec<Req>>>) {
-    serve_with(&format!("127.0.0.1:{port}"), move |_| delay, handler).await
+pub async fn listen_slowly(delay: std::time::Duration, handler: impl Fn(&Req) -> Resp + Send + Sync + 'static) -> (u16, Arc<Mutex<Vec<Req>>>) {
+    listen_delayed(move |_| delay, handler).await
 }
 
-/// Like `serve_at`, and every answer waits `delay(request)` first, without blocking a thread.
-pub async fn serve_at_delayed(port: u16, delay: impl Fn(&Req) -> std::time::Duration + Send + Sync + 'static, handler: impl Fn(&Req) -> Resp + Send + Sync + 'static) -> (String, Arc<Mutex<Vec<Req>>>) {
-    serve_with(&format!("127.0.0.1:{port}"), delay, handler).await
-}
-
-async fn serve_on(addr: &str, handler: impl Fn(&Req) -> Resp + Send + Sync + 'static) -> (String, Arc<Mutex<Vec<Req>>>) {
-    serve_with(addr, |_| std::time::Duration::ZERO, handler).await
-}
-
-async fn serve_with(addr: &str, delay: impl Fn(&Req) -> std::time::Duration + Send + Sync + 'static, handler: impl Fn(&Req) -> Resp + Send + Sync + 'static) -> (String, Arc<Mutex<Vec<Req>>>) {
-    let listener = tokio::net::TcpListener::bind(addr).await.unwrap_or_else(|e| panic!("cannot listen on {addr} (a port named by a fixture is in use?): {e}"));
-    let base = format!("http://{}", listener.local_addr().unwrap());
+/// Like `listen`, and every answer waits `delay(request)` first, without blocking a thread.
+pub async fn listen_delayed(delay: impl Fn(&Req) -> std::time::Duration + Send + Sync + 'static, handler: impl Fn(&Req) -> Resp + Send + Sync + 'static) -> (u16, Arc<Mutex<Vec<Req>>>) {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
     let seen = Arc::new(Mutex::new(Vec::new()));
     let handler = Arc::new(handler);
     let delay = Arc::new(delay);
@@ -102,5 +95,5 @@ async fn serve_with(addr: &str, delay: impl Fn(&Req) -> std::time::Duration + Se
             });
         }
     });
-    (base, seen)
+    (port, seen)
 }
