@@ -68,6 +68,10 @@ destination is the one written in its URL, or the one of its scheme (80 for `htt
 provider (`api.anthropic.com`, the Bedrock and S3 hosts) is reached on 443. A URL whose scheme has no known port is
 allowed only by an entry without a port. A port that is not a number from 1 to 65535 is an error (`bad_value`).
 
+An entry is read as the host of a URL is read, so both sides of the check are written the same way: `127.1` counts
+as `127.0.0.1`, `[0:0:0:0:0:0:0:1]` as `[::1]`, and a domain is lowercase. An entry that is a URL (`https://api.example.com`)
+or carries a path (`api.example.com/v1`) is an error (`bad_value`).
+
 Redirects are not followed: an answer that sends the call to another place is reported like any other failed
 answer, with its status.
 

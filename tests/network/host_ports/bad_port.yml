@@ -1,4 +1,4 @@
-# Entries with a port that is not one.
+# Entries with a port that is not one, an IPv6 address without brackets, a URL, a path.
 graph_spec: "1.0"
 passport:
   adl:
@@ -7,7 +7,7 @@ passport:
     description: t
     version: "1.0.0"
     data_classification: { sensitivity: public }
-    permissions: { network: { allowed_hosts: ["localhost:0", "localhost:65536", "localhost:http", "::1"] } }
+    permissions: { network: { allowed_hosts: ["localhost:0", "localhost:65536", "localhost:http", "::1", "https://api.example.com", "api.example.com/v1"] } }
 observability: { level: error }
 trace:
   endpoint: https://collector.example.com/v1/traces

@@ -24,9 +24,14 @@ pub(crate) fn host_port_of(url: &str) -> Option<(String, Option<u16>)> {
     Some((host.to_lowercase(), parsed.port_or_known_default()))
 }
 
-/// An entry of `allowed_hosts`, `host` or `host:port` (`[::1]:8080` for IPv6): its lowercase host
-/// and its port. `Err` says what is wrong.
+/// An entry of `allowed_hosts`, `host` or `host:port` (`[::1]:8080` for IPv6): its host and its
+/// port. The host is read by the `url` crate as the host of a URL is, so the two sides of the check
+/// are written the same way: `127.1` is `127.0.0.1`, `[0:0:0:0:0:0:0:1]` is `[::1]`, a domain is
+/// lowercase. `Err` says what is wrong.
 pub(crate) fn allowed_entry(entry: &str) -> Result<(String, Option<u16>), String> {
+    if entry.contains("://") {
+        return Err(format!("`{entry}` is a URL: the list takes host names, as `api.example.com` or `localhost:11434`"));
+    }
     let entry = entry.to_lowercase();
     let (host, port) = if entry.starts_with('[') {
         let (h, after) = entry.split_once(']').ok_or_else(|| format!("`{entry}` opens a `[` it does not close"))?;
@@ -44,6 +49,7 @@ pub(crate) fn allowed_entry(entry: &str) -> Result<(String, Option<u16>), String
     if host.is_empty() || host == "[]" {
         return Err(format!("`{entry}` has no host"));
     }
+    let host = url::Host::parse(&host).map_err(|e| format!("`{entry}`: `{host}` is not a host name ({e})"))?.to_string();
     let port = match port {
         None => None,
         Some(p) => match p.parse::<u16>() {
