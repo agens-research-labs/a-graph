@@ -1,4 +1,4 @@
-# An MCP server with `max_iter: 2` that the model asks for again and again (model on port 18705, started by the test; the MCP server is the project tests/mcp_server, built by the tests).
+# An MCP server with `max_iter: 2` that the model asks for again and again (model on {{port:model}}, started by the test; the MCP server is the project tests/mcp_server, built by the tests).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:18705
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

@@ -5,7 +5,7 @@
 //! another, so the tests check the shape of the answer and a few words that cannot be missed.
 
 pub use a_graph::run::{Content, NodeInput, Program, build};
-pub use super::run::{yml_in};
+pub use super::run::{yml_in, yml_with};
 
 pub fn program(dir: &std::path::Path, name: &str) -> Program {
     build(&yml_in(dir, name)).unwrap_or_else(|e| panic!("{e}"))

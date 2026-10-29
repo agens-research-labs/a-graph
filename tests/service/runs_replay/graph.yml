@@ -1,4 +1,4 @@
-# The graph a caller sends to the service: node a passes its answer on, node b answers (model mock on port 19982).
+# The graph a caller sends to the service: node a passes its answer on, node b answers (model mock on {{port:model}}).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19982
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

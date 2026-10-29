@@ -1,4 +1,4 @@
-# Same graph (port 19712), log at `info`: the calls (debug) are not written.
+# Same graph ({{port:model}}), log at `info`: the calls (debug) are not written.
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19712
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

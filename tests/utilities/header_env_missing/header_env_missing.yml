@@ -86,7 +86,7 @@ embeddings:
 utilities:
   - id: u
     transport: http
-    url: http://127.0.0.1:19902/x
+    url: http://127.0.0.1:{{port:utility}}/x
     headers: { Authorization: { env: A_GRAPH_TEST_UTIL_NOT_SET } }
     timeout: 5
 resources:

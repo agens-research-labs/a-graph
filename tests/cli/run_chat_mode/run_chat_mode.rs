@@ -7,7 +7,7 @@ fn path() -> String {
 /// With `--chat_mode` the standard output is only `node: text`.
 #[tokio::test]
 async fn run_chat_mode() {
-    serve_at(19954, |_| Resp::ok(answer("the lease lasts 12 months"))).await;
-    let r = a_graph(&[&path(), "how long?", "--chat_mode"], None).await;
+    let (model, _) = listen(|_| Resp::ok(answer("the lease lasts 12 months"))).await;
+    let r = a_graph(&[&ported(&path(), &[("model", model)]), "how long?", "--chat_mode"], None).await;
     assert_eq!((r.code, r.stdout.as_str()), (0, "b: the lease lasts 12 months\n"), "{}", r.stderr);
 }

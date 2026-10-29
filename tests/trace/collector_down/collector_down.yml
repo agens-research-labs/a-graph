@@ -1,4 +1,4 @@
-# The collector answers 500 (model mock 19807, collector mock 19817): the run goes on and ends well.
+# The collector answers 500 (model mock {{port:model}}, collector mock {{port:collector}}): the run goes on and ends well.
 graph_spec: "1.0"
 passport:
   adl:
@@ -10,7 +10,7 @@ passport:
     permissions: { network: { allowed_hosts: [127.0.0.1] } }
 observability: { level: error }
 trace:
-  endpoint: http://127.0.0.1:19817/v1/traces
+  endpoint: http://127.0.0.1:{{port:collector}}/v1/traces
   headers:
     Authorization: { env: TRACE_TOKEN }
 verbose: { level: off }
@@ -18,7 +18,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19807
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

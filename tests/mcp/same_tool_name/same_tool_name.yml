@@ -1,4 +1,4 @@
-# The node has a tool called `say` and its MCP server has one too (model on port 18708, started by the test; the MCP server is the project tests/mcp_server, built by the tests).
+# The node has a tool called `say` and its MCP server has one too (model on {{port:model}}, started by the test; the MCP server is the project tests/mcp_server, built by the tests).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:18708
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

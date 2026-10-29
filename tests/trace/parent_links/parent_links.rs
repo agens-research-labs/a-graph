@@ -8,8 +8,8 @@ fn here() -> &'static std::path::Path {
 /// Every span hangs from the one that contains it: nodes from their group, calls from their node.
 #[tokio::test]
 async fn parent_links() {
-    let (_, collector) = serve_at(19812, |_| Resp::ok("{}")).await;
-    let (p, _) = program(here(), "parent_links", echo).await;
+    let (collector_port, collector) = listen(|_| Resp::ok("{}")).await;
+    let (p, _) = program_with(here(), "parent_links", &[("collector", collector_port)], echo).await;
     p.run("hi").await.unwrap();
     let spans = spans_of(&collector);
     let id = |name: &str| named(&spans, name)["spanId"].as_str().unwrap().to_string();

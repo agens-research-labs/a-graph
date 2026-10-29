@@ -1,12 +1,12 @@
 //! Running one node. Every test is a folder with its own yml files; its model is the
-//! mock server of `tests/common/http.rs` (an Ollama-style `/api/chat`), on the port the file names.
+//! mock server of `tests/common/http.rs` (an Ollama-style `/api/chat`), on a free port.
 //! Nothing leaves the machine. The boards the tests change are copies in `target/test-boards/`.
 
 pub use std::sync::{Arc, Mutex};
 pub use serde_json::{Value, json};
 pub use a_graph::run::{Content, NodeInput, Program, build};
-pub use super::http::{Req, Resp, serve_at};
-pub use super::run::{yml_in};
+pub use super::http::{Req, Resp, listen};
+pub use super::run::{yml_in, yml_with};
 
 /// The answer of the mock: the text, and optionally a thinking text.
 pub fn chat(text: &str, thinking: Option<&str>) -> String {
@@ -17,22 +17,21 @@ pub fn chat(text: &str, thinking: Option<&str>) -> String {
     json!({ "model": "m", "message": message, "done": true, "done_reason": "stop", "prompt_eval_count": 7, "eval_count": 3 }).to_string()
 }
 
-/// The port the file names for its model: `host: http://127.0.0.1:<port>`.
-pub fn port_of(yml: &str) -> u16 {
-    let rest = yml.split("host: http://127.0.0.1:").nth(1).expect("the fixture names no port");
-    rest.chars().take_while(char::is_ascii_digit).collect::<String>().parse().unwrap()
+/// The program of `<dir>/<name>.yml`, with the mock model on a free port answering `answer`;
+/// and the requests the mock received.
+pub async fn program(dir: &std::path::Path, name: &str, answer: Resp) -> (Program, Arc<Mutex<Vec<Req>>>) {
+    program_with(dir, name, &[], answer).await
 }
 
-/// The program of `<dir>/<name>.yml`, with the mock listening where the file says
-/// and answering `answer`; and the requests the mock received.
-pub async fn program(dir: &std::path::Path, name: &str, answer: Resp) -> (Program, Arc<Mutex<Vec<Req>>>) {
-    let yml = yml_in(dir, name);
+/// Like `program`, with the ports of the other mock servers the test started (embedding, vectordb...).
+pub async fn program_with(dir: &std::path::Path, name: &str, ports: &[(&str, u16)], answer: Resp) -> (Program, Arc<Mutex<Vec<Req>>>) {
     let answer = Arc::new(Mutex::new(answer));
-    let (_, seen) = serve_at(port_of(&yml), move |_| {
+    let (port, seen) = listen(move |_| {
         let a = answer.lock().unwrap();
         Resp::status(a.status, a.body.clone())
     })
     .await;
+    let yml = yml_with(dir, name, &[ports, &[("model", port)]].concat());
     (build(&yml).unwrap_or_else(|e| panic!("{e}")), seen)
 }
 

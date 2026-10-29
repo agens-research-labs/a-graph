@@ -1,4 +1,4 @@
-# A node on a model mock (port 19955).
+# A node on a model mock ({{port:model}}).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19955
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

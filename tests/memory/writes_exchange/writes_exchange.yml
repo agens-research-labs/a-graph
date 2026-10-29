@@ -1,4 +1,4 @@
-# A first turn with no file yet: the file and the record of the node are created (model mock 19601).
+# A first turn with no file yet: the file and the record of the node are created (model mock {{port:model}}).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19601
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

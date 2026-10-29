@@ -5,8 +5,8 @@ fn dir() -> &'static std::path::Path {
 }
 
 #[allow(dead_code)]
-fn read(name: &str) -> String {
-    std::fs::read_to_string(dir().join(name)).unwrap()
+fn read(name: &str, ports: &[(&str, u16)]) -> String {
+    with_ports(&std::fs::read_to_string(dir().join(name)).unwrap(), ports)
 }
 
 fn config_path() -> String {
@@ -16,8 +16,8 @@ fn config_path() -> String {
 /// Two requests at the same time are both answered.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn together() {
-    serve_at(19999, |_| Resp::ok(answer("ok"))).await;
-    let s = start(&config_path(), 19979).await;
-    let (one, two) = tokio::join!(s.run(json!({ "yml": read("graph.yml"), "message": "one" })), s.run(json!({ "yml": read("graph.yml"), "message": "two" })));
+    let (model, _) = listen(|_| Resp::ok(answer("ok"))).await;
+    let s = start(&config_path()).await;
+    let (one, two) = tokio::join!(s.run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "one" })), s.run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "two" })));
     assert_eq!((one.0, two.0), (200, 200));
 }

@@ -1,4 +1,4 @@
-# A judge with `on_error: stop` that refuses (port 18413, started by the test).
+# A judge with `on_error: stop` that refuses ({{port:model}}, started by the test).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:18413
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

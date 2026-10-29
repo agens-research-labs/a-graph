@@ -1,4 +1,4 @@
-# Node a (output utility wrap) feeds node b; both write to the final output (model mock 19914).
+# Node a (output utility wrap) feeds node b; both write to the final output (model mock {{port:model}}).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19914
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 utilities:

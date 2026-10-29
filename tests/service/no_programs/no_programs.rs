@@ -5,8 +5,8 @@ fn dir() -> &'static std::path::Path {
 }
 
 #[allow(dead_code)]
-fn read(name: &str) -> String {
-    std::fs::read_to_string(dir().join(name)).unwrap()
+fn read(name: &str, ports: &[(&str, u16)]) -> String {
+    with_ports(&std::fs::read_to_string(dir().join(name)).unwrap(), ports)
 }
 
 fn config_path() -> String {
@@ -16,9 +16,9 @@ fn config_path() -> String {
 /// A graph that would start programs is refused with 422: stdio tools, MCP servers and utilities, and the scripts of a skill.
 #[tokio::test]
 async fn no_programs() {
-    let (_, seen) = serve_at(19995, |_| Resp::ok(answer("ok"))).await;
-    let s = start(&config_path(), 19975).await;
-    let (status, body) = s.run(json!({ "yml": read("graph.yml"), "message": "x" })).await;
+    let (model, seen) = listen(|_| Resp::ok(answer("ok"))).await;
+    let s = start(&config_path()).await;
+    let (status, body) = s.run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "x" })).await;
     assert_eq!(status, 422, "{body}");
     let at: Vec<&str> = body["errors"].as_array().unwrap().iter().map(|e| e["path"].as_str().unwrap()).collect();
     for wanted in ["utilities[0].transport", "resources.tools[0].transport", "resources.mcp_servers[0].transport", "resources.skills[0]"] {

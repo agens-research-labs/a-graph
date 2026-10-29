@@ -1,4 +1,4 @@
-# One node `n` with a chromadb vectordb in tenant `acme`, database `sales` (mock on port 19403, the test starts it); embedding mock 19402, model mock 19401.
+# One node `n` with a chromadb vectordb in tenant `acme`, database `sales` (mock on {{port:vectordb}}, the test starts it); embedding mock {{port:embedding}}, model mock {{port:model}}.
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,14 +14,14 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19401
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 embeddings:
   - id: emb
     provider: ollama
     model: embeddinggemma
-    host: http://127.0.0.1:19402
+    host: http://127.0.0.1:{{port:embedding}}
 resources:
   prompts:
     - id: pr
@@ -32,7 +32,7 @@ external:
   vectordb:
     - id: contracts_db
       provider: chromadb
-      url: http://127.0.0.1:19403
+      url: http://127.0.0.1:{{port:vectordb}}
       collection: contracts
       top_k: 3
       tenant: acme

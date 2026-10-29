@@ -5,8 +5,8 @@ fn dir() -> &'static std::path::Path {
 }
 
 #[allow(dead_code)]
-fn read(name: &str) -> String {
-    std::fs::read_to_string(dir().join(name)).unwrap()
+fn read(name: &str, ports: &[(&str, u16)]) -> String {
+    with_ports(&std::fs::read_to_string(dir().join(name)).unwrap(), ports)
 }
 
 fn config_path() -> String {
@@ -16,9 +16,9 @@ fn config_path() -> String {
 /// `POST /runs` answers 202 at once with an id; the state is `running` and then `done` with the same result as `/run`.
 #[tokio::test]
 async fn runs_result() {
-    serve_at_slowly(19980, std::time::Duration::from_millis(300), |_| Resp::ok(answer("the lease lasts 12 months"))).await;
-    let s = start(&config_path(), 19960).await;
-    let (status, body) = s.start_run(json!({ "yml": read("graph.yml"), "message": "how long?" })).await;
+    let (model, _) = listen_slowly(std::time::Duration::from_millis(300), |_| Resp::ok(answer("the lease lasts 12 months"))).await;
+    let s = start(&config_path()).await;
+    let (status, body) = s.start_run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "how long?" })).await;
     assert_eq!(status, 202, "{body}");
     let id = body["run"].as_str().unwrap().to_string();
     assert!(id.starts_with("r-"));

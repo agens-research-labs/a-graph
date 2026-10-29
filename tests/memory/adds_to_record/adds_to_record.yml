@@ -1,4 +1,4 @@
-# The file has the record of the node and of another one: the exchange is added to the first, the other is left as it is (model mock 19602).
+# The file has the record of the node and of another one: the exchange is added to the first, the other is left as it is (model mock {{port:model}}).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19602
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

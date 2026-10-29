@@ -1,5 +1,5 @@
 # A react graph (react_basic of the run tests). Two workers are called `w1`: a node and a group that enters from `w1`.
-# A graph on a mock model (port 18301, started by the test) that answers with the text it was asked, so the answer of a node shows what it received. A react: controller c, workers w1 (a node) and wi (a parallel group, in wi, fan wa and wb, out wo).
+# A graph on a mock model ({{port:model}}, started by the test) that answers with the text it was asked, so the answer of a node shows what it received. A react: controller c, workers w1 (a node) and wi (a parallel group, in wi, fan wa and wb, out wo).
 graph_spec: "1.0"
 passport:
   adl:
@@ -15,7 +15,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:18301
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

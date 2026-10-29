@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19927
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 blackboards:
@@ -24,12 +24,12 @@ embeddings:
   - id: emb
     provider: ollama
     model: embeddinggemma
-    host: http://127.0.0.1:19926
+    host: http://127.0.0.1:{{port:embedding}}
 external:
   vectordb:
     - id: docs
       provider: qdrant
-      url: http://127.0.0.1:19925
+      url: http://127.0.0.1:{{port:vectordb}}
       collection: c
       embedding: emb
       text_field: text

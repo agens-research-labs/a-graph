@@ -1,4 +1,4 @@
-# An invalid graph and a model mock that must not be called (port 19957).
+# An invalid graph and a model mock that must not be called ({{port:model}}).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19957
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

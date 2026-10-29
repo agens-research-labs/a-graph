@@ -1,4 +1,4 @@
-# A node twice in the list, a tool with `max_iter: 1`: the count starts again (model on port 18505, started by the test).
+# A node twice in the list, a tool with `max_iter: 1`: the count starts again (model on {{port:model}}, started by the test).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:18505
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

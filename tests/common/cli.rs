@@ -3,7 +3,7 @@
 //! same test (`tests/common/http.rs`), reached by the executable over the network as a real one.
 
 pub use serde_json::{Value, json};
-pub use super::http::{Resp, serve_at};
+pub use super::http::{Resp, listen};
 
 pub struct Ran {
     pub code: i32,
@@ -34,4 +34,12 @@ pub async fn a_graph(args: &[&str], stdin: Option<&str>) -> Ran {
 /// The answer of a mock Ollama model: the text.
 pub fn answer(text: &str) -> String {
     json!({ "model": "m", "message": { "role": "assistant", "content": text }, "done": true, "done_reason": "stop", "prompt_eval_count": 1, "eval_count": 1 }).to_string()
+}
+
+/// The yml at `path` with the ports of its mock servers (see `with_ports`), written to a file the
+/// program can read; its path.
+pub fn ported(path: &str, ports: &[(&str, u16)]) -> String {
+    let text = std::fs::read_to_string(path).unwrap_or_else(|e| panic!("cannot read {path}: {e}"));
+    let stem = std::path::Path::new(path).file_stem().unwrap().to_string_lossy().to_string();
+    super::ported_file(&format!("cli-{stem}"), &super::with_ports(&text, ports))
 }

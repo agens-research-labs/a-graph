@@ -1,4 +1,4 @@
-# The vectordb of the node has `utility: { query: [wrap], chunks: [up] }` (model mock 19924, qdrant mock 19925, embedding mock 19926).
+# The vectordb of the node has `utility: { query: [wrap], chunks: [up] }` (model mock {{port:model}}, qdrant mock {{port:vectordb}}, embedding mock {{port:embedding}}).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,19 +14,19 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19924
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 embeddings:
   - id: emb
     provider: ollama
     model: embeddinggemma
-    host: http://127.0.0.1:19926
+    host: http://127.0.0.1:{{port:embedding}}
 external:
   vectordb:
     - id: docs
       provider: qdrant
-      url: http://127.0.0.1:19925
+      url: http://127.0.0.1:{{port:vectordb}}
       collection: c
       top_k: 2
       embedding: emb

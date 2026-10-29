@@ -1,4 +1,4 @@
-# A tool on stdio, the log at debug in a file (model mock on port 19721): the call of the tool is an event.
+# A tool on stdio, the log at debug in a file (model mock on {{port:model}}): the call of the tool is an event.
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19721
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

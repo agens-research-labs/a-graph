@@ -4,8 +4,8 @@ pub use a_graph::loader::load;
 pub use a_graph::schema::key;
 pub use a_graph::utilities::*;
 pub use serde_json::{Value, json};
-pub use super::http::{Resp, serve_at};
-pub use super::{own_yml, yml_in};
+pub use super::http::{Resp, listen};
+pub use super::{own_yml, yml_in, yml_with};
 
 /// The manager built from the `utilities` block of a yml.
 pub fn manager(src: &str) -> UtilityManager {

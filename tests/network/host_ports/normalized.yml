@@ -7,7 +7,7 @@ passport:
     description: t
     version: "1.0.0"
     data_classification: { sensitivity: public }
-    permissions: { network: { allowed_hosts: ["127.1:11434", "[0:0:0:0:0:0:0:1]:11434", "Collector.Example.com:443", "api.anthropic.com:443"] } }
+    permissions: { network: { allowed_hosts: ["127.1:{{port:model}}", "[0:0:0:0:0:0:0:1]:{{port:model}}", "Collector.Example.com:443", "api.anthropic.com:443"] } }
 observability: { level: error }
 trace:
   endpoint: https://collector.example.com/v1/traces
@@ -22,13 +22,13 @@ models:
   - id: local
     provider: ollama
     model: m
-    host: http://127.0.0.1:11434
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
   - id: six
     provider: ollama
     model: m
-    host: http://[::1]:11434
+    host: http://[::1]:{{port:model}}
     input: [text]
     output: [text]
 graph:

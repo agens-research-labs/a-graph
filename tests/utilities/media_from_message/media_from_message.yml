@@ -1,4 +1,4 @@
-# A file made by a utility from the text of the node (model mock 19933).
+# A file made by a utility from the text of the node (model mock {{port:model}}).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19933
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 utilities:

@@ -1,4 +1,4 @@
-# The mock answers 500 (model mock 19805, collector mock 19815): the run fails and the trace is sent all the same.
+# The mock answers 500 (model mock {{port:model}}, collector mock {{port:collector}}): the run fails and the trace is sent all the same.
 graph_spec: "1.0"
 passport:
   adl:
@@ -10,7 +10,7 @@ passport:
     permissions: { network: { allowed_hosts: [127.0.0.1] } }
 observability: { level: error }
 trace:
-  endpoint: http://127.0.0.1:19815/v1/traces
+  endpoint: http://127.0.0.1:{{port:collector}}/v1/traces
   headers:
     Authorization: { env: TRACE_TOKEN }
 verbose: { level: off }
@@ -18,7 +18,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19805
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

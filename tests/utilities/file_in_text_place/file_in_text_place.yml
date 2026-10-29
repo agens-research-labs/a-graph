@@ -1,4 +1,4 @@
-# A utility that answers a file where a text is needed (model mock 19916).
+# A utility that answers a file where a text is needed (model mock {{port:model}}).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19916
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 utilities:

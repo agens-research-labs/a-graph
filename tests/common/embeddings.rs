@@ -4,7 +4,7 @@ pub use a_graph::embeddings::EmbeddingManager;
 pub use a_graph::loader::load;
 pub use a_graph::models::ModelError;
 pub use a_graph::schema::key;
-pub use super::{own_yml, yml_in};
+pub use super::{own_yml, yml_in, yml_with};
 
 /// The embedding manager built from the `embeddings` block of a yml.
 pub fn manager(src: &str) -> EmbeddingManager {

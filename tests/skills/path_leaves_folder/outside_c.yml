@@ -1,4 +1,4 @@
-# The model tries to read outside the folder of the skill (model on port 18814, started by the test).
+# The model tries to read outside the folder of the skill (model on {{port:model}}, started by the test).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:18814
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

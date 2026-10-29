@@ -1,4 +1,4 @@
-# A judge whose verdict has no `validation` (port 18416, started by the test).
+# A judge whose verdict has no `validation` ({{port:model}}, started by the test).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:18416
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

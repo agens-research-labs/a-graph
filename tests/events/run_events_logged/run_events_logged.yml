@@ -1,4 +1,4 @@
-# The graph on a mock (port 19711) with the log at `debug` in a file: the run writes its events.
+# The graph on a mock ({{port:model}}) with the log at `debug` in a file: the run writes its events.
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19711
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

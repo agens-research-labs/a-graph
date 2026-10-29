@@ -91,7 +91,7 @@ utilities:
     timeout: 60
   - id: ocr
     transport: http
-    url: http://127.0.0.1:19901/ocr
+    url: http://127.0.0.1:{{port:utility}}/ocr
     headers: { Authorization: { env: A_GRAPH_TEST_UTIL_TOKEN } }
     timeout: 30
 resources:
