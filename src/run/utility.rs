@@ -17,7 +17,7 @@ impl Program {
         for id in ids {
             let utility = self.utilities.get(id).ok_or_else(|| fail(format!("utility `{id}` is not built")))?;
             let started = std::time::Instant::now();
-            let answer = call_utility(utility, &UtilityInput::Text(text)).await.map_err(&fail)?;
+            let answer = call_utility(utility, &UtilityInput::Text(text)).await.map_err(fail)?;
             self.emit(Event::new(LogLevel::Debug, "utility.call").node(node).field("id", id.clone()).field("place", place).field("duration", started.elapsed().as_secs_f64()));
             text = match answer {
                 UtilityOutput::Text(t) => t,
@@ -116,7 +116,7 @@ impl Program {
             if let Some(path) = temporary {
                 let _ = std::fs::remove_file(path);
             }
-            let answer = answer.map_err(&fail)?;
+            let answer = answer.map_err(fail)?;
             self.emit(Event::new(LogLevel::Debug, "utility.call").node(node).field("id", id.clone()).field("place", place).field("duration", started.elapsed().as_secs_f64()));
             item = match answer {
                 UtilityOutput::Text(t) => Item::Text(t),
