@@ -60,6 +60,12 @@ trace is sent.
 A run keeps its last 1000 events. A watcher that comes after older ones were dropped first gets the event `dropped`,
 `{ "count": n }`, with how many it missed, then the events kept.
 
+The cap is on the number of events, not on their size. When the `verbose` of the graph is `detail` and its passport
+allows the contents, an event can carry a long text, a prompt or an answer. The events and the outcome of a run stay
+in memory until it is forgotten, `retention_seconds` after its end, and a run that ended no longer counts towards
+`max_runs`. So the memory held is that of every run of the last `retention_seconds`, not only of the `max_runs`
+going on.
+
 The graph is checked and built again for each request: requests share nothing but the folders of their sessions. A
 request weighs at most 64 MiB.
 
