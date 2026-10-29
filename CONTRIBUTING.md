@@ -18,7 +18,27 @@ The live tests are marked `#[ignore]` because they need something outside the pr
 `llama3.2`, `gpt-oss`, `mistral-small3.2`, `gemma4:e2b`), a Chroma server on `127.0.0.1:8000`, `python3` with
 `pymupdf4llm`, or the keys `GEMINI_API_KEY` and `CLAUDE_API_KEY` for the real APIs.
 
-The code has been built and tested only on Linux.
+The code has been built and tested on Linux and on macOS. On macOS, in a parallel run, a test that starts a
+program (`utilities`, `tools`) can fail at random with "did not answer within 5 s": the standard library creates the
+pipes of a child in two steps there, and a child started by another test in between can inherit one and hold it
+open. It does not happen on Linux, where the pipes are created closed on exec. Run the test again, alone.
+
+## The checks
+
+Every pull request and every push to `main` run the workflow `.github/workflows/ci.yml` on GitHub, on Linux:
+
+```
+cargo build --locked
+cargo clippy --all-targets --locked -- -D warnings
+cargo test --locked --no-fail-fast
+cargo audit                     # the advisories on the crates of Cargo.lock (cargo install cargo-audit --locked)
+docker build .                  # the image, once the Dockerfile is in the repository
+```
+
+The same commands run by hand, before opening a pull request. Clippy fails on any warning: a lint that does not
+fit the code is allowed in `[lints.clippy]` of `Cargo.toml`, with the reason next to it. `cargo audit` fails on a
+new advisory: the fix is a `cargo update` of that crate, or, when there is no fix yet, an entry in `.cargo/audit.toml`
+with the reason.
 
 ## How the code is organized
 
