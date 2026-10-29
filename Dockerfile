@@ -11,7 +11,7 @@
 # from your shell (or `--env-file`). There is nothing in the image but the program.
 
 # the minor is pinned, the patch is not: a patch of the toolchain is a fix, never a change of the language
-FROM rust:1.98-bookworm AS build
+FROM rust:1.99-bookworm AS build
 WORKDIR /src
 COPY Cargo.toml Cargo.lock ./
 COPY src ./src
