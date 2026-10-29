@@ -292,7 +292,7 @@
                 }
               }
             },
-            "description": "The run failed: a model, a utility, a tool, or it lasted more than `run_timeout_seconds` (`run_timeout`)."
+            "description": "The run failed: a model, a utility, a tool, or it lasted more than `run_timeout_seconds` (`run_timeout`), or the service was stopped before it ended (`service_stopped`)."
           },
           "503": {
             "content": {

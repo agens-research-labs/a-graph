@@ -61,4 +61,5 @@ rules! {
     UtilityFailed => "utility_failed",
     TooManyRuns => "too_many_runs",
     RunTimeout => "run_timeout",
+    ServiceStopped => "service_stopped",
 }

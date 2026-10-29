@@ -58,7 +58,7 @@ impl Endpoint {
             Endpoint::Run => {
                 let mut ok = serde_json::Map::new();
                 ok.insert("200".into(), json!({ "description": "The run ended well: its result, the same JSON as the command line writes.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Result" } } } }));
-                ok.insert("502".into(), errors("The run failed: a model, a utility, a tool, or it lasted more than `run_timeout_seconds` (`run_timeout`)."));
+                ok.insert("502".into(), errors("The run failed: a model, a utility, a tool, or it lasted more than `run_timeout_seconds` (`run_timeout`), or the service was stopped before it ended (`service_stopped`)."));
                 json!({
                     "summary": "Runs a graph and answers when it is done.",
                     "description": "The graph is built again for each request: requests share nothing but the folders of their sessions.",

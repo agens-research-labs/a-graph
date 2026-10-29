@@ -15,7 +15,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{MethodFilter, MethodRouter, on};
 use serde::Deserialize;
 use serde_json::{Value, json};
-use tokio::sync::Semaphore;
+use tokio::sync::{Semaphore, watch};
 
 use super::api::Endpoint;
 use super::runs::{Next, Runs, errors_json, run_within};
@@ -26,9 +26,14 @@ use crate::run::{Program, build};
 /// The most a request may weigh: a graph and, in base64, the files it reads.
 const BODY_LIMIT: usize = 64 * 1024 * 1024;
 
-/// How long the service waits, once told to stop, for the requests and the runs going on to end. Then it stops
-/// anyway and they are cut. Docker waits only 10 seconds by default (`stop_grace_period`) before it kills.
+/// How long the service waits, once told to stop, for the requests and the runs going on to end. Then the runs
+/// still going on are stopped (`service_stopped`). Docker waits only 10 seconds by default (`stop_grace_period`)
+/// before it kills.
 const SHUTDOWN_SECONDS: u64 = 30;
+
+/// How long the service waits after `SHUTDOWN_SECONDS` for the runs it stopped to close (their last event, their
+/// trace, their log). Then it stops anyway and those still open are cut.
+const CLOSE_SECONDS: u64 = 5;
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -43,10 +48,13 @@ struct App {
     runs: Arc<Runs>,
     /// One permit for each run that may go on, held until the run ends.
     permits: Arc<Semaphore>,
+    /// The deadline of the shutdown, once the service is told to stop: the runs still going on are stopped then.
+    deadline: watch::Receiver<Option<Instant>>,
 }
 
 /// Listens on the port of the config until `shutdown` is ready. Then it takes no new request, and waits at most
-/// `SHUTDOWN_SECONDS` for the requests and the runs going on (those of `POST /runs` too) to end.
+/// `SHUTDOWN_SECONDS` for the requests and the runs going on (those of `POST /runs` too) to end. The runs still
+/// going on are then stopped, and given at most `CLOSE_SECONDS` more to close.
 pub async fn serve(config: ServiceConfig, shutdown: impl Future<Output = ()> + Send + 'static) -> Result<(), String> {
     let port = config.port;
     let max_runs = config.max_runs;
@@ -64,13 +72,13 @@ pub async fn serve(config: ServiceConfig, shutdown: impl Future<Output = ()> + S
     for e in Endpoint::ALL {
         app = app.route(e.path(), handler(e));
     }
+    // the time to stop is known when the signal comes
+    let (told, mut deadline) = watch::channel(None::<Instant>);
     let app = app
         .layer(DefaultBodyLimit::max(BODY_LIMIT))
-        .with_state(Arc::new(App { permits: permits.clone(), config, runs }));
+        .with_state(Arc::new(App { permits: permits.clone(), config, runs, deadline: deadline.clone() }));
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await.map_err(|e| format!("cannot listen on port {port}: {e}"))?;
 
-    // the time to stop is known when the signal comes
-    let (told, mut deadline) = tokio::sync::watch::channel(None::<Instant>);
     let signal = async move {
         shutdown.await;
         eprintln!("a-graph: shutting down");
@@ -91,8 +99,9 @@ pub async fn serve(config: ServiceConfig, shutdown: impl Future<Output = ()> + S
         served = server => served.map_err(|e| format!("the service stopped: {e}"))?,
         _ = late => {}
     }
-    // every run going on holds a permit: they are all back when no run is left
-    let at = deadline.borrow().unwrap_or_else(Instant::now);
+    // every run going on holds a permit: they are all back when no run is left. The runs still going on at the
+    // deadline are stopped then, and close themselves: they have a little more time for that
+    let at = deadline.borrow().unwrap_or_else(Instant::now) + Duration::from_secs(CLOSE_SECONDS);
     while permits.available_permits() < max_runs && Instant::now() < at {
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
@@ -167,11 +176,12 @@ async fn run(State(app): State<Arc<App>>, body: axum::body::Bytes) -> Response {
     // taken without waiting, held until the run ends
     let Ok(permit) = app.permits.clone().try_acquire_owned() else { return busy(app.config.max_runs) };
     // the run is a task of its own that holds the permit: a caller that hangs up drops this handler, not the
-    // run, so the permit is given back only when the run really ends (or is stopped by its timeout)
+    // run, so the permit is given back only when the run really ends (or is stopped by its timeout or the shutdown)
     let timeout = Duration::from_secs(app.config.run_timeout_seconds);
+    let deadline = app.deadline.clone();
     let task = tokio::spawn(async move {
         let _permit = permit;
-        run_within(program, &message, timeout).await
+        run_within(program, &message, timeout, deadline).await
     });
     let outcome = task.await.unwrap_or_else(|e| Err(Error::new(Phase::Execution, Path::root(), Rule::Io, format!("the run stopped: {e}"))));
     match outcome {
@@ -186,7 +196,7 @@ async fn start(State(app): State<Arc<App>>, body: axum::body::Bytes) -> Response
         Err(refusal) => return refusal,
     };
     let Ok(permit) = app.permits.clone().try_acquire_owned() else { return busy(app.config.max_runs) };
-    let id = app.runs.start(program, message, permit);
+    let id = app.runs.start(program, message, permit, app.deadline.clone());
     (StatusCode::ACCEPTED, axum::Json(json!({ "run": id }))).into_response()
 }
 

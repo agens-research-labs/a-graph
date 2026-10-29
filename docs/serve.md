@@ -25,11 +25,13 @@ The service has no authentication of its own: whoever reaches its port can run g
 
 `SIGTERM` (what `docker stop` sends) or `SIGINT` (Ctrl-C) stops the service gently. It writes `a-graph: shutting
 down`, takes no new request, and waits for the requests and the runs going on to end, those of `POST /runs` too.
-It waits at most 30 seconds: then it writes how many runs it cut, `a-graph: N runs cut`, and stops anyway. Either
-way it ends with 0.
+It waits at most 30 seconds. Then the runs still going on are stopped: each ends as failed, with the rule
+`service_stopped`, and still ends as any run does (its last event is logged and its trace is sent). The service
+waits at most 5 more seconds for that, then exits. A run that did not close in time is cut: the service writes
+how many, `a-graph: N runs cut`. Either way it ends with 0.
 
-Docker kills a container 10 seconds after `docker stop` by default. To give the runs their 30 seconds, set
-`stop_grace_period` higher in the compose file:
+Docker kills a container 10 seconds after `docker stop` by default. To give the runs their 30 seconds, and 5 more
+to close, set `stop_grace_period` higher in the compose file:
 
 ```yaml
 services:

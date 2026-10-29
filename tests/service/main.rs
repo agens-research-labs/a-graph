@@ -84,6 +84,9 @@ mod runs_unknown;
 #[path = "sessions_apart/sessions_apart.rs"]
 mod sessions_apart;
 
+#[path = "shutdown_stops/shutdown_stops.rs"]
+mod shutdown_stops;
+
 #[path = "shutdown_waits/shutdown_waits.rs"]
 mod shutdown_waits;
 

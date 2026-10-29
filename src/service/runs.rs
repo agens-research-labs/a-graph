@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use serde_json::{Value, json};
-use tokio::sync::{Notify, OwnedSemaphorePermit};
+use tokio::sync::{Notify, OwnedSemaphorePermit, watch};
 
 use crate::error::{Error, Path, Phase, Rule};
 use crate::logging::stream_event;
@@ -125,7 +125,8 @@ impl Runs {
 
     /// Starts the run and gives back its id at once. The events the graph asks to show (its `verbose`)
     /// are kept as the run goes; the outcome is kept when it ends. The permit is given back at the end.
-    pub(super) fn start(self: &Arc<Self>, mut program: Program, message: String, permit: OwnedSemaphorePermit) -> String {
+    /// The run is stopped at the deadline of the shutdown, once `deadline` tells it.
+    pub(super) fn start(self: &Arc<Self>, mut program: Program, message: String, permit: OwnedSemaphorePermit, deadline: watch::Receiver<Option<tokio::time::Instant>>) -> String {
         let id = format!("r-{}", &uuid::Uuid::new_v4().simple().to_string()[..16]);
         let state = RunState::new(MAX_EVENTS);
         self.map.lock().unwrap().insert(id.clone(), state.clone());
@@ -140,7 +141,7 @@ impl Runs {
         let run_timeout = self.run_timeout;
         tokio::spawn(async move {
             let _permit = permit;
-            let outcome = run_within(program, &message, run_timeout).await;
+            let outcome = run_within(program, &message, run_timeout, deadline).await;
             state.finish(match outcome {
                 Ok(output) => Outcome::Done(output.to_json()),
                 Err(e) => Outcome::Failed(errors_json(&[e])),
@@ -150,13 +151,23 @@ impl Runs {
     }
 }
 
-/// Runs the program to its end, or until `timeout` has passed (`run_timeout`); then closes its log.
-pub(super) async fn run_within(program: Program, message: &str, timeout: Duration) -> Result<RunOutput, Error> {
+/// Runs the program to its end, or until `timeout` has passed (`run_timeout`), or until the deadline of the shutdown
+/// of the service, once there is one (`service_stopped`); then closes its log.
+pub(super) async fn run_within(program: Program, message: &str, timeout: Duration, mut deadline: watch::Receiver<Option<tokio::time::Instant>>) -> Result<RunOutput, Error> {
     let program = Arc::new(program);
     // when the time is up the nodes are stopped, and the run still ends as always (its last event, its trace)
+    let late = async move {
+        // the deadline is sent before its sender is dropped, so it is still read after
+        match deadline.wait_for(Option::is_some).await.map(|at| *at) {
+            Ok(Some(at)) => tokio::time::sleep_until(at).await,
+            _ => std::future::pending().await,
+        }
+    };
     let stop = async move {
-        tokio::time::sleep(timeout).await;
-        Error::new(Phase::Execution, Path::root(), Rule::RunTimeout, format!("the run did not end within {} seconds (run_timeout_seconds)", timeout.as_secs()))
+        tokio::select! {
+            _ = tokio::time::sleep(timeout) => Error::new(Phase::Execution, Path::root(), Rule::RunTimeout, format!("the run did not end within {} seconds (run_timeout_seconds)", timeout.as_secs())),
+            _ = late => Error::new(Phase::Execution, Path::root(), Rule::ServiceStopped, "the service was stopped before the run ended"),
+        }
     };
     let outcome = program.run_until(message, stop).await;
     // the branches of a stopped run are aborted and let go of the program a moment later: wait for them, at most a second
