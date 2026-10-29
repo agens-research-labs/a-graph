@@ -123,7 +123,7 @@ pub(super) fn check(v: &Value, shape: &Shape, path: &Path, c: &mut Collector) {
                     best = Some((i, 0));
                     break;
                 }
-                if best.map_or(true, |(_, n)| scratch.errs.len() < n) {
+                if best.is_none_or(|(_, n)| scratch.errs.len() < n) {
                     best = Some((i, scratch.errs.len()));
                 }
             }

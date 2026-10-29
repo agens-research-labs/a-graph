@@ -44,3 +44,9 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "io-uti
 # go from about 540 MB to about 190 MB each; the code of the project keeps it whole
 [profile.dev.package."*"]
 debug = false
+
+[lints.clippy]
+# the shapes of the tests and of the builders are long on purpose: a name for each would hide them, not help
+type_complexity = "allow"
+# the service answers a refusal as a whole HTTP response in the `Err` of a result: that is the point of it
+result_large_err = "allow"

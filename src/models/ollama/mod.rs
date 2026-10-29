@@ -28,6 +28,8 @@ pub struct Ollama {
 
 impl Ollama {
     /// A model of provider `ollama`; `at` is where it is in the yml.
+    // named as the other constructors of models are, after the provider
+    #[allow(clippy::self_named_constructors)]
     pub fn ollama(m: &LocalModel, at: &Path) -> Result<Self, Error> {
         Self::assemble(m, "ollama", at)
     }

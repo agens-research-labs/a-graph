@@ -165,10 +165,10 @@ impl Obj {
         let Some(map) = self.sub(key, errs) else { return out };
         for (name, v) in map.map {
             let Some(name) = name.as_str().map(str::to_string) else { continue };
-            if let Some(mut s) = Obj::new(v, map.at.key(&name), errs) {
-                if let Some(var) = s.req::<String>(key::ENV, errs) {
-                    out.insert(name, var);
-                }
+            if let Some(mut s) = Obj::new(v, map.at.key(&name), errs)
+                && let Some(var) = s.req::<String>(key::ENV, errs)
+            {
+                out.insert(name, var);
             }
         }
         out

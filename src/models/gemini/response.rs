@@ -36,10 +36,10 @@ impl Gemini {
                                 // an audio item does not say its type: it is the one asked for
                                 let mime = item.get("mime_type").and_then(Value::as_str).map(str::to_string).or_else(|| expected.clone());
                                 let mime = mime.ok_or_else(|| self.who.invalid(format!("a {kind} item and no media asked")))?;
-                                if let Some(want) = &expected {
-                                    if !mime.eq_ignore_ascii_case(want) {
-                                        return Err(self.who.mime_mismatch(want, &mime));
-                                    }
+                                if let Some(want) = &expected
+                                    && !mime.eq_ignore_ascii_case(want)
+                                {
+                                    return Err(self.who.mime_mismatch(want, &mime));
                                 }
                                 media.push(MediaOutput { mime_type: mime, data: data.to_string(), id: None });
                             }

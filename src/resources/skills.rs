@@ -188,12 +188,12 @@ impl SkillsManager {
             let timeout = limit(key::TIMEOUT, DEFAULT_TIMEOUT as u64, &mut errs);
             let max_iter = limit(key::MAX_ITER, DEFAULT_MAX_ITER as u64, &mut errs);
             let run_scripts = o.opt::<bool>(key::RUN_SCRIPTS, &mut errs).unwrap_or(true);
-            if let (Some(id), Some(path), Some(max_files), Some(max_file_bytes), Some(max_depth), Some(timeout), Some(max_iter)) = (id, path, max_files, max_file_bytes, max_depth, timeout, max_iter) {
-                if let Some(mut skill) = load(&at, id, path, &mut errs, &mut warnings) {
-                    (skill.max_files, skill.max_file_bytes, skill.max_depth) = (max_files as usize, max_file_bytes, max_depth as usize);
-                    (skill.run_scripts, skill.timeout, skill.max_iter) = (run_scripts, timeout as u32, max_iter as u32);
-                    skills.push(skill);
-                }
+            if let (Some(id), Some(path), Some(max_files), Some(max_file_bytes), Some(max_depth), Some(timeout), Some(max_iter)) = (id, path, max_files, max_file_bytes, max_depth, timeout, max_iter)
+                && let Some(mut skill) = load(&at, id, path, &mut errs, &mut warnings)
+            {
+                (skill.max_files, skill.max_file_bytes, skill.max_depth) = (max_files as usize, max_file_bytes, max_depth as usize);
+                (skill.run_scripts, skill.timeout, skill.max_iter) = (run_scripts, timeout as u32, max_iter as u32);
+                skills.push(skill);
             }
         }
         errs.finish(SkillsManager { skills, warnings })
@@ -259,10 +259,10 @@ fn load(at: &Path, id: String, path: String, errs: &mut Errs, warnings: &mut Vec
     if !description.is_empty() && description.chars().count() > 1024 {
         errs.add(at, Rule::BadValue, "`description` is at most 1024 characters");
     }
-    if let Some(c) = &front.compatibility {
-        if c.is_empty() || c.chars().count() > 500 {
-            errs.add(at, Rule::BadValue, "`compatibility` is from 1 to 500 characters");
-        }
+    if let Some(c) = &front.compatibility
+        && (c.is_empty() || c.chars().count() > 500)
+    {
+        errs.add(at, Rule::BadValue, "`compatibility` is from 1 to 500 characters");
     }
     if errs.0.len() != before {
         return None;

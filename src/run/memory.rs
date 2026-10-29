@@ -109,10 +109,10 @@ impl Program {
                 })
                 .map_err(|e| fail(Rule::Io, format!("memory `{}`: {e}", m.id)))?;
 
-            if let Some(synt) = &memory.synt {
-                if saved.exchanges().len() >= synt.length as usize {
-                    self.summarize(&id, memory, path, saved).await?;
-                }
+            if let Some(synt) = &memory.synt
+                && saved.exchanges().len() >= synt.length as usize
+            {
+                self.summarize(&id, memory, path, saved).await?;
             }
         }
         Ok(())
