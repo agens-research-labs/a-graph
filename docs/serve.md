@@ -96,9 +96,9 @@ What `compose.yml` does, and what to change:
       file: ./service.local.yml
   ```
 - **Ollama stays on your computer** by default, it is not in a container (on macOS a container would have no GPU).
-  A graph reaches it as `http://host.docker.internal:11434`, and `service.yml` allows that host. The check of
-  `allowed_hosts` is on the host, not the port: with that line a graph may reach any service of your computer, so
-  remove it when the service is not for you alone.
+  A graph reaches it as `http://host.docker.internal:11434`, and `service.yml` allows `host.docker.internal:11434`,
+  that port only: the other services of your computer stay out of reach. Remove the line all the same when the
+  service is not for you alone.
 - **Ollama in a container**, on a Linux machine: `docker compose --profile ollama up -d`, then
   `docker compose exec ollama ollama pull qwen3.5:4b` once (the models stay in the volume `ollama-models`). A graph
   reaches it as `http://ollama:11434`.
