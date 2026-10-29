@@ -2,7 +2,8 @@
 
 ## Build and test
 
-You need [Rust](https://rustup.rs). From the root of the project:
+You need [rustup](https://rustup.rs): the Rust of the project is the one of `rust-toolchain.toml`, and rustup
+installs it by itself at the first `cargo`. From the root of the project:
 
 ```
 cargo build
@@ -25,7 +26,8 @@ open. It does not happen on Linux, where the pipes are created closed on exec. R
 
 ## The checks
 
-Every pull request and every push to `main` run the workflow `.github/workflows/ci.yml` on GitHub, on Linux:
+Every pull request and every push to `main` run the workflow `.github/workflows/ci.yml` on GitHub, on Linux, with
+the Rust of `rust-toolchain.toml`:
 
 ```
 cargo build --locked
@@ -36,9 +38,10 @@ docker build .                  # the image, once the Dockerfile is in the repos
 ```
 
 The same commands run by hand, before opening a pull request. Clippy fails on any warning: a lint that does not
-fit the code is allowed in `[lints.clippy]` of `Cargo.toml`, with the reason next to it. `cargo audit` fails on a
-new advisory: the fix is a `cargo update` of that crate, or, when there is no fix yet, an entry in `.cargo/audit.toml`
-with the reason.
+fit the code is allowed in `[lints.clippy]` of `Cargo.toml`, with the reason next to it. A new release of Rust brings
+new lints: the bump of `rust-toolchain.toml` is a commit of its own, with what the new lints asked for. `cargo audit`
+fails on a new advisory: the fix is a `cargo update` of that crate, or, when there is no fix yet, an entry in
+`.cargo/audit.toml` with the reason.
 
 ## How the code is organized
 

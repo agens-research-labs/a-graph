@@ -1,0 +1,5 @@
+# The Rust of the project, the same for everyone: rustup reads this file and installs it by itself. The checks on
+# GitHub use it too, so a new release of Rust does not turn them red with a new lint before someone chose it.
+[toolchain]
+channel = "1.99"
+components = ["clippy"]
