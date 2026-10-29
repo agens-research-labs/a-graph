@@ -15,7 +15,7 @@
       "type": "string"
     },
     "max_runs": {
-      "description": "The most runs going on at once, those of `POST /run` and of `POST /runs` together. A request beyond it is refused with 503 (`too_many_runs`), not queued. The default is 8, at least 1.",
+      "description": "The most runs going on at once, those of `POST /run` and of `POST /runs` together. A request beyond it is refused with 503 (`too_many_runs`) before it is checked, not queued. The default is 8, at least 1.",
       "type": "integer"
     },
     "port": {

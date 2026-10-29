@@ -169,12 +169,13 @@ fn busy(max_runs: usize) -> Response {
 }
 
 async fn run(State(app): State<Arc<App>>, body: axum::body::Bytes) -> Response {
+    // taken without waiting and before anything else, so a request that is refused costs nothing; held until the
+    // run ends, or dropped with a request that is not accepted
+    let Ok(permit) = app.permits.clone().try_acquire_owned() else { return busy(app.config.max_runs) };
     let (program, message) = match accept(&app.config, &body) {
         Ok(x) => x,
         Err(refusal) => return refusal,
     };
-    // taken without waiting, held until the run ends
-    let Ok(permit) = app.permits.clone().try_acquire_owned() else { return busy(app.config.max_runs) };
     // the run is a task of its own that holds the permit: a caller that hangs up drops this handler, not the
     // run, so the permit is given back only when the run really ends (or is stopped by its timeout or the shutdown)
     let timeout = Duration::from_secs(app.config.run_timeout_seconds);
@@ -191,11 +192,11 @@ async fn run(State(app): State<Arc<App>>, body: axum::body::Bytes) -> Response {
 }
 
 async fn start(State(app): State<Arc<App>>, body: axum::body::Bytes) -> Response {
+    let Ok(permit) = app.permits.clone().try_acquire_owned() else { return busy(app.config.max_runs) };
     let (program, message) = match accept(&app.config, &body) {
         Ok(x) => x,
         Err(refusal) => return refusal,
     };
-    let Ok(permit) = app.permits.clone().try_acquire_owned() else { return busy(app.config.max_runs) };
     let id = app.runs.start(program, message, permit, app.deadline.clone());
     (StatusCode::ACCEPTED, axum::Json(json!({ "run": id }))).into_response()
 }
