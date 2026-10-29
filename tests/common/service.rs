@@ -91,6 +91,11 @@ impl Service {
     }
 }
 
+/// The lines of a log the service wrote (a file in the folder of a session), as JSON; none when there is no file.
+pub fn log_lines(path: &str) -> Vec<Value> {
+    std::fs::read_to_string(path).unwrap_or_default().lines().map(|l| serde_json::from_str(l).unwrap()).collect()
+}
+
 /// The events of an SSE text, as (name, data).
 pub fn parse_sse(text: &str) -> Vec<(String, Value)> {
     text.split("\n\n")

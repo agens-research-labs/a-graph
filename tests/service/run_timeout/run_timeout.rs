@@ -13,9 +13,12 @@ fn config_path() -> String {
     dir().join("service.yml").to_string_lossy().to_string()
 }
 
-/// With `run_timeout_seconds: 1` a run whose model takes 3 seconds ends as failed with `run_timeout`.
+/// With `run_timeout_seconds: 1` a run whose model takes 3 seconds ends as failed with `run_timeout`, and its log
+/// still gets the last event of the run.
 #[tokio::test]
 async fn run_timeout() {
+    let log = "target/test-service/run_timeout/default/run.log";
+    let _ = std::fs::remove_file(log);
     serve_at_slowly(17404, std::time::Duration::from_secs(3), |_| Resp::ok(answer("too late"))).await;
     let s = start(&config_path(), 17405).await;
     let (status, body) = s.start_run(json!({ "yml": read("graph.yml"), "message": "how long?" })).await;
@@ -27,4 +30,7 @@ async fn run_timeout() {
     let events = s.events(&id).await;
     let (name, data) = events.last().unwrap();
     assert_eq!((name.as_str(), &data["errors"][0]["rule"]), ("error", &json!("run_timeout")));
+    // the log is closed before the run is said to be over: its last line is the end of the run, with the rule
+    let lines = log_lines(log);
+    assert_eq!(lines.last().map(|l| &l["code"]), Some(&json!("run_timeout")), "{lines:?}");
 }

@@ -52,7 +52,8 @@ until then.
 
 A run lasts at most `run_timeout_seconds` (an hour when the file does not say). Then it is stopped and ends as
 failed, with the rule `run_timeout`: `POST /run` answers 502, and a run of `POST /runs` ends with the state `failed`
-and the event `error`.
+and the event `error`. It still ends as any run does: its MCP servers are closed, its last event is logged and its
+trace is sent.
 
 A run keeps its last 1000 events. A watcher that comes after older ones were dropped first gets the event `dropped`,
 `{ "count": n }`, with how many it missed, then the events kept.

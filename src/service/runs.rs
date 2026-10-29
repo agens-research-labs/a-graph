@@ -153,11 +153,12 @@ impl Runs {
 /// Runs the program to its end, or until `timeout` has passed (`run_timeout`); then closes its log.
 pub(super) async fn run_within(program: Program, message: &str, timeout: Duration) -> Result<RunOutput, Error> {
     let program = Arc::new(program);
-    // the run is dropped when the time is up, so the program is ours alone again and its log can be closed
-    let outcome = match tokio::time::timeout(timeout, program.run(message)).await {
-        Ok(outcome) => outcome,
-        Err(_) => Err(Error::new(Phase::Execution, Path::root(), Rule::RunTimeout, format!("the run did not end within {} seconds (run_timeout_seconds)", timeout.as_secs()))),
+    // when the time is up the nodes are stopped, and the run still ends as always (its last event, its trace)
+    let stop = async move {
+        tokio::time::sleep(timeout).await;
+        Error::new(Phase::Execution, Path::root(), Rule::RunTimeout, format!("the run did not end within {} seconds (run_timeout_seconds)", timeout.as_secs()))
     };
+    let outcome = program.run_until(message, stop).await;
     // the branches of a stopped run are aborted and let go of the program a moment later: wait for them, at most a second
     let mut program = program;
     for _ in 0..100 {

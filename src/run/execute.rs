@@ -96,12 +96,26 @@ impl Program {
     /// an `Arc` because the branches of a `parallel` group are tasks that outlive a plain reference.
     /// On a multi-thread runtime they run on different threads.
     pub async fn run(self: &Arc<Self>, user_message: &str) -> Result<RunOutput, Error> {
+        self.run_until(user_message, std::future::pending()).await
+    }
+
+    /// Runs the graph as `run` does, but the nodes are stopped when `stop` is ready before they end, and its error
+    /// is the outcome. Either way the run ends as always: its MCP servers are closed, its last event is logged and
+    /// its trace is sent. The service stops so a run that lasts too long, or that is going on when it shuts down.
+    pub async fn run_until(self: &Arc<Self>, user_message: &str, stop: impl Future<Output = Error>) -> Result<RunOutput, Error> {
         refuse_what_is_not_run_yet(self.edges.steps())?;
         self.run_started();
         let started = std::time::Instant::now();
         // the MCP servers are connected before the first node and closed after the last, or after the error
-        self.connect_mcp().await?;
-        let output = self.run_nodes(user_message).await;
+        let nodes = async {
+            self.connect_mcp().await?;
+            self.run_nodes(user_message).await
+        };
+        // a stop drops the nodes halfway: the tasks of their branches are aborted (`Branches`)
+        let output = tokio::select! {
+            output = nodes => output,
+            e = stop => Err(e),
+        };
         self.close_mcp().await;
         self.run_finished(started, output.as_ref().err());
         // the timeline of the run goes to the collector, whatever the outcome
@@ -460,7 +474,7 @@ fn refuse(steps: &[Step], inside_react: bool) -> Result<(), Error> {
 }
 
 /// The tasks of the branches of a group. They are stopped when it is dropped: when a branch fails, and when the
-/// run itself is dropped (the service stops a run that lasts too long), so no branch goes on alone.
+/// nodes of the run are dropped (the service stops a run, see `run_until`), so no branch goes on alone.
 struct Branches(Vec<JoinHandle<Result<Branch, Error>>>);
 
 impl Drop for Branches {

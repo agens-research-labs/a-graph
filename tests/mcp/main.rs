@@ -39,5 +39,8 @@ mod restart_and_retry;
 #[path = "same_tool_name/same_tool_name.rs"]
 mod same_tool_name;
 
+#[path = "stopped_closes/stopped_closes.rs"]
+mod stopped_closes;
+
 #[path = "unused_not_started/unused_not_started.rs"]
 mod unused_not_started;
