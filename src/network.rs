@@ -90,20 +90,18 @@ pub fn logging_destinations(observability: Option<Value>, trace: Option<Value>) 
     let obs_path = Path::root().key(key::OBSERVABILITY).key(key::OUTPUT);
     if let Some(Value::Mapping(mut obs)) = observability {
         // `stdout` is a word and `{ file }` has no url: only `{ url }` is network
-        if let Some(Value::Mapping(output)) = obs.remove(key::OUTPUT) {
-            if let Some(mut o) = Obj::new(Value::Mapping(output), obs_path.clone(), &mut errs) {
-                if let Some(url) = o.opt::<String>(key::URL, &mut errs) {
-                    out.push(Destination::url(obs_path.key(key::URL), url));
-                }
-            }
+        if let Some(Value::Mapping(output)) = obs.remove(key::OUTPUT)
+            && let Some(mut o) = Obj::new(Value::Mapping(output), obs_path.clone(), &mut errs)
+            && let Some(url) = o.opt::<String>(key::URL, &mut errs)
+        {
+            out.push(Destination::url(obs_path.key(key::URL), url));
         }
     }
-    if let Some(t) = trace {
-        if let Some(mut t) = Obj::new(t, Path::root().key(key::TRACE), &mut errs) {
-            if let Some(endpoint) = t.opt::<String>(key::ENDPOINT, &mut errs) {
-                out.push(Destination::url(Path::root().key(key::TRACE).key(key::ENDPOINT), endpoint));
-            }
-        }
+    if let Some(t) = trace
+        && let Some(mut t) = Obj::new(t, Path::root().key(key::TRACE), &mut errs)
+        && let Some(endpoint) = t.opt::<String>(key::ENDPOINT, &mut errs)
+    {
+        out.push(Destination::url(Path::root().key(key::TRACE).key(key::ENDPOINT), endpoint));
     }
     errs.finish(out)
 }

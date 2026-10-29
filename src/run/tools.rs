@@ -135,7 +135,7 @@ impl Program {
         loop {
             let mut response = llm.invoke(&call).await.map_err(|e| fail(Rule::ModelFailed, e.to_string()))?;
             self.model_called(&id, self.nodes.model().get(node).map(|m| m.id.as_str()).unwrap_or_default(), &call, &response);
-            usage = usage + response.info.usage;
+            usage += response.info.usage;
             time += response.info.execution_time;
             if response.tools_call.is_empty() {
                 response.info.usage = usage;
