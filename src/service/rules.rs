@@ -10,6 +10,14 @@ use super::ServiceConfig;
 use crate::error::{Error, Path, Phase, Rule};
 use crate::net::{allowed_entry, entry_text};
 
+/// The empty file that tells a folder of `data_dir` was made by the service for a session: the sweep deletes no other.
+pub(super) const SESSION_MARKER: &str = ".a-graph-session";
+
+/// A session is a folder name: letters, digits, `-`, `_` and `.`, at most 64, and not made of dots only.
+pub(super) fn valid_session(s: &str) -> bool {
+    !s.is_empty() && s.len() <= 64 && s.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.')) && s.chars().any(|c| c != '.')
+}
+
 fn refuse(at: Path, rule: Rule, msg: impl Into<String>) -> Error {
     Error::new(Phase::Validation, at, rule, msg)
 }
@@ -113,6 +121,13 @@ fn confine(item: &mut Value, keys: &[&str], at: &Path, folder: &FsPath, errs: &m
     let escapes = wanted.is_absolute() || wanted.components().any(|c| matches!(c, Component::ParentDir | Component::Prefix(_) | Component::RootDir));
     if path.is_empty() || escapes {
         errs.push(refuse(here, Rule::NotSupported, format!("`{path}` is outside the folder of the session: write a relative path without `..`")));
+        return;
+    }
+    // the mark at the top of the folder is emptied by the service at every use: a file of the graph there would be
+    // lost. Past any `./`, and in any case, since a filesystem that ignores case has one file for both
+    let first = wanted.components().find(|c| !matches!(c, Component::CurDir));
+    if first.is_some_and(|c| c.as_os_str().to_str().is_some_and(|s| s.eq_ignore_ascii_case(SESSION_MARKER))) {
+        errs.push(refuse(here, Rule::NotSupported, format!("`{path}` is the mark the service keeps in the folder of the session: choose another name")));
         return;
     }
     *path = folder.join(wanted).to_string_lossy().to_string();

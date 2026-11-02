@@ -74,9 +74,52 @@ request weighs at most 64 MiB.
 ## Sessions
 
 A request may name a `session`, a name of letters, digits, `-`, `_` and `.`, at most 64 characters; without it, the
-session is `default`. Each session has its own folder, `<data_dir>/<session>/`, created at its first request. Two
+session is `default`. Each session has its own folder, `<data_dir>/<session>/`, created at its first request. A name
+keeps its case: `A` and `a` are two sessions with two folders, unless the filesystem of `data_dir` ignores case (as
+on macOS), where they are one folder. Two
 requests with the same session use the same folder, so a memory or a blackboard file written by one is read by the
 next.
+
+The `default` session is shared by every caller that names none. Give each caller its own session if their files must
+not meet.
+
+Nothing deletes a session by itself, unless the service file says so.
+
+- `session_retention_seconds` deletes the folder of a session (the whole folder, with its memories, blackboards and
+  media) when nothing touched it for that long. Every request accepted touches its session, and so does the end of its
+  run: it sets the modified time of the file `.a-graph-session` of the folder, which needs only the right to write it
+  (a failure is written on the standard error). A refused request does not touch it. A session with a run going on is
+  never deleted. Without this key nothing is ever deleted.
+- `session_max_bytes` is the most a session folder may weigh. A request for a session over the cap is refused (422,
+  `session_full`) before it runs. The refusal does not touch the session, so a full session is still deleted after
+  `session_retention_seconds`, however often it is asked for. Use another session, or ask the operator of the service
+  to free it. Without this key there is no cap.
+
+How the sweep works:
+
+- The folders are looked at every 10 seconds, or every `session_retention_seconds` when that is shorter. A session
+  therefore lives up to about its retention plus that interval.
+- Only the folders the service made are ever deleted: those with a valid session name and the empty file
+  `.a-graph-session`, which every request writes in its folder. Keep `data_dir` for the service alone all the same.
+- A folder made by an older version of the service has no `.a-graph-session`, so it is never deleted, unless a
+  request on it writes the file, or the operator creates the empty file `.a-graph-session` in it.
+- The time the service is stopped counts as idle time. After a long stop, the first look deletes every session not
+  touched for longer than the retention.
+- A folder to delete is first renamed `<session>~deleting` (a name no session can have), then removed, so a request
+  for the same session starts a new folder. Its file `.a-graph-session` is removed last: a folder `*~deleting` left by
+  a stop still has it, and is removed at the next look. A folder `*~deleting` without `.a-graph-session` is not one
+  the service set aside: it stays, unless it is empty. A folder that cannot be removed is written on the standard
+  error, and the service goes on.
+
+What the cap does not do:
+
+- The size is checked once the graph is checked, before the run. Every request already accepted may go past the cap,
+  and a single run may grow with no limit (a loop writing a blackboard, media): only the next request is refused.
+- The cap is per session. The service has no authentication, so the number of sessions is not limited: the disk used
+  in all is bounded only by the retention and by the rate of the requests.
+- The size is the sum of the lengths of the files. Blocks on the disk, folders and links are not counted.
+- When the cap is set, every request walks the whole folder of its session. A session with very many files costs
+  that walk at every request.
 
 ## A graph from outside
 
@@ -87,7 +130,8 @@ if it breaks one of these rules:
   `run_scripts: false`: only services reached over `http` are allowed (`not_supported`).
 - **Files in the session.** Every path of the graph (the `path` of a prompt, a media, a skill or a memory, the `file`
   of a blackboard or of the log) is moved into the folder of the session. It must be relative and without `..`
-  (`not_supported`). A file the graph reads must therefore already be in the folder of the session; a media can come
+  (`not_supported`), and it cannot be `.a-graph-session`, the file the service keeps at the top of the folder, in
+  any case (`not_supported`): the same name in a subfolder is allowed. A file the graph reads must therefore already be in the folder of the session; a media can come
   inside the graph instead, as `source: { base64 }`.
 - **Hosts.** Every host in the `allowed_hosts` of the passport of the graph must be in the `allowed_hosts` of the
   service (`network_not_allowed`): a graph can only restrict the hosts of the service. An entry of the graph,
@@ -96,6 +140,9 @@ if it breaks one of these rules:
 
 Then the graph is checked as by `--check`: a graph that is not valid is refused (422) with all its errors, in the form
 `{ "errors": [ { "phase", "path", "rule", "message" } ] }`.
+
+Last, if the service file sets `session_max_bytes`, a session whose folder weighs more is refused (422,
+`session_full`). The size is checked before the request runs, so the requests already accepted can go past the cap.
 
 ## Docker
 

@@ -12,6 +12,9 @@ mod config_limits;
 #[path = "config_retention/config_retention.rs"]
 mod config_retention;
 
+#[path = "config_storage/config_storage.rs"]
+mod config_storage;
+
 #[path = "config_rules/config_rules.rs"]
 mod config_rules;
 
@@ -80,6 +83,27 @@ mod runs_result;
 
 #[path = "runs_unknown/runs_unknown.rs"]
 mod runs_unknown;
+
+#[path = "session_case/session_case.rs"]
+mod session_case;
+
+#[path = "session_foreign_kept/session_foreign_kept.rs"]
+mod session_foreign_kept;
+
+#[path = "session_full/session_full.rs"]
+mod session_full;
+
+#[path = "session_in_use_kept/session_in_use_kept.rs"]
+mod session_in_use_kept;
+
+#[path = "session_leftover/session_leftover.rs"]
+mod session_leftover;
+
+#[path = "session_mark_refused/session_mark_refused.rs"]
+mod session_mark_refused;
+
+#[path = "session_swept/session_swept.rs"]
+mod session_swept;
 
 #[path = "sessions_apart/sessions_apart.rs"]
 mod sessions_apart;

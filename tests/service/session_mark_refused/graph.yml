@@ -1,0 +1,48 @@
+# The graph a caller sends to the service: its blackboard, memory and log are named as the mark of the session,
+# `.a-graph-session`, in three spellings; a second blackboard has the name in a subfolder (model mock on {{port:model}}).
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error, output: { file: .A-Graph-Session } }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:{{port:model}}
+    input: [text]
+    output: [text]
+blackboards:
+  - id: bb
+    source: { file: .a-graph-session }
+  - id: kept
+    source: { file: data/.a-graph-session }
+external:
+  memory:
+    - id: mem
+      provider: json_file
+      path: ./.a-graph-session
+      chat: { length: 3 }
+resources:
+  prompts:
+    - id: pa
+      content:
+        system: "Be brief."
+        user: "Q: {{user_message}}"
+graph:
+  nodes:
+    - id: a
+      model: { id: m, max_tokens: 50 }
+      resources: { prompt: pa }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true }
+  edges:
+    - start: a
+    - end: a

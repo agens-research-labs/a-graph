@@ -43,8 +43,8 @@ impl Endpoint {
         let refusals = |mut responses: serde_json::Map<String, Value>| {
             responses.insert("400".into(), errors("The body is not a JSON object with `yml`, `message` and, if wanted, `session` (an unknown key too), or `session` is not a name."));
             responses.insert("413".into(), json!({ "description": "The body is larger than 64 MiB." }));
-            responses.insert("422".into(), errors("The graph is not valid, or it breaks a rule of the service."));
-            responses.insert("500".into(), errors("The folder of the session cannot be created."));
+            responses.insert("422".into(), errors("The graph is not valid, it breaks a rule of the service, or the session is full (`session_full`)."));
+            responses.insert("500".into(), errors("The folder of the session cannot be created or weighed."));
             responses.insert("503".into(), errors("The service is running its most runs, `max_runs` (`too_many_runs`): try again later."));
             Value::Object(responses)
         };
