@@ -166,15 +166,25 @@ pub(super) struct Runs {
     data_dir: PathBuf,
     /// How long a session folder is kept after its last request; `None`: for ever.
     session_retention: Option<Duration>,
-    /// The sessions that have runs going on, with how many.
+    /// The sessions that have runs going on, with how many; by their name in lowercase (`in_use_key`).
     sessions: Mutex<HashMap<String, usize>>,
     last_scan: Mutex<Instant>,
+}
+
+/// The key of a session among those in use: its name in lowercase. On a filesystem that ignores case, `S` and `s`
+/// are one folder, so a run on either keeps that folder from the sweep; elsewhere they are two folders, and a run on
+/// one only delays the sweep of the other.
+fn in_use_key(session: &str) -> String {
+    session.to_ascii_lowercase()
 }
 
 /// A session with a run going on: its folder is not deleted while this lives.
 pub(super) struct SessionInUse {
     runs: Arc<Runs>,
+    /// The name of the session, which is the name of its folder.
     session: String,
+    /// Its key among the sessions in use.
+    key: String,
     /// Whether the request was accepted: only then does it count as a use of the session.
     accepted: bool,
 }
@@ -190,10 +200,10 @@ impl SessionInUse {
 impl Drop for SessionInUse {
     fn drop(&mut self) {
         let mut sessions = self.runs.sessions.lock().unwrap();
-        if let Some(n) = sessions.get_mut(&self.session) {
+        if let Some(n) = sessions.get_mut(&self.key) {
             *n -= 1;
             if *n == 0 {
-                sessions.remove(&self.session);
+                sessions.remove(&self.key);
             }
         }
         // the run was part of the life of the folder: its time is counted from the end; a refused request is not
@@ -219,8 +229,9 @@ impl Runs {
 
     /// Marks the session as in use until the result is dropped.
     pub(super) fn enter(self: &Arc<Self>, session: &str) -> SessionInUse {
-        *self.sessions.lock().unwrap().entry(session.to_string()).or_insert(0) += 1;
-        SessionInUse { runs: self.clone(), session: session.to_string(), accepted: false }
+        let key = in_use_key(session);
+        *self.sessions.lock().unwrap().entry(key.clone()).or_insert(0) += 1;
+        SessionInUse { runs: self.clone(), session: session.to_string(), key, accepted: false }
     }
 
     pub(super) fn get(&self, id: &str) -> Option<Arc<RunState>> {
@@ -292,9 +303,7 @@ impl Runs {
             let doomed = {
                 let sessions = self.sessions.lock().unwrap();
                 let old = std::fs::symlink_metadata(entry.path().join(SESSION_MARKER)).and_then(|m| m.modified()).is_ok_and(|t| t.elapsed().is_ok_and(|age| age > keep));
-                // the sessions in use are in lowercase; a folder made by an older version may not be, and on a
-                // filesystem that ignores case it is the folder of the lowercase session
-                if !old || sessions.contains_key(&name.to_ascii_lowercase()) {
+                if !old || sessions.contains_key(&in_use_key(&name)) {
                     continue;
                 }
                 let doomed = aside(&self.data_dir, &name);

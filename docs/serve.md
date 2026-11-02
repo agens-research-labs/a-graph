@@ -74,8 +74,9 @@ request weighs at most 64 MiB.
 ## Sessions
 
 A request may name a `session`, a name of letters, digits, `-`, `_` and `.`, at most 64 characters; without it, the
-session is `default`. Names are compared without regard to case: `A` and `a` are the same session, whose folder has
-the name in lowercase. Each session has its own folder, `<data_dir>/<session>/`, created at its first request. Two
+session is `default`. Each session has its own folder, `<data_dir>/<session>/`, created at its first request. A name
+keeps its case: `A` and `a` are two sessions with two folders, unless the filesystem of `data_dir` ignores case (as
+on macOS), where they are one folder. Two
 requests with the same session use the same folder, so a memory or a blackboard file written by one is read by the
 next.
 

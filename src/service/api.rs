@@ -129,7 +129,7 @@ fn schemas() -> Value {
                     "type": "string",
                     "pattern": "^(?!\\.+$)[A-Za-z0-9._-]{1,64}$",
                     "default": "default",
-                    "description": "The session: the folder, inside `data_dir`, where the files of the graph are. Letters, digits, `-`, `_` and `.`, at most 64, not dots only; compared without regard to case.",
+                    "description": "The session: the folder, inside `data_dir`, where the files of the graph are. Letters, digits, `-`, `_` and `.`, at most 64, not dots only.",
                 },
             },
             "required": ["yml", "message"],

@@ -19,7 +19,8 @@ fn folders(data: &std::path::Path) -> Vec<String> {
     names
 }
 
-/// `ABC` and `abc` are the same session, in the folder `abc`; a run on `ABC` keeps `abc` from the sweep.
+/// A name keeps its case: `ABC` and `abc` have two folders, unless the filesystem ignores case, where they are one.
+/// A run on `ABC` keeps `abc` from the sweep too, since on such a filesystem it is the same folder.
 #[tokio::test]
 async fn session_case() {
     let data = std::path::Path::new("target/test-service/session_case");
@@ -35,6 +36,7 @@ async fn session_case() {
     // `ABC` goes on
     tokio::time::sleep(std::time::Duration::from_secs(3)).await;
     assert_eq!(s.get(&format!("/runs/{id}")).await.1["state"], "running", "the run is still going on");
-    assert_eq!(folders(data), ["abc"], "one folder, in lowercase, kept while the run uses it");
+    let names = folders(data);
+    assert!(names == ["ABC", "abc"] || names == ["abc"], "a folder for each name (one, where the filesystem ignores case), kept while the run uses it: {names:?}");
     assert_eq!(s.finished(&id).await["state"], "done");
 }

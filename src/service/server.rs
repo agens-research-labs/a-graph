@@ -182,8 +182,6 @@ async fn accept(app: &App, body: &[u8]) -> Result<(Program, String, SessionInUse
     if !valid_session(&session) {
         return Err(bad_request("`session` is a name of letters, digits, `-`, `_` and `.`, at most 64 characters".to_string()));
     }
-    // one name for one folder, also on a filesystem that ignores case, where `S` and `s` would be the same folder
-    let session = session.to_ascii_lowercase();
     let yml = prepare(&request.yml, config, &session).map_err(|errors| failure(StatusCode::UNPROCESSABLE_ENTITY, &errors))?;
     // in use before the folder exists, so the sweep cannot delete it from under the request
     let mut using = app.runs.enter(&session);
