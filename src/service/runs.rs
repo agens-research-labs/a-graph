@@ -119,13 +119,40 @@ fn aside(data_dir: &std::path::Path, session: &str) -> PathBuf {
     }
 }
 
+/// Whether the folder holds the mark of the service, a real file (not a link).
+fn marked(folder: &std::path::Path) -> bool {
+    std::fs::symlink_metadata(folder.join(SESSION_MARKER)).is_ok_and(|m| m.is_file())
+}
+
 /// Deletes a folder set aside; one already gone is not an error.
 fn remove(folder: &std::path::Path, session: &str) {
-    match std::fs::remove_dir_all(folder) {
+    match remove_mark_last(folder) {
         Ok(()) => {}
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
         Err(e) => eprintln!("a-graph: cannot remove session {session}: {e}"),
     }
+}
+
+/// Deletes what the folder holds, then its mark, then the folder. A deletion cut short leaves the mark, so the next
+/// scan still knows the folder as one of the service and finishes it.
+fn remove_mark_last(folder: &std::path::Path) -> std::io::Result<()> {
+    for entry in std::fs::read_dir(folder)? {
+        let entry = entry?;
+        if entry.file_name() == SESSION_MARKER {
+            continue;
+        }
+        // a link is removed, not followed
+        if entry.file_type()?.is_dir() {
+            std::fs::remove_dir_all(entry.path())?;
+        } else {
+            std::fs::remove_file(entry.path())?;
+        }
+    }
+    match std::fs::remove_file(folder.join(SESSION_MARKER)) {
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(e),
+        _ => {}
+    }
+    std::fs::remove_dir(folder)
 }
 
 /// The folders of the sessions are looked at no more often than this, unless the retention is shorter.
@@ -245,12 +272,18 @@ impl Runs {
             // a folder already set aside to be deleted, by this scan or by one that was stopped halfway
             if name.ends_with(DELETING) {
                 if is_dir {
-                    remove(&entry.path(), &name);
+                    if marked(&entry.path()) {
+                        remove(&entry.path(), &name);
+                    } else {
+                        // without the mark it is either a folder the service did not make, which stays, or one whose
+                        // deletion stopped right after the mark, which is empty: only an empty folder is removed
+                        let _ = std::fs::remove_dir(entry.path());
+                    }
                 }
                 continue;
             }
             // only a real folder (not a link) with the name of a session and the mark of the service
-            if !valid_session(&name) || !is_dir || !std::fs::symlink_metadata(entry.path().join(SESSION_MARKER)).is_ok_and(|m| m.is_file()) {
+            if !valid_session(&name) || !is_dir || !marked(&entry.path()) {
                 continue;
             }
             // under the lock no run can start or end on the folder between the look and the rename; the rename is

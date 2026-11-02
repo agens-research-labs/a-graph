@@ -105,8 +105,10 @@ How the sweep works:
 - The time the service is stopped counts as idle time. After a long stop, the first look deletes every session not
   touched for longer than the retention.
 - A folder to delete is first renamed `<session>~deleting` (a name no session can have), then removed, so a request
-  for the same session starts a new folder. A folder `*~deleting` left by a stop is removed at the next look. A folder
-  that cannot be removed is written on the standard error, and the service goes on.
+  for the same session starts a new folder. Its file `.a-graph-session` is removed last: a folder `*~deleting` left by
+  a stop still has it, and is removed at the next look. A folder `*~deleting` without `.a-graph-session` is not one
+  the service set aside: it stays, unless it is empty. A folder that cannot be removed is written on the standard
+  error, and the service goes on.
 
 What the cap does not do:
 
