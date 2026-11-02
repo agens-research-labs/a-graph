@@ -85,11 +85,13 @@ pub async fn serve(config: ServiceConfig, shutdown: impl Future<Output = ()> + S
         let _ = told.send(Some(Instant::now() + Duration::from_secs(SHUTDOWN_SECONDS)));
     };
     let server = axum::serve(listener, app).with_graceful_shutdown(signal).into_future();
-    // a request that does not end (a watcher of a long run) must not hold the service past the deadline
+    // the server ends when every connection has ended, so a caller still connected when its run is stopped at the
+    // deadline gets the answer of that run. A connection that does not end (a run that does not close) must not hold
+    // the service past the time the runs have to close
     let late = async {
         match deadline.wait_for(Option::is_some).await {
             Ok(at) => {
-                let at = at.unwrap_or_else(Instant::now);
+                let at = at.unwrap_or_else(Instant::now) + Duration::from_secs(CLOSE_SECONDS);
                 tokio::time::sleep_until(at).await;
             }
             Err(_) => std::future::pending().await,
