@@ -191,7 +191,9 @@ What `compose.yml` does, and what to change:
 - **The keys** of the cloud models are environment variables of the container, named in `compose.yml` and taken from
   your shell or from a `.env` file next to it: `ANTHROPIC_API_KEY=sk-... docker compose up -d`.
 - **The sessions** live in the named volume `a-graph-data`. Do not replace it with a folder of yours: the container
-  writes as user 10001 and, on Linux, the folder would refuse it.
+  writes as user 10001 and, on Linux, the folder would refuse it. The `service.yml` of the repository deletes a
+  session nobody used for 7 days and refuses one over 100 MB (`session_retention_seconds`, `session_max_bytes`):
+  change the two values, or remove the lines to keep every session for ever.
 
 Without Compose, the same thing is:
 
