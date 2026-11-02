@@ -1,0 +1,23 @@
+# The advisories on the crates of Cargo.lock, every Monday: an advisory published in a quiet week is seen without
+# waiting for the next push. The audit of every pull request and of every push is a job of ci.yml. Run it by hand from
+# the Actions tab.
+name: audit
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Monday, 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - run: cargo install cargo-audit --locked
+      - run: cargo audit
