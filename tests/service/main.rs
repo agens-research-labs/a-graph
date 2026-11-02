@@ -99,6 +99,9 @@ mod session_in_use_kept;
 #[path = "session_leftover/session_leftover.rs"]
 mod session_leftover;
 
+#[path = "session_mark_refused/session_mark_refused.rs"]
+mod session_mark_refused;
+
 #[path = "session_swept/session_swept.rs"]
 mod session_swept;
 

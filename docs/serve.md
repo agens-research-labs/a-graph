@@ -130,7 +130,8 @@ if it breaks one of these rules:
   `run_scripts: false`: only services reached over `http` are allowed (`not_supported`).
 - **Files in the session.** Every path of the graph (the `path` of a prompt, a media, a skill or a memory, the `file`
   of a blackboard or of the log) is moved into the folder of the session. It must be relative and without `..`
-  (`not_supported`). A file the graph reads must therefore already be in the folder of the session; a media can come
+  (`not_supported`), and it cannot be `.a-graph-session`, the file the service keeps at the top of the folder, in
+  any case (`not_supported`): the same name in a subfolder is allowed. A file the graph reads must therefore already be in the folder of the session; a media can come
   inside the graph instead, as `source: { base64 }`.
 - **Hosts.** Every host in the `allowed_hosts` of the passport of the graph must be in the `allowed_hosts` of the
   service (`network_not_allowed`): a graph can only restrict the hosts of the service. An entry of the graph,
