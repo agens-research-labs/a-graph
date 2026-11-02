@@ -33,7 +33,7 @@ did not close in time is cut, with the connections still open: the service write
 Either way it ends with 0.
 
 Docker kills a container 10 seconds after `docker stop` by default. To give the runs their 30 seconds, and 5 more
-to close, set `stop_grace_period` higher in the compose file:
+to close, `compose.yml` sets `stop_grace_period` higher; set it in your own compose file too:
 
 ```yaml
 services:
