@@ -18,7 +18,8 @@ use serde_json::{Value, json};
 use tokio::sync::{Semaphore, watch};
 
 use super::api::Endpoint;
-use super::runs::{Next, Runs, errors_json, run_within};
+use super::runs::{Next, Runs, SessionInUse, errors_json, run_within};
+use super::rules::{SESSION_MARKER, valid_session};
 use super::{ServiceConfig, prepare};
 use crate::error::{Error, Path, Phase, Rule};
 use crate::run::{Program, build};
@@ -59,12 +60,12 @@ pub async fn serve(config: ServiceConfig, shutdown: impl Future<Output = ()> + S
     let port = config.port;
     let max_runs = config.max_runs;
     let permits = Arc::new(Semaphore::new(max_runs));
-    let runs = Runs::new(Duration::from_secs(config.retention_seconds), Duration::from_secs(config.run_timeout_seconds));
+    let runs = Runs::new(Duration::from_secs(config.retention_seconds), Duration::from_secs(config.run_timeout_seconds), config.data_dir.clone(), config.session_retention_seconds.map(Duration::from_secs));
     let sweeping = runs.clone();
     tokio::spawn(async move {
         loop {
             tokio::time::sleep(Duration::from_millis(500)).await;
-            sweeping.sweep();
+            sweeping.sweep().await;
         }
     });
     // the routes are those the API describes, with their paths and methods
@@ -143,25 +144,81 @@ fn bad_request(message: String) -> Response {
     failure(StatusCode::BAD_REQUEST, &[Error::new(Phase::Validation, Path::root(), Rule::BadValue, message)])
 }
 
-/// A session is a folder name: letters, digits, `-`, `_` and `.`, at most 64, and not made of dots only.
-fn valid_session(s: &str) -> bool {
-    !s.is_empty() && s.len() <= 64 && s.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.')) && s.chars().any(|c| c != '.')
+/// Whether the files under this folder weigh more than `cap` bytes; a folder that is not there weighs 0. The walk
+/// stops as soon as the sum passes the cap, and it does not follow symlinks.
+fn folder_over(folder: &std::path::Path, cap: u64) -> std::io::Result<bool> {
+    let mut total = 0u64;
+    let mut pending = vec![folder.to_path_buf()];
+    while let Some(dir) = pending.pop() {
+        let entries = match std::fs::read_dir(&dir) {
+            Ok(entries) => entries,
+            // a folder removed while we count weighs nothing
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(e) => return Err(e),
+        };
+        for entry in entries {
+            let entry = entry?;
+            let kind = entry.file_type()?;
+            if kind.is_dir() {
+                pending.push(entry.path());
+            } else if kind.is_file() {
+                // a file removed while we count weighs nothing
+                total += entry.metadata().map(|m| m.len()).unwrap_or(0);
+                if total > cap {
+                    return Ok(true);
+                }
+            }
+        }
+    }
+    Ok(false)
 }
 
-/// The program of a request, built, and its message; or the answer that refuses the request.
-fn accept(config: &ServiceConfig, body: &[u8]) -> Result<(Program, String), Response> {
+/// The program of a request, built, its message and the session it keeps in use; or the answer that refuses the request.
+async fn accept(app: &App, body: &[u8]) -> Result<(Program, String, SessionInUse), Response> {
+    let config = &app.config;
     let request: Request = serde_json::from_slice(body)
         .map_err(|e| bad_request(format!("the request must be a JSON object with `yml`, `message` and, if wanted, `session`: {e}")))?;
     let session = request.session.unwrap_or_else(|| "default".to_string());
     if !valid_session(&session) {
         return Err(bad_request("`session` is a name of letters, digits, `-`, `_` and `.`, at most 64 characters".to_string()));
     }
+    // one name for one folder, also on a filesystem that ignores case, where `S` and `s` would be the same folder
+    let session = session.to_ascii_lowercase();
     let yml = prepare(&request.yml, config, &session).map_err(|errors| failure(StatusCode::UNPROCESSABLE_ENTITY, &errors))?;
-    std::fs::create_dir_all(config.data_dir.join(&session))
+    // in use before the folder exists, so the sweep cannot delete it from under the request
+    let mut using = app.runs.enter(&session);
+    let folder = config.data_dir.join(&session);
+    // the folder is there before the build, which may open files in it (the log)
+    std::fs::create_dir_all(&folder)
         .map_err(|e| failure(StatusCode::INTERNAL_SERVER_ERROR, &[Error::new(Phase::Execution, Path::root(), Rule::Io, format!("cannot create the folder of the session: {e}"))]))?;
+    // the sweep deletes only the folders with this mark, so it never touches what the service did not make; it is
+    // only made here, not stamped: a refused request does not keep the session alive
+    std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(folder.join(SESSION_MARKER))
+        .map_err(|e| failure(StatusCode::INTERNAL_SERVER_ERROR, &[Error::new(Phase::Execution, Path::root(), Rule::Io, format!("cannot mark the folder of the session: {e}"))]))?;
     // the program is built again for each request: requests share nothing
     let program = build(&yml).map_err(|errors| failure(StatusCode::UNPROCESSABLE_ENTITY, &errors.0))?;
-    Ok((program, request.message))
+    if let Some(cap) = config.session_max_bytes {
+        // the walk reads the disk: it does not run on a thread of the executor
+        let weighed = tokio::task::spawn_blocking({
+            let folder = folder.clone();
+            move || folder_over(&folder, cap)
+        })
+        .await;
+        let over = match weighed {
+            Ok(Ok(over)) => over,
+            Ok(Err(e)) => return Err(failure(StatusCode::INTERNAL_SERVER_ERROR, &[Error::new(Phase::Execution, Path::root(), Rule::Io, format!("cannot weigh the folder of the session: {e}"))])),
+            Err(e) => return Err(failure(StatusCode::INTERNAL_SERVER_ERROR, &[Error::new(Phase::Execution, Path::root(), Rule::Io, format!("cannot weigh the folder of the session: {e}"))])),
+        };
+        if over {
+            let message = format!("the session `{session}` weighs more than session_max_bytes ({cap}): use another session, or ask the operator of the service to free it");
+            return Err(failure(StatusCode::UNPROCESSABLE_ENTITY, &[Error::new(Phase::Execution, Path::root(), Rule::SessionFull, message)]));
+        }
+    }
+    using.accepted();
+    Ok((program, request.message, using))
 }
 
 /// The answer that refuses a request when every permit to run is taken (503).
@@ -174,16 +231,18 @@ async fn run(State(app): State<Arc<App>>, body: axum::body::Bytes) -> Response {
     // taken without waiting and before anything else, so a request that is refused costs nothing; held until the
     // run ends, or dropped with a request that is not accepted
     let Ok(permit) = app.permits.clone().try_acquire_owned() else { return busy(app.config.max_runs) };
-    let (program, message) = match accept(&app.config, &body) {
+    let (program, message, using) = match accept(&app, &body).await {
         Ok(x) => x,
         Err(refusal) => return refusal,
     };
-    // the run is a task of its own that holds the permit: a caller that hangs up drops this handler, not the
-    // run, so the permit is given back only when the run really ends (or is stopped by its timeout or the shutdown)
+    // the run is a task of its own that holds the permit and the session: a caller that hangs up drops this handler,
+    // not the run, so the permit is given back, and the session can be swept, only when the run really ends (or is
+    // stopped by its timeout or the shutdown)
     let timeout = Duration::from_secs(app.config.run_timeout_seconds);
     let deadline = app.deadline.clone();
     let task = tokio::spawn(async move {
         let _permit = permit;
+        let _using = using;
         run_within(program, &message, timeout, deadline).await
     });
     let outcome = task.await.unwrap_or_else(|e| Err(Error::new(Phase::Execution, Path::root(), Rule::Io, format!("the run stopped: {e}"))));
@@ -195,11 +254,11 @@ async fn run(State(app): State<Arc<App>>, body: axum::body::Bytes) -> Response {
 
 async fn start(State(app): State<Arc<App>>, body: axum::body::Bytes) -> Response {
     let Ok(permit) = app.permits.clone().try_acquire_owned() else { return busy(app.config.max_runs) };
-    let (program, message) = match accept(&app.config, &body) {
+    let (program, message, using) = match accept(&app, &body).await {
         Ok(x) => x,
         Err(refusal) => return refusal,
     };
-    let id = app.runs.start(program, message, permit, app.deadline.clone());
+    let id = app.runs.start(program, message, permit, app.deadline.clone(), using);
     (StatusCode::ACCEPTED, axum::Json(json!({ "run": id }))).into_response()
 }
 

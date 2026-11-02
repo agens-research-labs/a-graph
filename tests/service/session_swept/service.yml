@@ -1,0 +1,5 @@
+# The configuration of the service for this test ({{port:service}}); the sessions keep their files in target/test-service/session_swept.
+port: {{port:service}}
+data_dir: target/test-service/session_swept
+allowed_hosts: [127.0.0.1]
+session_retention_seconds: 1

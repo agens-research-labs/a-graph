@@ -129,3 +129,17 @@ pub fn parse_sse(text: &str) -> Vec<(String, Value)> {
 pub fn answer(text: &str) -> String {
     json!({ "model": "m", "message": { "role": "assistant", "content": text }, "done": true, "done_reason": "stop", "prompt_eval_count": 1, "eval_count": 1 }).to_string()
 }
+
+/// Waits, looking every 100 ms, until `cond` is true; false if it is still false after `limit`.
+pub async fn wait_until(limit: std::time::Duration, cond: impl Fn() -> bool) -> bool {
+    let deadline = std::time::Instant::now() + limit;
+    loop {
+        if cond() {
+            return true;
+        }
+        if std::time::Instant::now() >= deadline {
+            return false;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    }
+}

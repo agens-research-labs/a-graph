@@ -1,7 +1,7 @@
 //! The file that starts the service: its port, where the sessions keep their files, the hosts a
-//! graph may reach, how long a run is kept, how many go on at once and how long one lasts. Its keys
-//! are those of `schema::SERVICE`; the first three are mandatory: the service starts only if its
-//! owner chose them.
+//! graph may reach, how long a run is kept, how many go on at once and how long one lasts, and how
+//! long a session is kept and how much it may weigh. Its keys are those of `schema::SERVICE`; the
+//! first three are mandatory: the service starts only if its owner chose them.
 
 use std::path::PathBuf;
 
@@ -32,6 +32,10 @@ pub struct ServiceConfig {
     pub max_runs: usize,
     /// Seconds a run may last; then it ends as failed (`run_timeout`).
     pub run_timeout_seconds: u64,
+    /// Seconds a session folder is kept after its last request; `None`: never deleted.
+    pub session_retention_seconds: Option<u64>,
+    /// The most a session folder may weigh before a request for it is refused; `None`: no cap.
+    pub session_max_bytes: Option<u64>,
 }
 
 impl ServiceConfig {
@@ -76,8 +80,16 @@ impl ServiceConfig {
         if run_timeout == Some(0) {
             errs.add(&Path::root().key(key::RUN_TIMEOUT_SECONDS), Rule::BadValue, "`run_timeout_seconds` is at least 1");
         }
+        let session_retention = o.opt::<u64>(key::SESSION_RETENTION_SECONDS, &mut errs);
+        if session_retention == Some(0) {
+            errs.add(&Path::root().key(key::SESSION_RETENTION_SECONDS), Rule::BadValue, "`session_retention_seconds` is at least 1");
+        }
+        let session_max_bytes = o.opt::<u64>(key::SESSION_MAX_BYTES, &mut errs);
+        if session_max_bytes == Some(0) {
+            errs.add(&Path::root().key(key::SESSION_MAX_BYTES), Rule::BadValue, "`session_max_bytes` is at least 1");
+        }
         match (port, data_dir, hosts, errs.0.is_empty()) {
-            (Some(port), Some(dir), Some(hosts), true) => Ok(ServiceConfig { port, data_dir: PathBuf::from(dir), allowed_hosts: hosts, retention_seconds: retention.unwrap_or(DEFAULT_RETENTION_SECONDS), max_runs: max_runs.map_or(DEFAULT_MAX_RUNS, |n| n as usize), run_timeout_seconds: run_timeout.unwrap_or(DEFAULT_RUN_TIMEOUT_SECONDS) }),
+            (Some(port), Some(dir), Some(hosts), true) => Ok(ServiceConfig { port, data_dir: PathBuf::from(dir), allowed_hosts: hosts, retention_seconds: retention.unwrap_or(DEFAULT_RETENTION_SECONDS), max_runs: max_runs.map_or(DEFAULT_MAX_RUNS, |n| n as usize), run_timeout_seconds: run_timeout.unwrap_or(DEFAULT_RUN_TIMEOUT_SECONDS), session_retention_seconds: session_retention, session_max_bytes }),
             _ => Err(Errors(errs.0)),
         }
     }

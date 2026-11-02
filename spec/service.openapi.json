@@ -110,7 +110,7 @@
           },
           "session": {
             "default": "default",
-            "description": "The session: the folder, inside `data_dir`, where the files of the graph are. Letters, digits, `-`, `_` and `.`, at most 64, not dots only.",
+            "description": "The session: the folder, inside `data_dir`, where the files of the graph are. Letters, digits, `-`, `_` and `.`, at most 64, not dots only; compared without regard to case.",
             "pattern": "^(?!\\.+$)[A-Za-z0-9._-]{1,64}$",
             "type": "string"
           },
@@ -272,7 +272,7 @@
                 }
               }
             },
-            "description": "The graph is not valid, or it breaks a rule of the service."
+            "description": "The graph is not valid, it breaks a rule of the service, or the session is full (`session_full`)."
           },
           "500": {
             "content": {
@@ -282,7 +282,7 @@
                 }
               }
             },
-            "description": "The folder of the session cannot be created."
+            "description": "The folder of the session cannot be created or weighed."
           },
           "502": {
             "content": {
@@ -362,7 +362,7 @@
                 }
               }
             },
-            "description": "The graph is not valid, or it breaks a rule of the service."
+            "description": "The graph is not valid, it breaks a rule of the service, or the session is full (`session_full`)."
           },
           "500": {
             "content": {
@@ -372,7 +372,7 @@
                 }
               }
             },
-            "description": "The folder of the session cannot be created."
+            "description": "The folder of the session cannot be created or weighed."
           },
           "503": {
             "content": {

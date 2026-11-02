@@ -11,7 +11,7 @@
       "type": "array"
     },
     "data_dir": {
-      "description": "The folder of the sessions. Each session has its own folder, `<data_dir>/<session>/`, and every path of a graph sent to the service is moved inside it.",
+      "description": "The folder of the sessions. Each session has its own folder, `<data_dir>/<session>/`, and every path of a graph sent to the service is moved inside it. It should be a folder of the service alone, not one that holds other things.",
       "type": "string"
     },
     "max_runs": {
@@ -28,6 +28,14 @@
     },
     "run_timeout_seconds": {
       "description": "The longest a run may last. Then it is stopped and ends as failed (`run_timeout`). The default is 3600, at least 1.",
+      "type": "integer"
+    },
+    "session_max_bytes": {
+      "description": "The most a session folder may weigh, in bytes. A request for a session that weighs more is refused (422, `session_full`), and a refused request does not count as a use of the session for `session_retention_seconds`. It is checked before the request runs, so the requests already accepted can go past it. Without this key there is no cap. At least 1.",
+      "type": "integer"
+    },
+    "session_retention_seconds": {
+      "description": "How long a session folder is kept after its last request. Then the whole folder is deleted (its memories, blackboards and media), unless a run is still using it. Without this key nothing is ever deleted. At least 1.",
       "type": "integer"
     }
   },

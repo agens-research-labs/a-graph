@@ -10,6 +10,14 @@ use super::ServiceConfig;
 use crate::error::{Error, Path, Phase, Rule};
 use crate::net::{allowed_entry, entry_text};
 
+/// The empty file that tells a folder of `data_dir` was made by the service for a session: the sweep deletes no other.
+pub(super) const SESSION_MARKER: &str = ".a-graph-session";
+
+/// A session is a folder name: letters, digits, `-`, `_` and `.`, at most 64, and not made of dots only.
+pub(super) fn valid_session(s: &str) -> bool {
+    !s.is_empty() && s.len() <= 64 && s.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.')) && s.chars().any(|c| c != '.')
+}
+
 fn refuse(at: Path, rule: Rule, msg: impl Into<String>) -> Error {
     Error::new(Phase::Validation, at, rule, msg)
 }
