@@ -7,7 +7,7 @@ pub use super::with_ports;
 
 /// A running service; it is killed when this is dropped.
 pub struct Service {
-    _child: tokio::process::Child,
+    child: tokio::process::Child,
     pub port: u16,
 }
 
@@ -36,7 +36,7 @@ pub async fn start_with(config: &str, ports: &[(&str, u16)]) -> Service {
             .expect("cannot start a-graph");
         for _ in 0..100 {
             if reqwest::get(format!("http://127.0.0.1:{port}/health")).await.is_ok() {
-                return Service { _child: child, port };
+                return Service { child, port };
             }
             if child.try_wait().unwrap().is_some() {
                 break;
@@ -48,6 +48,20 @@ pub async fn start_with(config: &str, ports: &[(&str, u16)]) -> Service {
 }
 
 impl Service {
+    /// Sends `SIGTERM` to the service, as `docker stop` does.
+    #[cfg(unix)]
+    pub fn terminate(&self) {
+        let pid = self.child.id().expect("the service already ended").to_string();
+        let status = std::process::Command::new("kill").args(["-TERM", &pid]).status().expect("cannot run kill");
+        assert!(status.success(), "kill -TERM {pid} failed");
+    }
+
+    /// Waits at most `seconds` for the service to end, and gives its exit code.
+    pub async fn exited(&mut self, seconds: u64) -> Option<i32> {
+        let status = tokio::time::timeout(std::time::Duration::from_secs(seconds), self.child.wait()).await.expect("the service did not end in time").unwrap();
+        status.code()
+    }
+
     /// GET this path: the status and the JSON.
     pub async fn get(&self, path: &str) -> (u16, Value) {
         let r = reqwest::get(format!("http://127.0.0.1:{}{path}", self.port)).await.unwrap();
@@ -93,6 +107,11 @@ impl Service {
         let status = r.status().as_u16();
         (status, r.json().await.unwrap_or(Value::Null))
     }
+}
+
+/// The lines of a log the service wrote (a file in the folder of a session), as JSON; none when there is no file.
+pub fn log_lines(path: &str) -> Vec<Value> {
+    std::fs::read_to_string(path).unwrap_or_default().lines().map(|l| serde_json::from_str(l).unwrap()).collect()
 }
 
 /// The events of an SSE text, as (name, data).

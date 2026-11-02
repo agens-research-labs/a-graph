@@ -24,6 +24,8 @@ services:
       - host.docker.internal:host-gateway   # Ollama on your computer; Docker Desktop has the name already, this adds it on Linux
     networks:
       - a-graph
+    # on `docker stop` the runs going on get 30 seconds to end and 5 more to close (docs/serve.md); Docker kills after 10 by default
+    stop_grace_period: 40s
     # the program writes only in /data and needs no capability: the container gets nothing else
     read_only: true
     cap_drop: [ALL]

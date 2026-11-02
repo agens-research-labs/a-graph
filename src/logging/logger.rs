@@ -167,9 +167,12 @@ impl Logger {
                 line.insert("content_redacted".into(), Value::Bool(true));
             }
         }
-        let text = Value::Object(line).to_string();
-        // A failing log write must not stop the run: tell stderr instead.
-        if let Err(e) = writeln!(self.out.lock().unwrap(), "{text}") {
+        let mut text = Value::Object(line).to_string();
+        text.push('\n');
+        // One write per line: the runs of a session append to the same file, each with its own logger, and a line
+        // written in two parts could interleave with another. A failing log write must not stop the run: tell
+        // stderr instead.
+        if let Err(e) = self.out.lock().unwrap().write_all(text.as_bytes()) {
             eprintln!("a-graph: cannot write the log: {e}");
         }
     }

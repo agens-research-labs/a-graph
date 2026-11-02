@@ -96,12 +96,26 @@ impl Program {
     /// an `Arc` because the branches of a `parallel` group are tasks that outlive a plain reference.
     /// On a multi-thread runtime they run on different threads.
     pub async fn run(self: &Arc<Self>, user_message: &str) -> Result<RunOutput, Error> {
+        self.run_until(user_message, std::future::pending()).await
+    }
+
+    /// Runs the graph as `run` does, but the nodes are stopped when `stop` is ready before they end, and its error
+    /// is the outcome. Either way the run ends as always: its MCP servers are closed, its last event is logged and
+    /// its trace is sent. The service stops so a run that lasts too long, or that is going on when it shuts down.
+    pub async fn run_until(self: &Arc<Self>, user_message: &str, stop: impl Future<Output = Error>) -> Result<RunOutput, Error> {
         refuse_what_is_not_run_yet(self.edges.steps())?;
         self.run_started();
         let started = std::time::Instant::now();
         // the MCP servers are connected before the first node and closed after the last, or after the error
-        self.connect_mcp().await?;
-        let output = self.run_nodes(user_message).await;
+        let nodes = async {
+            self.connect_mcp().await?;
+            self.run_nodes(user_message).await
+        };
+        // a stop drops the nodes halfway: the tasks of their branches are aborted (`Branches`)
+        let output = tokio::select! {
+            output = nodes => output,
+            e = stop => Err(e),
+        };
         self.close_mcp().await;
         self.run_finished(started, output.as_ref().err());
         // the timeline of the run goes to the collector, whatever the outcome
@@ -299,24 +313,21 @@ impl Program {
     async fn spawn_branches(self: &Arc<Self>, g: &Group, input: &Carry, user: &str) -> Result<Vec<Branch>, Error> {
         let permits = g.limit.map_or(g.fan.len(), |l| l as usize).clamp(1, g.fan.len().max(1));
         let gate = Arc::new(Semaphore::new(permits));
-        let mut handles: Vec<JoinHandle<Result<Branch, Error>>> = Vec::with_capacity(g.fan.len());
+        let mut handles = Branches(Vec::with_capacity(g.fan.len()));
         for step in g.fan.iter().cloned() {
             let (this, gate, input, user) = (self.clone(), gate.clone(), input.clone(), user.to_string());
-            handles.push(tokio::spawn(CTX.scope(here(), async move {
+            handles.0.push(tokio::spawn(CTX.scope(here(), async move {
                 let _permit = gate.acquire_owned().await.map_err(|e| fail(Rule::Io, e.to_string()))?;
                 this.run_branch(step, input, user).await
             })));
         }
-        let mut done = Vec::with_capacity(handles.len());
-        for i in 0..handles.len() {
-            let result = (&mut handles[i]).await.map_err(|e| fail(Rule::Io, format!("a branch stopped: {e}"))).and_then(|r| r);
+        let mut done = Vec::with_capacity(handles.0.len());
+        for i in 0..handles.0.len() {
+            let result = (&mut handles.0[i]).await.map_err(|e| fail(Rule::Io, format!("a branch stopped: {e}"))).and_then(|r| r);
             match result {
                 Ok(b) => done.push(b),
-                Err(e) => {
-                    // the first error ends the run: the branches still going are stopped
-                    handles[i + 1..].iter().for_each(JoinHandle::abort);
-                    return Err(e);
-                }
+                // the first error ends the run: the branches still going are stopped when `handles` is dropped
+                Err(e) => return Err(e),
             }
         }
         Ok(done)
@@ -460,4 +471,14 @@ fn refuse(steps: &[Step], inside_react: bool) -> Result<(), Error> {
         }
     }
     Ok(())
+}
+
+/// The tasks of the branches of a group. They are stopped when it is dropped: when a branch fails, and when the
+/// nodes of the run are dropped (the service stops a run, see `run_until`), so no branch goes on alone.
+struct Branches(Vec<JoinHandle<Result<Branch, Error>>>);
+
+impl Drop for Branches {
+    fn drop(&mut self) {
+        self.0.iter().for_each(JoinHandle::abort);
+    }
 }

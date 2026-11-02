@@ -21,6 +21,26 @@ as always, `api_key: { env: ANTHROPIC_API_KEY }`.
 
 The service has no authentication of its own: whoever reaches its port can run graphs on it.
 
+## Stopping
+
+`SIGTERM` (what `docker stop` sends) or `SIGINT` (Ctrl-C) stops the service gently. It writes `a-graph: shutting
+down`, takes no new request, and waits for the requests and the runs going on to end, those of `POST /runs` too.
+It waits at most 30 seconds. Then the runs still going on are stopped: each ends as failed, with the rule
+`service_stopped`, and still ends as any run does (its last event is logged and its trace is sent). The service
+waits at most 5 more seconds for that, with the connections open: a caller still waiting on `POST /run` gets its
+502 with `service_stopped`, a watcher of `GET /runs/{id}/events` gets the `error` event. Then it exits. A run that
+did not close in time is cut, with the connections still open: the service writes how many, `a-graph: N runs cut`.
+Either way it ends with 0.
+
+Docker kills a container 10 seconds after `docker stop` by default. To give the runs their 30 seconds, and 5 more
+to close, `compose.yml` sets `stop_grace_period` higher; set it in your own compose file too:
+
+```yaml
+services:
+  a-graph:
+    stop_grace_period: 40s
+```
+
 ## Running a graph
 
 - `POST /run` runs the graph and answers when it is done.
@@ -28,6 +48,25 @@ The service has no authentication of its own: whoever reaches its port can run g
   they happen, as Server-Sent Events, and `GET /runs/{id}` tells its state. A run is kept for `retention_seconds`
   after it ends, then it is forgotten. Its id is random: whoever knows it can watch the run.
 - `GET /health` tells that the service is up.
+
+At most `max_runs` runs go on at once (8 when the file does not say), those of `POST /run` and of `POST /runs`
+together. A request beyond it is refused with 503 (`too_many_runs`) before it is checked, so it costs nothing: it is
+not queued, the caller tries again later. A run of `POST /run` whose caller hangs up goes on to its end, and holds
+its place until then.
+
+A run lasts at most `run_timeout_seconds` (an hour when the file does not say). Then it is stopped and ends as
+failed, with the rule `run_timeout`: `POST /run` answers 502, and a run of `POST /runs` ends with the state `failed`
+and the event `error`. It still ends as any run does: its MCP servers are closed, its last event is logged and its
+trace is sent.
+
+A run keeps its last 1000 events. A watcher that comes after older ones were dropped first gets the event `dropped`,
+`{ "count": n }`, with how many it missed, then the events kept.
+
+The cap is on the number of events, not on their size. When the `verbose` of the graph is `detail` and its passport
+allows the contents, an event can carry a long text, a prompt or an answer. The events and the outcome of a run stay
+in memory until it is forgotten, `retention_seconds` after its end, and a run that ended no longer counts towards
+`max_runs`. So the memory held is that of every run of the last `retention_seconds`, not only of the `max_runs`
+going on.
 
 The graph is checked and built again for each request: requests share nothing but the folders of their sessions. A
 request weighs at most 64 MiB.

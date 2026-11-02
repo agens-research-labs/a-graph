@@ -5,6 +5,8 @@ use std::convert::Infallible;
 use std::sync::Arc;
 use std::time::Duration;
 
+use tokio::time::Instant;
+
 use axum::Router;
 use axum::extract::{DefaultBodyLimit, Path as UrlPath, State};
 use axum::http::StatusCode;
@@ -13,15 +15,25 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{MethodFilter, MethodRouter, on};
 use serde::Deserialize;
 use serde_json::{Value, json};
+use tokio::sync::{Semaphore, watch};
 
 use super::api::Endpoint;
-use super::runs::{Next, Runs, errors_json};
+use super::runs::{Next, Runs, errors_json, run_within};
 use super::{ServiceConfig, prepare};
 use crate::error::{Error, Path, Phase, Rule};
 use crate::run::{Program, build};
 
 /// The most a request may weigh: a graph and, in base64, the files it reads.
 const BODY_LIMIT: usize = 64 * 1024 * 1024;
+
+/// How long the service waits, once told to stop, for the requests and the runs going on to end. Then the runs
+/// still going on are stopped (`service_stopped`). Docker waits only 10 seconds by default (`stop_grace_period`)
+/// before it kills.
+const SHUTDOWN_SECONDS: u64 = 30;
+
+/// How long the service waits after `SHUTDOWN_SECONDS` for the runs it stopped to close (their last event, their
+/// trace, their log). Then it stops anyway and those still open are cut.
+const CLOSE_SECONDS: u64 = 5;
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -34,12 +46,20 @@ struct Request {
 struct App {
     config: ServiceConfig,
     runs: Arc<Runs>,
+    /// One permit for each run that may go on, held until the run ends.
+    permits: Arc<Semaphore>,
+    /// The deadline of the shutdown, once the service is told to stop: the runs still going on are stopped then.
+    deadline: watch::Receiver<Option<Instant>>,
 }
 
-/// Listens on the port of the config until the process ends.
-pub async fn serve(config: ServiceConfig) -> Result<(), String> {
+/// Listens on the port of the config until `shutdown` is ready. Then it takes no new request, and waits at most
+/// `SHUTDOWN_SECONDS` for the requests and the runs going on (those of `POST /runs` too) to end. The runs still
+/// going on are then stopped, and given at most `CLOSE_SECONDS` more to close.
+pub async fn serve(config: ServiceConfig, shutdown: impl Future<Output = ()> + Send + 'static) -> Result<(), String> {
     let port = config.port;
-    let runs = Runs::new(Duration::from_secs(config.retention_seconds));
+    let max_runs = config.max_runs;
+    let permits = Arc::new(Semaphore::new(max_runs));
+    let runs = Runs::new(Duration::from_secs(config.retention_seconds), Duration::from_secs(config.run_timeout_seconds));
     let sweeping = runs.clone();
     tokio::spawn(async move {
         loop {
@@ -52,11 +72,46 @@ pub async fn serve(config: ServiceConfig) -> Result<(), String> {
     for e in Endpoint::ALL {
         app = app.route(e.path(), handler(e));
     }
+    // the time to stop is known when the signal comes
+    let (told, mut deadline) = watch::channel(None::<Instant>);
     let app = app
         .layer(DefaultBodyLimit::max(BODY_LIMIT))
-        .with_state(Arc::new(App { config, runs }));
+        .with_state(Arc::new(App { permits: permits.clone(), config, runs, deadline: deadline.clone() }));
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await.map_err(|e| format!("cannot listen on port {port}: {e}"))?;
-    axum::serve(listener, app).await.map_err(|e| format!("the service stopped: {e}"))
+
+    let signal = async move {
+        shutdown.await;
+        eprintln!("a-graph: shutting down");
+        let _ = told.send(Some(Instant::now() + Duration::from_secs(SHUTDOWN_SECONDS)));
+    };
+    let server = axum::serve(listener, app).with_graceful_shutdown(signal).into_future();
+    // the server ends when every connection has ended, so a caller still connected when its run is stopped at the
+    // deadline gets the answer of that run. A connection that does not end (a run that does not close) must not hold
+    // the service past the time the runs have to close
+    let late = async {
+        match deadline.wait_for(Option::is_some).await {
+            Ok(at) => {
+                let at = at.unwrap_or_else(Instant::now) + Duration::from_secs(CLOSE_SECONDS);
+                tokio::time::sleep_until(at).await;
+            }
+            Err(_) => std::future::pending().await,
+        }
+    };
+    tokio::select! {
+        served = server => served.map_err(|e| format!("the service stopped: {e}"))?,
+        _ = late => {}
+    }
+    // every run going on holds a permit: they are all back when no run is left. The runs still going on at the
+    // deadline are stopped then, and close themselves: they have a little more time for that
+    let at = deadline.borrow().unwrap_or_else(Instant::now) + Duration::from_secs(CLOSE_SECONDS);
+    while permits.available_permits() < max_runs && Instant::now() < at {
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    let cut = max_runs - permits.available_permits();
+    if cut > 0 {
+        eprintln!("a-graph: {cut} runs cut");
+    }
+    Ok(())
 }
 
 /// The handler of a route, on the method the API gives it.
@@ -109,16 +164,29 @@ fn accept(config: &ServiceConfig, body: &[u8]) -> Result<(Program, String), Resp
     Ok((program, request.message))
 }
 
+/// The answer that refuses a request when every permit to run is taken (503).
+fn busy(max_runs: usize) -> Response {
+    let message = format!("the service is running its most runs (max_runs: {max_runs}): try again later");
+    failure(StatusCode::SERVICE_UNAVAILABLE, &[Error::new(Phase::Execution, Path::root(), Rule::TooManyRuns, message)])
+}
+
 async fn run(State(app): State<Arc<App>>, body: axum::body::Bytes) -> Response {
+    // taken without waiting and before anything else, so a request that is refused costs nothing; held until the
+    // run ends, or dropped with a request that is not accepted
+    let Ok(permit) = app.permits.clone().try_acquire_owned() else { return busy(app.config.max_runs) };
     let (program, message) = match accept(&app.config, &body) {
         Ok(x) => x,
         Err(refusal) => return refusal,
     };
-    let program = Arc::new(program);
-    let outcome = program.run(&message).await;
-    if let Some(p) = Arc::into_inner(program) {
-        p.logger.close().await;
-    }
+    // the run is a task of its own that holds the permit: a caller that hangs up drops this handler, not the
+    // run, so the permit is given back only when the run really ends (or is stopped by its timeout or the shutdown)
+    let timeout = Duration::from_secs(app.config.run_timeout_seconds);
+    let deadline = app.deadline.clone();
+    let task = tokio::spawn(async move {
+        let _permit = permit;
+        run_within(program, &message, timeout, deadline).await
+    });
+    let outcome = task.await.unwrap_or_else(|e| Err(Error::new(Phase::Execution, Path::root(), Rule::Io, format!("the run stopped: {e}"))));
     match outcome {
         Ok(output) => Json200(output.to_json()).into_response(),
         Err(e) => failure(StatusCode::BAD_GATEWAY, &[e]),
@@ -126,11 +194,12 @@ async fn run(State(app): State<Arc<App>>, body: axum::body::Bytes) -> Response {
 }
 
 async fn start(State(app): State<Arc<App>>, body: axum::body::Bytes) -> Response {
+    let Ok(permit) = app.permits.clone().try_acquire_owned() else { return busy(app.config.max_runs) };
     let (program, message) = match accept(&app.config, &body) {
         Ok(x) => x,
         Err(refusal) => return refusal,
     };
-    let id = app.runs.start(program, message);
+    let id = app.runs.start(program, message, permit, app.deadline.clone());
     (StatusCode::ACCEPTED, axum::Json(json!({ "run": id }))).into_response()
 }
 
@@ -171,6 +240,11 @@ async fn events(State(app): State<Arc<App>>, UrlPath(id): UrlPath<String>) -> Re
                 Some(Next::Event(name, data)) => {
                     let event: Result<SseEvent, Infallible> = Ok(SseEvent::default().event(name).data(data.to_string()));
                     return Some((event, (run, index + 1, false)));
+                }
+                Some(Next::Dropped(count)) => {
+                    // the watcher came after these were dropped: it is told how many, and goes on from the first kept
+                    let event: Result<SseEvent, Infallible> = Ok(SseEvent::default().event("dropped").data(json!({ "count": count }).to_string()));
+                    return Some((event, (run, index + count, false)));
                 }
                 Some(Next::Last(name, data)) => {
                     let event: Result<SseEvent, Infallible> = Ok(SseEvent::default().event(name).data(data.to_string()));

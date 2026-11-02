@@ -6,6 +6,9 @@ mod common;
 #[path = "bad_request/bad_request.rs"]
 mod bad_request;
 
+#[path = "config_limits/config_limits.rs"]
+mod config_limits;
+
 #[path = "config_retention/config_retention.rs"]
 mod config_retention;
 
@@ -35,6 +38,15 @@ mod run_fails;
 
 #[path = "run_ok/run_ok.rs"]
 mod run_ok;
+
+#[path = "run_timeout/run_timeout.rs"]
+mod run_timeout;
+
+#[path = "runs_capped/runs_capped.rs"]
+mod runs_capped;
+
+#[path = "runs_capped_detached/runs_capped_detached.rs"]
+mod runs_capped_detached;
 
 #[path = "runs_events/runs_events.rs"]
 mod runs_events;
@@ -71,6 +83,12 @@ mod runs_unknown;
 
 #[path = "sessions_apart/sessions_apart.rs"]
 mod sessions_apart;
+
+#[path = "shutdown_stops/shutdown_stops.rs"]
+mod shutdown_stops;
+
+#[path = "shutdown_waits/shutdown_waits.rs"]
+mod shutdown_waits;
 
 #[path = "together/together.rs"]
 mod together;

@@ -30,6 +30,9 @@ mod level_filter;
 #[path = "no_passport/no_passport.rs"]
 mod no_passport;
 
+#[path = "one_write_per_line/one_write_per_line.rs"]
+mod one_write_per_line;
+
 #[path = "redaction/redaction.rs"]
 mod redaction;
 

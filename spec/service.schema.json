@@ -14,12 +14,20 @@
       "description": "The folder of the sessions. Each session has its own folder, `<data_dir>/<session>/`, and every path of a graph sent to the service is moved inside it.",
       "type": "string"
     },
+    "max_runs": {
+      "description": "The most runs going on at once, those of `POST /run` and of `POST /runs` together. A request beyond it is refused with 503 (`too_many_runs`) before it is checked, not queued. The default is 8, at least 1.",
+      "type": "integer"
+    },
     "port": {
       "description": "The port the service listens on, on all interfaces.",
       "type": "integer"
     },
     "retention_seconds": {
       "description": "How long a run is kept after it ends, so that it can still be watched and asked for; then it is forgotten. The default is 600, at least 1.",
+      "type": "integer"
+    },
+    "run_timeout_seconds": {
+      "description": "The longest a run may last. Then it is stopped and ends as failed (`run_timeout`). The default is 3600, at least 1.",
       "type": "integer"
     }
   },
