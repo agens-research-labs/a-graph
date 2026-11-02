@@ -1,4 +1,4 @@
-# Activation of a skill with files and a link that leads out of the folder (model on port 18811, started by the test).
+# Activation of a skill with files and a link that leads out of the folder (model on {{port:model}}, started by the test).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:18811
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

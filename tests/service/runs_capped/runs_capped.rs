@@ -5,8 +5,8 @@ fn dir() -> &'static std::path::Path {
 }
 
 #[allow(dead_code)]
-fn read(name: &str) -> String {
-    std::fs::read_to_string(dir().join(name)).unwrap()
+fn read(name: &str, ports: &[(&str, u16)]) -> String {
+    with_ports(&std::fs::read_to_string(dir().join(name)).unwrap(), ports)
 }
 
 fn config_path() -> String {
@@ -16,9 +16,9 @@ fn config_path() -> String {
 /// With `max_runs: 1` a request while a run goes on is refused with 503, before it is checked; after its end, it runs.
 #[tokio::test]
 async fn runs_capped() {
-    serve_at_slowly(17401, std::time::Duration::from_secs(1), |_| Resp::ok(answer("ok"))).await;
-    let s = start(&config_path(), 17402).await;
-    let body = json!({ "yml": read("graph.yml"), "message": "how long?" });
+    let (model, _) = listen_slowly(std::time::Duration::from_secs(1), |_| Resp::ok(answer("ok"))).await;
+    let s = start(&config_path()).await;
+    let body = json!({ "yml": read("graph.yml", &[("model", model)]), "message": "how long?" });
     let (status, started) = s.start_run(body.clone()).await;
     assert_eq!(status, 202, "{started}");
     let (status, refused) = s.run(body.clone()).await;

@@ -7,8 +7,8 @@ fn path() -> String {
 /// The message is the second argument; the result is one JSON document on the standard output.
 #[tokio::test]
 async fn run_json() {
-    let (_, seen) = serve_at(19953, |_| Resp::ok(answer("the lease lasts 12 months"))).await;
-    let r = a_graph(&[&path(), "how long?"], None).await;
+    let (model, seen) = listen(|_| Resp::ok(answer("the lease lasts 12 months"))).await;
+    let r = a_graph(&[&ported(&path(), &[("model", model)]), "how long?"], None).await;
     assert_eq!(r.code, 0, "{}", r.stderr);
     let out: Value = serde_json::from_str(&r.stdout).unwrap_or_else(|e| panic!("not JSON ({e}): {}", r.stdout));
     assert_eq!(out, json!({ "items": [{ "node": "b", "message": "the lease lasts 12 months", "media": [], "reasoning": [] }] }));

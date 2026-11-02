@@ -8,8 +8,8 @@ fn here() -> &'static std::path::Path {
 #[tokio::test]
 async fn http_post_header() {
     unsafe { std::env::set_var("A_GRAPH_TEST_TOOL_KEY", "secret-value") };
-    let (_, service) = serve_at(18608, |_| Resp::ok(json!({ "temp": 22 }).to_string())).await;
-    let (p, _) = program(here(), "http_post_header", model(city(), false)).await;
+    let (tool_port, service) = listen(|_| Resp::ok(json!({ "temp": 22 }).to_string())).await;
+    let (p, _) = program_with(here(), "http_post_header", &[("tool", tool_port)], model(city(), false)).await;
     let out = p.run("hi").await.unwrap();
     assert_eq!(items(&out)[0].1, r#"R({"temp":22})"#);
     let req = service.lock().unwrap()[0].clone();

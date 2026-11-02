@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19951
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

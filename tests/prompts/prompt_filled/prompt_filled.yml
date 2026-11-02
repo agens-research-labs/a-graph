@@ -1,4 +1,4 @@
-# One node `n`, the model is a mock server on port 18101 (the test starts it). The prompt uses both messages; the node sets temperature, top_p and max_tokens.
+# One node `n`, the model is a mock server on {{port:model}} (the test starts it). The prompt uses both messages; the node sets temperature, top_p and max_tokens.
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:18101
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

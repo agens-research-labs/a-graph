@@ -1,4 +1,4 @@
-# The node writes only the user messages (`write.assistant: false`) (model mock 19603).
+# The node writes only the user messages (`write.assistant: false`) (model mock {{port:model}}).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19603
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

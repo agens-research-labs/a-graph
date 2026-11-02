@@ -19,3 +19,7 @@
 
 # leftovers of tools that save a copy before changing a file
 *.orig
+
+# a configuration of the service for this computer only (see compose.yml)
+compose.override.yml
+service.local.yml

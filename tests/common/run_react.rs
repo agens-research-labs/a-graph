@@ -1,13 +1,13 @@
 //! A `react`: the controller answers the routing output at every turn. Every graph is a yml file in
-//! the folders of the tests; the model is a mock server (on the port the file names) that plays
+//! the folders of the tests; the model is a mock server (on a free port) that plays
 //! the controller by a script and answers the text it was asked to the other nodes.
 
 pub use std::sync::atomic::{AtomicUsize, Ordering};
 pub use std::sync::{Arc, Mutex};
 pub use serde_json::{Value, json};
 pub use a_graph::run::{Content, Program, RunOutput, build};
-pub use super::run::{yml_in};
-pub use super::http::{Req, Resp, serve_at};
+pub use super::run::{yml_in, yml_with};
+pub use super::http::{Req, Resp, listen};
 
 pub fn chat(text: &str) -> String {
     json!({ "model": "m", "message": { "role": "assistant", "content": text }, "done": true, "done_reason": "stop", "prompt_eval_count": 1, "eval_count": 1 }).to_string()
@@ -41,14 +41,9 @@ pub fn script(turn: impl Fn(usize, &str) -> Value + Send + Sync + 'static) -> im
     }
 }
 
-pub fn port_of(yml: &str) -> u16 {
-    let rest = yml.split("host: http://127.0.0.1:").nth(1).expect("the fixture names no port");
-    rest.chars().take_while(char::is_ascii_digit).collect::<String>().parse().unwrap()
-}
-
 pub async fn program(dir: &std::path::Path, name: &str, handler: impl Fn(&Req) -> Resp + Send + Sync + 'static) -> (Arc<Program>, Arc<Mutex<Vec<Req>>>) {
-    let yml = yml_in(dir, name);
-    let (_, seen) = serve_at(port_of(&yml), handler).await;
+    let (port, seen) = listen(handler).await;
+    let yml = yml_with(dir, name, &[("model", port)]);
     (Arc::new(build(&yml).unwrap_or_else(|e| panic!("{e}"))), seen)
 }
 

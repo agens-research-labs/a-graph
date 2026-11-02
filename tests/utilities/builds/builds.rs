@@ -9,7 +9,7 @@ fn here() -> &'static std::path::Path {
 fn builds() {
     // SAFETY: the name of the variable the yml writes; it is never used to call anything.
     unsafe { std::env::set_var("A_GRAPH_TEST_UTIL_TOKEN", "t") };
-    let m = manager(&own_yml(here()));
+    let m = manager(&yml_with(here(), "builds", &[("utility", 19901)]));
     assert_eq!(m.len(), 2);
     let a = m.get("to_md").unwrap();
     assert!(matches!(&a.transport, UtilityTransport::Stdio { command, args } if command == "python3" && args == &["u.py", "-x"]));

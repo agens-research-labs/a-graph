@@ -1,4 +1,4 @@
-# The memory has `read.utility: [up]`: the history and the summary it gives are changed (model mock 19923).
+# The memory has `read.utility: [up]`: the history and the summary it gives are changed (model mock {{port:model}}).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19923
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 external:

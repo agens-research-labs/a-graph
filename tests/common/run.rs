@@ -12,7 +12,7 @@
 
 
 pub use a_graph::run::build;
-pub use super::{yml_in};
+pub use super::{yml_in, yml_with};
 
 pub fn set_env() {
     // SAFETY: only sets the values the yml files name; they are never used to call anything.

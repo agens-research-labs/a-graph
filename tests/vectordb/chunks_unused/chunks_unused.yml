@@ -14,14 +14,14 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19020
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 embeddings:
   - id: emb
     provider: ollama
     model: embeddinggemma
-    host: http://127.0.0.1:19021
+    host: http://127.0.0.1:{{port:embedding}}
 resources:
   prompts:
     - id: pr
@@ -32,7 +32,7 @@ external:
   vectordb:
     - id: contracts_db
       provider: qdrant
-      url: http://127.0.0.1:19022
+      url: http://127.0.0.1:{{port:vectordb}}
       collection: contracts
       top_k: 2
       embedding: emb

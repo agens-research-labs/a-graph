@@ -1,4 +1,4 @@
-# `run_node` on a validation node (port 18417, started by the test).
+# `run_node` on a validation node ({{port:model}}, started by the test).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:18417
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

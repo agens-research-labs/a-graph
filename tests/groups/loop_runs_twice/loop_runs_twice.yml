@@ -1,4 +1,4 @@
-# `start: a` and `end: a`: an edge from a node to itself, a loop (model mock on port 19942).
+# `start: a` and `end: a`: an edge from a node to itself, a loop (model mock on {{port:model}}).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19942
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

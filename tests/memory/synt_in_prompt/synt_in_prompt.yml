@@ -1,4 +1,4 @@
-# The memory has `synt`: the summary goes into the prompt at {{session}} (model mock 19502).
+# The memory has `synt`: the summary goes into the prompt at {{session}} (model mock {{port:model}}).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,14 +14,9 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19502
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
-embeddings:
-  - id: emb
-    provider: ollama
-    model: embeddinggemma
-    host: http://127.0.0.1:19503
 resources:
   prompts:
     - id: pr

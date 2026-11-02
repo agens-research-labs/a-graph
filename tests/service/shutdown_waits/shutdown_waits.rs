@@ -5,8 +5,8 @@ fn dir() -> &'static std::path::Path {
 }
 
 #[allow(dead_code)]
-fn read(name: &str) -> String {
-    std::fs::read_to_string(dir().join(name)).unwrap()
+fn read(name: &str, ports: &[(&str, u16)]) -> String {
+    with_ports(&std::fs::read_to_string(dir().join(name)).unwrap(), ports)
 }
 
 fn config_path() -> String {
@@ -18,9 +18,9 @@ fn config_path() -> String {
 #[cfg(unix)]
 #[tokio::test]
 async fn shutdown_waits() {
-    let (_, seen) = serve_at_slowly(17409, std::time::Duration::from_secs(1), |_| Resp::ok(answer("ok"))).await;
-    let mut s = start(&config_path(), 17410).await;
-    let (status, body) = s.start_run(json!({ "yml": read("graph.yml"), "message": "how long?" })).await;
+    let (model, seen) = listen_slowly(std::time::Duration::from_secs(1), |_| Resp::ok(answer("ok"))).await;
+    let mut s = start(&config_path()).await;
+    let (status, body) = s.start_run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "how long?" })).await;
     assert_eq!(status, 202, "{body}");
     // the run is going on once the model is called: then the signal
     for _ in 0..100 {
@@ -32,7 +32,7 @@ async fn shutdown_waits() {
     assert_eq!(seen.lock().unwrap().len(), 1, "the model was not called");
     s.terminate();
     tokio::time::sleep(std::time::Duration::from_millis(200)).await;
-    assert!(reqwest::get("http://127.0.0.1:17410/health").await.is_err(), "the service still takes requests");
+    assert!(reqwest::get(format!("http://127.0.0.1:{}/health", s.port)).await.is_err(), "the service still takes requests");
     assert_eq!(seen.lock().unwrap().len(), 1, "the first call is still going on");
     assert_eq!(s.exited(10).await, Some(0));
     assert_eq!(seen.lock().unwrap().len(), 2, "the run went on to node b after the signal");

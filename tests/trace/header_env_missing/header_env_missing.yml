@@ -10,7 +10,7 @@ passport:
     permissions: { network: { allowed_hosts: [127.0.0.1] } }
 observability: { level: error }
 trace:
-  endpoint: http://127.0.0.1:19819/v1/traces
+  endpoint: http://127.0.0.1:{{port:collector}}/v1/traces
   headers:
     Authorization: { env: A_GRAPH_TEST_TRACE_NOT_SET }
 verbose: { level: off }
@@ -18,7 +18,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19809
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

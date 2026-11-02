@@ -96,3 +96,67 @@ if it breaks one of these rules:
 
 Then the graph is checked as by `--check`: a graph that is not valid is refused (422) with all its errors, in the form
 `{ "errors": [ { "phase", "path", "rule", "message" } ] }`.
+
+## Docker
+
+The root of the project has a `Dockerfile`, a `compose.yml` and the `service.yml` they use. From the root:
+
+```
+docker compose up -d                          # builds the image, starts the service on port 8080
+curl localhost:8080/health                    # { "status": "ok" }
+docker compose down                           # stop (add -v to forget the sessions too)
+```
+
+To run the first example through the service, from `examples/01-hello`, with Ollama on your computer (inside the
+container `localhost` is the container itself, so the graph must name `host.docker.internal`):
+
+```
+sed 's/localhost/host.docker.internal/' graph.yml \
+  | jq -R -s '{ yml: ., message: "What is a mutex?" }' \
+  | curl -s localhost:8080/run -H 'content-type: application/json' -d @-
+```
+
+What `compose.yml` does, and what to change:
+
+- **The network.** The services sit on a Docker network of their own, `a-graph`. Another container on that network
+  reaches the service as `http://a-graph:8080` (`docker run --network a-graph_a-graph ...`, or add your container to
+  `compose.yml`). The port is published on your computer too: the service does not authenticate its callers, so do
+  not open it to others.
+- **The port.** If 8080 is taken on your computer, choose another one: `A_GRAPH_PORT=9090 docker compose up -d`. The
+  service always listens on 8080 inside the container and inside the network.
+- **The configuration** is `service.yml` in the root, mounted read-only at `/etc/a-graph/service.yml`. Compose
+  refuses to start if the file is missing. To change it for your computer only, copy it to `service.local.yml` and
+  point Compose at the copy with a `compose.override.yml` (both files are ignored by git, and Compose reads the
+  override by itself):
+
+  ```yaml
+  configs:
+    service:
+      file: ./service.local.yml
+  ```
+- **Ollama stays on your computer** by default, it is not in a container (on macOS a container would have no GPU).
+  A graph reaches it as `http://host.docker.internal:11434`, and `service.yml` allows `host.docker.internal:11434`,
+  that port only: the other services of your computer stay out of reach. Remove the line all the same when the
+  service is not for you alone.
+- **Ollama in a container**, on a Linux machine: `docker compose --profile ollama up -d`, then
+  `docker compose exec ollama ollama pull qwen3.5:4b` once (the models stay in the volume `ollama-models`). A graph
+  reaches it as `http://ollama:11434`.
+- **The keys** of the cloud models are environment variables of the container, named in `compose.yml` and taken from
+  your shell or from a `.env` file next to it: `ANTHROPIC_API_KEY=sk-... docker compose up -d`.
+- **The sessions** live in the named volume `a-graph-data`. Do not replace it with a folder of yours: the container
+  writes as user 10001 and, on Linux, the folder would refuse it.
+
+Without Compose, the same thing is:
+
+```
+docker build -t a-graph .
+docker run -p 8080:8080 \
+  -v "$PWD/service.yml:/etc/a-graph/service.yml:ro" -v a-graph-data:/data \
+  -e ANTHROPIC_API_KEY -e OPENAI_API_KEY \
+  a-graph
+```
+
+Run it from the root of the project: if `service.yml` is not in the folder, Docker creates an empty directory with
+that name and the service stops with ``a-graph: cannot read `/etc/a-graph/service.yml`: Is a directory``. The image holds only the
+program. A container does not inherit the variables of your terminal: name each one with `-e NAME` (the value is
+taken from your shell).

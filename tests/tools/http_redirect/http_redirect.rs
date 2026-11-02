@@ -8,9 +8,9 @@ fn here() -> &'static std::path::Path {
 /// told the status, and the target of the redirect receives nothing.
 #[tokio::test]
 async fn http_redirect() {
-    let (_, elsewhere) = serve_at(17453, |_| Resp::ok("{}")).await;
-    let (_, _) = serve_at(17452, |_| Resp::redirect(302, "http://127.0.0.1:17453/weather")).await;
-    let (p, _) = program(here(), "http_redirect", model(city(), false)).await;
+    let (elsewhere_port, elsewhere) = listen(|_| Resp::ok("{}")).await;
+    let (tool_port, _) = listen(move |_| Resp::redirect(302, format!("http://127.0.0.1:{elsewhere_port}/weather"))).await;
+    let (p, _) = program_with(here(), "http_redirect", &[("tool", tool_port)], model(city(), false)).await;
     let out = p.run("hi").await.unwrap();
     let said = &items(&out)[0].1;
     assert!(said.starts_with("R(error: the service answered 302"), "{said}");

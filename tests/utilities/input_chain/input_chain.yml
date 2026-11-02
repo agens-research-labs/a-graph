@@ -1,4 +1,4 @@
-# `message.input.utility: [up, wrap]` (model mock 19911).
+# `message.input.utility: [up, wrap]` (model mock {{port:model}}).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19911
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 utilities:

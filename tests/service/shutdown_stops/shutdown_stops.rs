@@ -5,8 +5,8 @@ fn dir() -> &'static std::path::Path {
 }
 
 #[allow(dead_code)]
-fn read(name: &str) -> String {
-    std::fs::read_to_string(dir().join(name)).unwrap()
+fn read(name: &str, ports: &[(&str, u16)]) -> String {
+    with_ports(&std::fs::read_to_string(dir().join(name)).unwrap(), ports)
 }
 
 fn config_path() -> String {
@@ -22,18 +22,19 @@ fn config_path() -> String {
 async fn shutdown_stops() {
     let log = "target/test-service/shutdown_stops/default/run.log";
     let _ = std::fs::remove_file(log);
-    let (_, seen) = serve_at_slowly(17411, std::time::Duration::from_secs(120), |_| Resp::ok(answer("too late"))).await;
-    let mut s = start(&config_path(), 17412).await;
-    let (status, body) = s.start_run(json!({ "yml": read("graph.yml"), "message": "how long?" })).await;
+    let (model, seen) = listen_slowly(std::time::Duration::from_secs(120), |_| Resp::ok(answer("too late"))).await;
+    let mut s = start(&config_path()).await;
+    let (status, body) = s.start_run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "how long?" })).await;
     assert_eq!(status, 202, "{body}");
+    let port = s.port;
     let id = body["run"].as_str().unwrap().to_string();
     // a caller waiting on POST /run and a watcher of the events of the other run, both still connected at the deadline
     let waiting = tokio::spawn(async move {
-        let r = reqwest::Client::new().post("http://127.0.0.1:17412/run").json(&json!({ "yml": read("graph.yml"), "message": "how long?" })).send().await.unwrap();
+        let r = reqwest::Client::new().post(format!("http://127.0.0.1:{port}/run")).json(&json!({ "yml": read("graph.yml", &[("model", model)]), "message": "how long?" })).send().await.unwrap();
         (r.status().as_u16(), r.json::<Value>().await.unwrap_or(Value::Null))
     });
     let watching = tokio::spawn(async move {
-        let text = reqwest::get(format!("http://127.0.0.1:17412/runs/{id}/events")).await.unwrap().text().await.unwrap();
+        let text = reqwest::get(format!("http://127.0.0.1:{port}/runs/{id}/events")).await.unwrap().text().await.unwrap();
         parse_sse(&text)
     });
     // the runs are going on once the model is called: then the signal

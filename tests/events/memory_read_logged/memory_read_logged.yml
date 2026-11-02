@@ -1,4 +1,4 @@
-# A node reads a memory, the log at debug in a file (port 19751): the reading is an event.
+# A node reads a memory, the log at debug in a file ({{port:model}}): the reading is an event.
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19751
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

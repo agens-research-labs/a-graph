@@ -1,4 +1,4 @@
-# Node `n` with a memory of `chat.length` 2: the model gets the last two exchanges as history (model mock 19501).
+# Node `n` with a memory of `chat.length` 2: the model gets the last two exchanges as history (model mock {{port:model}}).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19501
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

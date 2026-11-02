@@ -1,4 +1,4 @@
-# The model reasons (the mock answers with a `thinking` field): the file and the summary must hold only the answer (model mock 19611).
+# The model reasons (the mock answers with a `thinking` field): the file and the summary must hold only the answer (model mock {{port:model}}).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19611
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

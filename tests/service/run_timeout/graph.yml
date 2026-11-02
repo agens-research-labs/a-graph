@@ -1,4 +1,4 @@
-# The graph a caller sends to the service: node a answers (model mock on port 17404, slower than the timeout).
+# The graph a caller sends to the service: node a answers (model mock on {{port:model}}, slower than the timeout).
 # The log goes to `run.log` in the folder of the session.
 graph_spec: "1.0"
 passport:
@@ -15,7 +15,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:17404
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

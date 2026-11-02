@@ -5,8 +5,8 @@ fn dir() -> &'static std::path::Path {
 }
 
 #[allow(dead_code)]
-fn read(name: &str) -> String {
-    std::fs::read_to_string(dir().join(name)).unwrap()
+fn read(name: &str, ports: &[(&str, u16)]) -> String {
+    with_ports(&std::fs::read_to_string(dir().join(name)).unwrap(), ports)
 }
 
 fn config_path() -> String {
@@ -19,9 +19,9 @@ fn config_path() -> String {
 async fn run_timeout() {
     let log = "target/test-service/run_timeout/default/run.log";
     let _ = std::fs::remove_file(log);
-    serve_at_slowly(17404, std::time::Duration::from_secs(3), |_| Resp::ok(answer("too late"))).await;
-    let s = start(&config_path(), 17405).await;
-    let (status, body) = s.start_run(json!({ "yml": read("graph.yml"), "message": "how long?" })).await;
+    let (model, _) = listen_slowly(std::time::Duration::from_secs(3), |_| Resp::ok(answer("too late"))).await;
+    let s = start(&config_path()).await;
+    let (status, body) = s.start_run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "how long?" })).await;
     assert_eq!(status, 202, "{body}");
     let id = body["run"].as_str().unwrap().to_string();
     let state = s.finished(&id).await;

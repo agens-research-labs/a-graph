@@ -1,4 +1,4 @@
-# One node `n`, the model is a mock server on port 18111 (the test starts it). The node reads an image media; the model takes images.
+# One node `n`, the model is a mock server on {{port:model}} (the test starts it). The node reads an image media; the model takes images.
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:18111
+    host: http://127.0.0.1:{{port:model}}
     input: [text, image]
     output: [text]
 resources:

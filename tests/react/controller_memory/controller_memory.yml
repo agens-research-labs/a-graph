@@ -1,4 +1,4 @@
-# A react whose controller `c` has a memory of one exchange (read only). A mock model (port 18308, started by the test) plays the controller by a script and answers the text it was asked to the other nodes.
+# A react whose controller `c` has a memory of one exchange (read only). A mock model ({{port:model}}, started by the test) plays the controller by a script and answers the text it was asked to the other nodes.
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:18308
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

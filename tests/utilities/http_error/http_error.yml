@@ -1,4 +1,4 @@
-# Variant of valid.yml: An http utility that answers 500 (service mock on port 19904).
+# Variant of valid.yml: An http utility that answers 500 (service mock on {{port:utility}}).
 graph_spec: "1.0"
 passport:
   adl:
@@ -86,7 +86,7 @@ embeddings:
 utilities:
   - id: u
     transport: http
-    url: http://127.0.0.1:19904/convert
+    url: http://127.0.0.1:{{port:utility}}/convert
     timeout: 5
 resources:
   prompts:

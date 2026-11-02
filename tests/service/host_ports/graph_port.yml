@@ -1,4 +1,4 @@
-# The graph allows 127.0.0.1 on the port of its model only (model mock on port 17463).
+# The graph allows 127.0.0.1 on the port of its model only (model mock on {{port:model}}).
 graph_spec: "1.0"
 passport:
   adl:
@@ -7,14 +7,14 @@ passport:
     description: t
     version: "1.0.0"
     data_classification: { sensitivity: public }
-    permissions: { network: { allowed_hosts: ["127.0.0.1:17463"] } }
+    permissions: { network: { allowed_hosts: ["127.0.0.1:{{port:model}}"] } }
 observability: { level: error }
 verbose: { level: off }
 models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:17463
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

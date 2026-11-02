@@ -1,5 +1,5 @@
 //! Running the whole graph. Every test is a folder with its own graphs; the model is a
-//! mock server (on the port the file names) that answers with the text it was asked, so the answer
+//! mock server (on a free port) that answers with the text it was asked, so the answer
 //! of a node shows what the node received. A node `x` answers `X(<what it took>)`.
 
 pub use std::sync::atomic::{AtomicUsize, Ordering};
@@ -8,8 +8,8 @@ pub use std::time::{Duration, Instant};
 pub use serde_json::{Value, json};
 pub use a_graph::run::{Content, Program, RunOutput, build};
 pub use std::sync::Arc as Shared;
-pub use super::run::{yml_in};
-pub use super::http::{Req, Resp, serve_at, serve_at_delayed};
+pub use super::run::{yml_in, yml_with};
+pub use super::http::{Req, Resp, listen, listen_delayed};
 
 pub fn chat(text: &str) -> String {
     json!({ "model": "m", "message": { "role": "assistant", "content": text }, "done": true, "done_reason": "stop", "prompt_eval_count": 1, "eval_count": 1 }).to_string()
@@ -28,15 +28,15 @@ pub fn echo(req: &Req) -> Resp {
     if body.get("format").is_some() { Resp::ok(chat(&json!({ "v": text }).to_string())) } else { Resp::ok(chat(&text)) }
 }
 
-pub fn port_of(yml: &str) -> u16 {
-    let rest = yml.split("host: http://127.0.0.1:").nth(1).expect("the fixture names no port");
-    rest.chars().take_while(char::is_ascii_digit).collect::<String>().parse().unwrap()
+/// The program of `<dir>/<name>.yml`, with the mock model on a free port.
+pub async fn program(dir: &std::path::Path, name: &str, handler: impl Fn(&Req) -> Resp + Send + Sync + 'static) -> (Shared<Program>, Arc<Mutex<Vec<Req>>>) {
+    program_with(dir, name, &[], handler).await
 }
 
-/// The program of `<dir>/<name>.yml`, with the mock on the port the file names.
-pub async fn program(dir: &std::path::Path, name: &str, handler: impl Fn(&Req) -> Resp + Send + Sync + 'static) -> (Shared<Program>, Arc<Mutex<Vec<Req>>>) {
-    let yml = yml_in(dir, name);
-    let (_, seen) = serve_at(port_of(&yml), handler).await;
+/// Like `program`, with the ports of the other mock servers the test started.
+pub async fn program_with(dir: &std::path::Path, name: &str, ports: &[(&str, u16)], handler: impl Fn(&Req) -> Resp + Send + Sync + 'static) -> (Shared<Program>, Arc<Mutex<Vec<Req>>>) {
+    let (port, seen) = listen(handler).await;
+    let yml = yml_with(dir, name, &[ports, &[("model", port)]].concat());
     (Shared::new(build(&yml).unwrap_or_else(|e| panic!("{e}"))), seen)
 }
 
@@ -71,10 +71,10 @@ pub const D_AND_E: &str = "---\nfrom agent d\n---\nD(I(S(hi)))\n\n---\nfrom agen
 
 /// Like `program`, with a mock that takes 300 ms to answer the nodes `D` and `E` (the server waits
 /// without blocking a thread: a handler that slept would hold up the other requests).
-pub async fn program_slow(dir: &std::path::Path, name: &str) -> (Shared<Program>, Arc<Mutex<Vec<Req>>>) {
-    let yml = yml_in(dir, name);
+pub async fn program_slow(dir: &std::path::Path, name: &str, ports: &[(&str, u16)]) -> (Shared<Program>, Arc<Mutex<Vec<Req>>>) {
     let delay = |req: &Req| if user_of(req).starts_with(['D', 'E']) { Duration::from_millis(300) } else { Duration::ZERO };
-    let (_, seen) = serve_at_delayed(port_of(&yml), delay, |req| Resp::ok(chat(&user_of(req)))).await;
+    let (port, seen) = listen_delayed(delay, |req| Resp::ok(chat(&user_of(req)))).await;
+    let yml = yml_with(dir, name, &[ports, &[("model", port)]].concat());
     (Shared::new(build(&yml).unwrap_or_else(|e| panic!("{e}"))), seen)
 }
 

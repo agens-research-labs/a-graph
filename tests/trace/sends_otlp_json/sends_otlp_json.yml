@@ -1,4 +1,4 @@
-# The graph of groups/nested_group_origin with a `trace` block (model mock 19801, collector mock 19811): the run sends one OTLP/JSON trace.
+# The graph of groups/nested_group_origin with a `trace` block (model mock {{port:model}}, collector mock {{port:collector}}): the run sends one OTLP/JSON trace.
 graph_spec: "1.0"
 passport:
   adl:
@@ -10,7 +10,7 @@ passport:
     permissions: { network: { allowed_hosts: [127.0.0.1] } }
 observability: { level: error }
 trace:
-  endpoint: http://127.0.0.1:19811/v1/traces
+  endpoint: http://127.0.0.1:{{port:collector}}/v1/traces
   headers:
     Authorization: { env: TRACE_TOKEN }
 verbose: { level: off }
@@ -18,7 +18,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19801
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

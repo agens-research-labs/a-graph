@@ -1,4 +1,4 @@
-# Log at info written on stdout on purpose (model mock on port 19959).
+# Log at info written on stdout on purpose (model mock on {{port:model}}).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19959
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

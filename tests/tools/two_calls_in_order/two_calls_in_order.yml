@@ -1,4 +1,4 @@
-# Two calls of the tool in one round, `max_iter: 2` (model on port 18510, started by the test).
+# Two calls of the tool in one round, `max_iter: 2` (model on {{port:model}}, started by the test).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:18510
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

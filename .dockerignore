@@ -1,0 +1,6 @@
+# only what the build needs goes to Docker: the sources and the lock file
+*
+!Cargo.toml
+!Cargo.lock
+!src/
+!rust-toolchain.toml

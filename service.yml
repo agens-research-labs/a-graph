@@ -1,0 +1,10 @@
+# The configuration of the service in Docker (`compose.yml` mounts it at /etc/a-graph/service.yml).
+# Every key is described in docs/service.md.
+port: 8080
+data_dir: /data                      # the volume `a-graph-data`: a folder for each session, /data/<session>/
+allowed_hosts:                       # the only hosts a graph sent to the service may reach
+  - host.docker.internal:11434       # Ollama on your computer, on its port only: the other services of your computer
+                                     # stay out of reach. Remove this line when the service is not for you alone.
+  - ollama:11434                     # Ollama in its container (`docker compose --profile ollama`)
+  - api.anthropic.com
+  - api.openai.com

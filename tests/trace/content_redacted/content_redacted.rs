@@ -8,8 +8,8 @@ fn here() -> &'static std::path::Path {
 /// With a data classification that forbids contents the spans keep the facts and drop the texts.
 #[tokio::test]
 async fn content_redacted() {
-    let (_, collector) = serve_at(19816, |_| Resp::ok("{}")).await;
-    let (p, _) = program(here(), "content_redacted", echo).await;
+    let (collector_port, collector) = listen(|_| Resp::ok("{}")).await;
+    let (p, _) = program_with(here(), "content_redacted", &[("collector", collector_port)], echo).await;
     p.run("hi").await.unwrap();
     let spans = spans_of(&collector);
     let call = named(&spans, "model m");

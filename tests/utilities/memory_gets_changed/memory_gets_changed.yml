@@ -1,4 +1,4 @@
-# A node with a memory and both utilities: what is saved is the changed question and the changed answer (model mock 19918).
+# A node with a memory and both utilities: what is saved is the changed question and the changed answer (model mock {{port:model}}).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19918
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 external:

@@ -1,4 +1,4 @@
-# The vectordb answers 500: the run of the node fails (model 19014, embedding 19015, qdrant 19016).
+# The vectordb answers 500: the run of the node fails (model {{port:model}}, embedding {{port:embedding}}, qdrant {{port:vectordb}}).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,14 +14,14 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19014
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 embeddings:
   - id: emb
     provider: ollama
     model: embeddinggemma
-    host: http://127.0.0.1:19015
+    host: http://127.0.0.1:{{port:embedding}}
 resources:
   prompts:
     - id: pr
@@ -32,7 +32,7 @@ external:
   vectordb:
     - id: contracts_db
       provider: qdrant
-      url: http://127.0.0.1:19016
+      url: http://127.0.0.1:{{port:vectordb}}
       collection: contracts
       top_k: 2
       embedding: emb

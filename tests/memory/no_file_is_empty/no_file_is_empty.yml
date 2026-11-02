@@ -1,4 +1,4 @@
-# The file of the memory does not exist yet: the node gets no history and runs (model mock 19507).
+# The file of the memory does not exist yet: the node gets no history and runs (model mock {{port:model}}).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,7 +14,7 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19507
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 resources:

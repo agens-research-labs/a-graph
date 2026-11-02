@@ -1,4 +1,4 @@
-# With `chat.embedding` the vector of the user message is saved next to it (model mock 19604, embedding mock 19605).
+# With `chat.embedding` the vector of the user message is saved next to it (model mock {{port:model}}, embedding mock {{port:embedding}}).
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,14 +14,14 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19604
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 embeddings:
   - id: emb
     provider: ollama
     model: embeddinggemma
-    host: http://127.0.0.1:19605
+    host: http://127.0.0.1:{{port:embedding}}
 resources:
   prompts:
     - id: pr

@@ -1,4 +1,4 @@
-# One node `n` with a qdrant vectordb (mock, port 19003), an embedding (mock, port 19002) and a model (mock, port 19001). The prompt uses {{chunks}}.
+# One node `n` with a qdrant vectordb (mock, {{port:vectordb}}), an embedding (mock, {{port:embedding}}) and a model (mock, {{port:model}}). The prompt uses {{chunks}}.
 graph_spec: "1.0"
 passport:
   adl:
@@ -14,14 +14,14 @@ models:
   - id: m
     provider: ollama
     model: m
-    host: http://127.0.0.1:19001
+    host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]
 embeddings:
   - id: emb
     provider: ollama
     model: embeddinggemma
-    host: http://127.0.0.1:19002
+    host: http://127.0.0.1:{{port:embedding}}
 resources:
   prompts:
     - id: pr
@@ -32,7 +32,7 @@ external:
   vectordb:
     - id: contracts_db
       provider: qdrant
-      url: http://127.0.0.1:19003
+      url: http://127.0.0.1:{{port:vectordb}}
       collection: contracts
       top_k: 2
       embedding: emb
