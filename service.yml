@@ -2,6 +2,9 @@
 # Every key is described in docs/service.md.
 port: 8080
 data_dir: /data                      # the volume `a-graph-data`: a folder for each session, /data/<session>/
+session_retention_seconds: 604800    # a session nobody used for 7 days is deleted, with its memories and boards:
+                                     # without this line the volume grows for ever. Remove it to keep every session.
+session_max_bytes: 104857600         # a session over 100 MB is refused (422, `session_full`)
 allowed_hosts:                       # the only hosts a graph sent to the service may reach
   - host.docker.internal:11434       # Ollama on your computer, on its port only: the other services of your computer
                                      # stay out of reach. Remove this line when the service is not for you alone.
