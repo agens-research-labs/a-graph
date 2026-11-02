@@ -27,7 +27,8 @@ open. It does not happen on Linux, where the pipes are created closed on exec. R
 ## The checks
 
 Every pull request and every push to `main` run the workflow `.github/workflows/ci.yml` on GitHub, on Linux, with
-the Rust of `rust-toolchain.toml`:
+the Rust of `rust-toolchain.toml`. A push to `main` runs the tests on macOS too, which a pull request does not: run
+them by hand on the other system when the change touches files, processes or timing.
 
 ```
 cargo build --locked

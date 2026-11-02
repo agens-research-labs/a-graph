@@ -1,5 +1,5 @@
 # The checks of every pull request and of every push to main: the build, clippy, the tests, the advisories on the
-# crates of Cargo.lock, the Docker image. CONTRIBUTING.md says how to run the same checks by hand.
+# crates of Cargo.lock, the Docker image. On a push to main the tests run on macOS too. CONTRIBUTING.md says how to run the same checks by hand.
 name: ci
 
 on:
@@ -35,6 +35,22 @@ jobs:
             tests/mcp_server -> ../../target/mcp-test-server
       - run: cargo build --locked
       - run: cargo clippy --all-targets --locked -- -D warnings
+      - run: cargo test --locked --no-fail-fast
+
+  # the same tests on macOS, where the filesystem ignores case and the pipes of a child are created in two steps
+  # (CONTRIBUTING.md): on every push to main only, since a minute of macOS costs ten of Linux
+  test-macos:
+    if: github.event_name == 'push'
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: |
+            . -> target
+            tests/mcp_server -> ../../target/mcp-test-server
       - run: cargo test --locked --no-fail-fast
 
   audit:
