@@ -39,8 +39,16 @@ cargo audit                     # the advisories on the crates of Cargo.lock (ca
 docker build .                  # the image, once the Dockerfile is in the repository
 ```
 
-The same commands run by hand, before opening a pull request. Run `cargo fmt` first: CI checks the formatting, it does
-not fix it. Clippy fails on any warning: a lint that does not fit the code is allowed in `[lints.clippy]` of
+The same commands run by hand, before opening a pull request. CI checks the formatting, it does not fix it: let the
+editor run rustfmt on save, and `cargo fmt` formats everything by hand. The width is in `rustfmt.toml` and the version
+of rustfmt in `rust-toolchain.toml`, so every editor formats the same way.
+
+- VS Code, Cursor: with the rust-analyzer extension, `"[rust]": { "editor.formatOnSave": true }` in the settings.
+- RustRover: Settings, Rust, Rustfmt, "Run rustfmt on Save".
+- Zed: on by default.
+- A coding agent: `cargo fmt` before every commit.
+
+Clippy fails on any warning: a lint that does not fit the code is allowed in `[lints.clippy]` of
 `Cargo.toml`, with the reason next to it. A new release of Rust brings new lints: the bump of `rust-toolchain.toml` is
 a commit of its own, with what the new lints asked for. `cargo audit` fails on a new advisory: the fix is a
 `cargo update` of that crate, or, when there is no fix yet, an entry in `.cargo/audit.toml` with the reason.
