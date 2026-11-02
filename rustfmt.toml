@@ -1,0 +1,2 @@
+# the code and its comments are written around 120 columns; the default of 100 would rewrap far more lines
+max_width = 120

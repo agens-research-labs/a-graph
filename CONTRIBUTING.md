@@ -31,6 +31,7 @@ the Rust of `rust-toolchain.toml`. A push to `main` runs the tests on macOS too,
 them by hand on the other system when the change touches files, processes or timing.
 
 ```
+cargo fmt --check
 cargo build --locked
 cargo clippy --all-targets --locked -- -D warnings
 cargo test --locked --no-fail-fast
@@ -38,11 +39,11 @@ cargo audit                     # the advisories on the crates of Cargo.lock (ca
 docker build .                  # the image, once the Dockerfile is in the repository
 ```
 
-The same commands run by hand, before opening a pull request. Clippy fails on any warning: a lint that does not
-fit the code is allowed in `[lints.clippy]` of `Cargo.toml`, with the reason next to it. A new release of Rust brings
-new lints: the bump of `rust-toolchain.toml` is a commit of its own, with what the new lints asked for. `cargo audit`
-fails on a new advisory: the fix is a `cargo update` of that crate, or, when there is no fix yet, an entry in
-`.cargo/audit.toml` with the reason.
+The same commands run by hand, before opening a pull request. Run `cargo fmt` first: CI checks the formatting, it does
+not fix it. Clippy fails on any warning: a lint that does not fit the code is allowed in `[lints.clippy]` of
+`Cargo.toml`, with the reason next to it. A new release of Rust brings new lints: the bump of `rust-toolchain.toml` is
+a commit of its own, with what the new lints asked for. `cargo audit` fails on a new advisory: the fix is a
+`cargo update` of that crate, or, when there is no fix yet, an entry in `.cargo/audit.toml` with the reason.
 
 ## How the code is organized
 

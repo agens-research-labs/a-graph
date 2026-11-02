@@ -1,5 +1,6 @@
-# The checks of every pull request and of every push to main: the build, clippy, the tests, the advisories on the
-# crates of Cargo.lock, the Docker image. On a push to main the tests run on macOS too. CONTRIBUTING.md says how to run the same checks by hand.
+# The checks of every pull request and of every push to main: the formatting, the build, clippy, the tests, the
+# advisories on the crates of Cargo.lock, the Docker image. On a push to main the tests run on macOS too.
+# CONTRIBUTING.md says how to run the same checks by hand.
 name: ci
 
 on:
@@ -33,6 +34,7 @@ jobs:
           workspaces: |
             . -> target
             tests/mcp_server -> ../../target/mcp-test-server
+      - run: cargo fmt --check
       - run: cargo build --locked
       - run: cargo clippy --all-targets --locked -- -D warnings
       - run: cargo test --locked --no-fail-fast

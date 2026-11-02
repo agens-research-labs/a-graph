@@ -2,4 +2,4 @@
 # GitHub use it too, so a new release of Rust does not turn them red with a new lint before someone chose it.
 [toolchain]
 channel = "1.99"
-components = ["clippy"]
+components = ["clippy", "rustfmt"]
