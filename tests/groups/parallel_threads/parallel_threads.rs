@@ -7,15 +7,22 @@ fn here() -> &'static std::path::Path {
 /// The branches of a parallel group run at the same time on different threads.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn parallel_threads() {
-    let (p, threads) = blocking_program(here(), "parallel_threads");
-    let started = Instant::now();
+    let (p, calls) = blocking_program(here(), "parallel_threads");
     p.run("hi").await.unwrap();
-    let took = started.elapsed();
 
-    // s, i, f, z one after the other (4 x 200 ms), d and e together (200 ms): about 1 second;
-    // one after the other they would take 1.2 seconds
-    assert!(took < Duration::from_millis(1150), "took {took:?}");
-    let seen = threads.lock().unwrap();
-    let thread_of = |tag: char| seen.iter().find(|(t, _)| *t == tag).unwrap().1;
-    assert_ne!(thread_of('D'), thread_of('E'), "d and e were called on the same thread");
+    // d and e at the same time: each started before the other ended. Not a measure of the whole
+    // run, which a slow machine stretches past any bound.
+    let calls = calls.lock().unwrap();
+    let call = |tag: char| calls.iter().find(|c| c.tag == tag).unwrap();
+    let (d, e) = (call('D'), call('E'));
+    let first = d.start.min(e.start);
+    assert!(
+        d.start < e.end && e.start < d.end,
+        "d and e did not overlap: d {:?}..{:?}, e {:?}..{:?}",
+        d.start - first,
+        d.end - first,
+        e.start - first,
+        e.end - first
+    );
+    assert_ne!(d.thread, e.thread, "d and e were called on the same thread");
 }

@@ -127,10 +127,19 @@ pub use a_graph::models::{
     ResponseInfo, StopReason, Usage,
 };
 
+/// A call to the `Blocking` model: the first letter of what it was asked, the thread it ran on,
+/// when it started and when it ended.
+pub struct Call {
+    pub tag: char,
+    pub thread: std::thread::ThreadId,
+    pub start: Instant,
+    pub end: Instant,
+}
+
 /// A model that answers the text it is asked, after blocking its thread for 200 ms, and writes down
-/// the thread it was called on.
+/// each call.
 pub struct Blocking {
-    pub threads: Arc<Mutex<Vec<(char, std::thread::ThreadId)>>>,
+    pub calls: Arc<Mutex<Vec<Call>>>,
 }
 
 #[async_trait::async_trait]
@@ -140,11 +149,14 @@ impl Llm for Blocking {
     }
 
     async fn invoke(&self, call: &ModelInvocation) -> Result<ModelResponse, ModelError> {
-        self.threads
-            .lock()
-            .unwrap()
-            .push((call.user.chars().next().unwrap(), std::thread::current().id()));
+        let start = Instant::now();
         std::thread::sleep(Duration::from_millis(200));
+        self.calls.lock().unwrap().push(Call {
+            tag: call.user.chars().next().unwrap(),
+            thread: std::thread::current().id(),
+            start,
+            end: Instant::now(),
+        });
         Ok(ModelResponse {
             message: Some(call.user.clone()),
             structured: None,
@@ -168,17 +180,9 @@ impl Llm for Blocking {
 }
 
 /// The program of a fixture whose model is the `Blocking` one; no server is started.
-pub fn blocking_program(
-    dir: &std::path::Path,
-    name: &str,
-) -> (Shared<Program>, Arc<Mutex<Vec<(char, std::thread::ThreadId)>>>) {
+pub fn blocking_program(dir: &std::path::Path, name: &str) -> (Shared<Program>, Arc<Mutex<Vec<Call>>>) {
     let mut p = build(&yml_in(dir, name)).unwrap_or_else(|e| panic!("{e}"));
-    let threads = Arc::new(Mutex::new(Vec::new()));
-    p.models.insert(
-        "m",
-        Box::new(Blocking {
-            threads: threads.clone(),
-        }),
-    );
-    (Shared::new(p), threads)
+    let calls = Arc::new(Mutex::new(Vec::new()));
+    p.models.insert("m", Box::new(Blocking { calls: calls.clone() }));
+    (Shared::new(p), calls)
 }
