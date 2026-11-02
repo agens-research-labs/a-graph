@@ -8,5 +8,8 @@ fn here() -> &'static std::path::Path {
 #[test]
 fn no_permissions() {
     let e = errors(here(), "no_permissions");
-    assert!(!e.is_empty() && e.iter().all(|(r, _)| r == "network_not_allowed"), "{e:?}");
+    assert!(
+        !e.is_empty() && e.iter().all(|(r, _)| r == "network_not_allowed"),
+        "{e:?}"
+    );
 }

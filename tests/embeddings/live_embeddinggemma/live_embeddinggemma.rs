@@ -9,7 +9,12 @@ fn here() -> &'static std::path::Path {
 #[ignore = "needs a local Ollama with embeddinggemma"]
 async fn live_embeddinggemma() {
     let m = manager(&own_yml(here()));
-    let texts = ["a cat sleeps on the sofa", "un gatto dorme sul divano", "quarterly tax declaration"].map(String::from);
+    let texts = [
+        "a cat sleeps on the sofa",
+        "un gatto dorme sul divano",
+        "quarterly tax declaration",
+    ]
+    .map(String::from);
     let v = m.embed("emb_gemma", &texts).await.unwrap();
     assert!(v.len() == 3 && v.iter().all(|x| x.len() == 768));
     let cos = |a: &[f32], b: &[f32]| {

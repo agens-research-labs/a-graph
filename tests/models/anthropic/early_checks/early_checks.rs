@@ -8,6 +8,9 @@ async fn early_checks() {
     c.max_tokens = None;
     assert!(matches!(m.invoke(&c).await, Err(ModelError::Unsupported { .. })));
     let mut c = call("q");
-    c.media = vec![MediaInput::Image { format: "bmp".into(), data: "x".into() }];
+    c.media = vec![MediaInput::Image {
+        format: "bmp".into(),
+        data: "x".into(),
+    }];
     assert!(matches!(m.invoke(&c).await, Err(ModelError::Unsupported { .. })));
 }

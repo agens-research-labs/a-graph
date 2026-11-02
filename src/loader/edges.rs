@@ -14,7 +14,9 @@ const GROUP_ORDER: [&str; 4] = [key::LIMIT, key::IN, key::FAN, key::OUT];
 
 pub(super) fn check(root: &Value, c: &mut Collector) {
     let Some(graph) = root.get(key::GRAPH) else { return };
-    let Some(Value::Sequence(entries)) = graph.get(key::EDGES) else { return };
+    let Some(Value::Sequence(entries)) = graph.get(key::EDGES) else {
+        return;
+    };
     let nodes = Nodes::new(graph.get(key::NODES));
     let base = Path::root().key(key::GRAPH).key(key::EDGES);
 
@@ -28,10 +30,12 @@ pub(super) fn check(root: &Value, c: &mut Collector) {
                 starts += 1;
                 start_id = v.as_str();
                 if starts > 1 {
-                    c.errs.push(error(&at, Rule::EdgeStart, "the graph needs exactly one `start`"));
+                    c.errs
+                        .push(error(&at, Rule::EdgeStart, "the graph needs exactly one `start`"));
                 }
                 if i != 0 {
-                    c.errs.push(error(&at, Rule::EdgeStart, "`start` must be the first entry"));
+                    c.errs
+                        .push(error(&at, Rule::EdgeStart, "`start` must be the first entry"));
                 }
             }
             key::END => {
@@ -40,7 +44,8 @@ pub(super) fn check(root: &Value, c: &mut Collector) {
                     nodes.nothing_after(id, "it is the `end` node", c);
                 }
                 if ends > 1 {
-                    c.errs.push(error(&at, Rule::EdgeEnd, "the graph needs exactly one `end`"));
+                    c.errs
+                        .push(error(&at, Rule::EdgeEnd, "the graph needs exactly one `end`"));
                 }
                 if i != entries.len() - 1 {
                     c.errs.push(error(&at, Rule::EdgeEnd, "`end` must be the last entry"));
@@ -60,7 +65,8 @@ pub(super) fn check(root: &Value, c: &mut Collector) {
         }
     }
     if starts == 0 {
-        c.errs.push(error(&base, Rule::EdgeStart, "the graph needs exactly one `start`"));
+        c.errs
+            .push(error(&base, Rule::EdgeStart, "the graph needs exactly one `start`"));
     }
     if ends == 0 {
         // a graph of one node is the `start` alone: the node runs once and its output is the result
@@ -69,7 +75,11 @@ pub(super) fn check(root: &Value, c: &mut Collector) {
                 nodes.nothing_after(id, "it is the only node of the graph", c);
             }
         } else {
-            c.errs.push(error(&base, Rule::EdgeEnd, "the graph needs exactly one `end` (only a graph of one node, a `start` alone, has none)"));
+            c.errs.push(error(
+                &base,
+                Rule::EdgeEnd,
+                "the graph needs exactly one `end` (only a graph of one node, a `start` alone, has none)",
+            ));
         }
     }
 }
@@ -119,7 +129,11 @@ fn react(v: &Value, at: &Path, nodes: &Nodes, c: &mut Collector) {
         for (i, item) in components.as_sequence().into_iter().flatten().enumerate() {
             let Some(id) = worker_id(item) else { continue };
             if seen.contains(&id) {
-                c.errs.push(error(&here.idx(i), Rule::DuplicateId, format!("two workers are called `{id}`: the controller could not tell which to call")));
+                c.errs.push(error(
+                    &here.idx(i),
+                    Rule::DuplicateId,
+                    format!("two workers are called `{id}`: the controller could not tell which to call"),
+                ));
             }
             seen.push(id);
         }
@@ -155,27 +169,51 @@ fn group(kind: &str, v: &Value, at: &Path, nodes: &Nodes, c: &mut Collector) {
     }
     for field in GROUP_ORDER {
         if order.iter().filter(|f| **f == field).count() > 1 {
-            c.errs.push(error(at, Rule::ExactlyOne, format!("`{field}` is written once in a group")));
+            c.errs.push(error(
+                at,
+                Rule::ExactlyOne,
+                format!("`{field}` is written once in a group"),
+            ));
         }
     }
     for field in [key::IN, key::FAN] {
         if !order.contains(&field) {
-            c.errs.push(error(&at.key(field), Rule::MissingField, format!("`{field}` is mandatory in a group")));
+            c.errs.push(error(
+                &at.key(field),
+                Rule::MissingField,
+                format!("`{field}` is mandatory in a group"),
+            ));
         }
     }
     let rank = |f: &str| GROUP_ORDER.iter().position(|x| *x == f);
     if order.windows(2).any(|w| rank(w[0]) > rank(w[1])) {
-        c.errs.push(error(at, Rule::BlockShape, "the entries of a group go in this order: limit, in, fan, out"));
+        c.errs.push(error(
+            at,
+            Rule::BlockShape,
+            "the entries of a group go in this order: limit, in, fan, out",
+        ));
     }
     if kind == key::LINEAR && order.contains(&key::LIMIT) {
-        c.errs.push(error(&at.key(key::LIMIT), Rule::UnexpectedField, "`limit` is for parallel, concurrent and batch"));
+        c.errs.push(error(
+            &at.key(key::LIMIT),
+            Rule::UnexpectedField,
+            "`limit` is for parallel, concurrent and batch",
+        ));
     }
     if kind == key::CONCURRENT && !order.contains(&key::LIMIT) {
-        c.errs.push(error(&at.key(key::LIMIT), Rule::MissingField, "`limit` is mandatory in a concurrent group: it is how many branches run at the same time"));
+        c.errs.push(error(
+            &at.key(key::LIMIT),
+            Rule::MissingField,
+            "`limit` is mandatory in a concurrent group: it is how many branches run at the same time",
+        ));
     }
     let Some(fan) = fan else { return };
     if fan.as_sequence().is_some_and(|s| s.is_empty()) {
-        c.errs.push(error(&at.key(key::FAN), Rule::BadValue, "`fan` needs at least one branch"));
+        c.errs.push(error(
+            &at.key(key::FAN),
+            Rule::BadValue,
+            "`fan` needs at least one branch",
+        ));
     }
 
     // the branches may be groups: they are checked too
@@ -194,7 +232,10 @@ fn group(kind: &str, v: &Value, at: &Path, nodes: &Nodes, c: &mut Collector) {
 
 /// The path of the `fan` entry: the position in the list of the group.
 fn fan_path(at: &Path, items: &[Value]) -> Path {
-    let i = items.iter().position(|it| single(it).is_some_and(|(k, _)| k == key::FAN)).unwrap_or(0);
+    let i = items
+        .iter()
+        .position(|it| single(it).is_some_and(|(k, _)| k == key::FAN))
+        .unwrap_or(0);
     at.idx(i).key(key::FAN)
 }
 
@@ -244,54 +285,110 @@ impl<'a> Nodes<'a> {
     /// A controller answers with the routing output that the react defines, and does not mix it
     /// with tools, MCP servers, skills or a blackboard.
     fn controller_rules(&self, id: &str, c: &mut Collector) {
-        let Some((index, (_, node))) = self.list.iter().enumerate().find(|(_, (i, _))| *i == id) else { return };
+        let Some((index, (_, node))) = self.list.iter().enumerate().find(|(_, (i, _))| *i == id) else {
+            return;
+        };
         let at = Path::root().key(key::GRAPH).key(key::NODES).idx(index);
         let resources = node.get(key::RESOURCES);
         for field in [key::TOOLS, key::MCP_SERVERS, key::SKILLS] {
-            let used = resources.and_then(|r| r.get(field)).and_then(Value::as_sequence).is_some_and(|l| !l.is_empty());
+            let used = resources
+                .and_then(|r| r.get(field))
+                .and_then(Value::as_sequence)
+                .is_some_and(|l| !l.is_empty());
             if used {
                 c.errs.push(error(&at.key(key::RESOURCES).key(field), Rule::UnexpectedField, format!("node `{id}` is a react controller: it cannot have tools, MCP servers or skills; give them to a worker")));
             }
         }
         if node.get(key::BLACKBOARD).is_some() {
-            c.errs.push(error(&at.key(key::BLACKBOARD), Rule::UnexpectedField, format!("node `{id}` is a react controller: it cannot have a blackboard; give it to a worker")));
+            c.errs.push(error(
+                &at.key(key::BLACKBOARD),
+                Rule::UnexpectedField,
+                format!("node `{id}` is a react controller: it cannot have a blackboard; give it to a worker"),
+            ));
         }
-        if node.get(key::MESSAGE).and_then(|m| m.get(key::OUTPUT)).and_then(|o| o.get(key::SCHEMA)).is_some() {
-            c.errs.push(error(&at.key(key::MESSAGE).key(key::OUTPUT).key(key::SCHEMA), Rule::UnexpectedField, format!("node `{id}` is a react controller: its output is defined by the react")));
+        if node
+            .get(key::MESSAGE)
+            .and_then(|m| m.get(key::OUTPUT))
+            .and_then(|o| o.get(key::SCHEMA))
+            .is_some()
+        {
+            c.errs.push(error(
+                &at.key(key::MESSAGE).key(key::OUTPUT).key(key::SCHEMA),
+                Rule::UnexpectedField,
+                format!("node `{id}` is a react controller: its output is defined by the react"),
+            ));
         }
     }
 
     /// A validation node that passes the problem to the next node (`on_error: node`) needs a next
     /// node: with none, the problem would go to the final output, which `stop` says honestly.
     fn nothing_after(&self, id: &str, why: &str, c: &mut Collector) {
-        let Some((index, (_, node))) = self.list.iter().enumerate().find(|(_, (i, _))| *i == id) else { return };
-        let passes = node.get(key::VALIDATION_NODE).and_then(|v| v.get(key::ON_ERROR)).and_then(Value::as_str) == Some("node");
+        let Some((index, (_, node))) = self.list.iter().enumerate().find(|(_, (i, _))| *i == id) else {
+            return;
+        };
+        let passes = node
+            .get(key::VALIDATION_NODE)
+            .and_then(|v| v.get(key::ON_ERROR))
+            .and_then(Value::as_str)
+            == Some("node");
         if passes {
-            let at = Path::root().key(key::GRAPH).key(key::NODES).idx(index).key(key::VALIDATION_NODE).key(key::ON_ERROR);
-            c.errs.push(error(&at, Rule::ValidationNoNext, format!("node `{id}` has `on_error: node` but {why}, so no node follows it: use `stop`")));
+            let at = Path::root()
+                .key(key::GRAPH)
+                .key(key::NODES)
+                .idx(index)
+                .key(key::VALIDATION_NODE)
+                .key(key::ON_ERROR);
+            c.errs.push(error(
+                &at,
+                Rule::ValidationNoNext,
+                format!("node `{id}` has `on_error: node` but {why}, so no node follows it: use `stop`"),
+            ));
         }
     }
 
     /// A validation node is a step of the main flow: in a group (as `in`, `out` or in the `fan`) or
     /// in a `react` its place in the run would not be a single point.
     fn judge_in_group(&self, id: &str, c: &mut Collector) {
-        let Some((index, (_, node))) = self.list.iter().enumerate().find(|(_, (i, _))| *i == id) else { return };
+        let Some((index, (_, node))) = self.list.iter().enumerate().find(|(_, (i, _))| *i == id) else {
+            return;
+        };
         if node.get(key::VALIDATION_NODE).is_some() {
-            let at = Path::root().key(key::GRAPH).key(key::NODES).idx(index).key(key::VALIDATION_NODE);
+            let at = Path::root()
+                .key(key::GRAPH)
+                .key(key::NODES)
+                .idx(index)
+                .key(key::VALIDATION_NODE);
             c.errs.push(error(&at, Rule::ValidationInGroup, format!("node `{id}` is a validation node: it goes in the main flow (`start`, `next`, `end`), not in a group or a react")));
         }
     }
 
     /// An error for `message.output.node` and for each media of `media.output` with `node` true.
     fn forwarding(&self, id: &str, c: &mut Collector) {
-        let Some((index, (_, node))) = self.list.iter().enumerate().find(|(_, (i, _))| *i == id) else { return };
+        let Some((index, (_, node))) = self.list.iter().enumerate().find(|(_, (i, _))| *i == id) else {
+            return;
+        };
         let base = Path::root().key(key::GRAPH).key(key::NODES).idx(index);
-        let refuse = |at: Path, c: &mut Collector| c.errs.push(error(&at, Rule::GroupOutRequired, format!("node `{id}` passes its output on, but its group has no `out`")));
-        let message_node = node.get(key::MESSAGE).and_then(|b| b.get(key::OUTPUT)).and_then(|o| o.get(key::NODE)).and_then(Value::as_bool) == Some(true);
+        let refuse = |at: Path, c: &mut Collector| {
+            c.errs.push(error(
+                &at,
+                Rule::GroupOutRequired,
+                format!("node `{id}` passes its output on, but its group has no `out`"),
+            ))
+        };
+        let message_node = node
+            .get(key::MESSAGE)
+            .and_then(|b| b.get(key::OUTPUT))
+            .and_then(|o| o.get(key::NODE))
+            .and_then(Value::as_bool)
+            == Some(true);
         if message_node {
             refuse(base.key(key::MESSAGE).key(key::OUTPUT).key(key::NODE), c);
         }
-        if let Some(entries) = node.get(key::MEDIA).and_then(|b| b.get(key::OUTPUT)).and_then(Value::as_sequence) {
+        if let Some(entries) = node
+            .get(key::MEDIA)
+            .and_then(|b| b.get(key::OUTPUT))
+            .and_then(Value::as_sequence)
+        {
             for (i, entry) in entries.iter().enumerate() {
                 if entry.get(key::NODE).and_then(Value::as_bool) == Some(true) {
                     refuse(base.key(key::MEDIA).key(key::OUTPUT).idx(i).key(key::NODE), c);

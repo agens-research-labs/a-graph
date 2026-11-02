@@ -3,7 +3,10 @@ use crate::common::logging_logger::*;
 /// Content is redacted unless allowed.
 #[test]
 fn redaction() {
-    let ev = Event::new(LogLevel::Info, "run.model.call").node("a").field("tokens", 42).content("response", "secret text");
+    let ev = Event::new(LogLevel::Info, "run.model.call")
+        .node("a")
+        .field("tokens", 42)
+        .content("response", "secret text");
 
     let (log, buf) = logger(LogLevel::Debug, false);
     log.log(&ev);

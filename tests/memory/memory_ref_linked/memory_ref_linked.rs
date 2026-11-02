@@ -7,5 +7,10 @@ fn here() -> &'static std::path::Path {
 /// Memory ref to a vectordb is linked.
 #[test]
 fn memory_ref_linked() {
-    assert!(has(here(), "memory_ref_linked", "unknown_ref", "external.memory[1].ref"));
+    assert!(has(
+        here(),
+        "memory_ref_linked",
+        "unknown_ref",
+        "external.memory[1].ref"
+    ));
 }

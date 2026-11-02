@@ -4,8 +4,8 @@
 use std::collections::HashMap;
 
 use aws_sdk_bedrock::types::{
-    ModelInvocationJobInputDataConfig, ModelInvocationJobOutputDataConfig, ModelInvocationJobS3InputDataConfig, ModelInvocationJobS3OutputDataConfig, ModelInvocationJobStatus,
-    ModelInvocationType, S3InputFormat,
+    ModelInvocationJobInputDataConfig, ModelInvocationJobOutputDataConfig, ModelInvocationJobS3InputDataConfig,
+    ModelInvocationJobS3OutputDataConfig, ModelInvocationJobStatus, ModelInvocationType, S3InputFormat,
 };
 use aws_sdk_s3::primitives::ByteStream;
 use serde_json::{Map, Value, json};
@@ -13,16 +13,26 @@ use serde_json::{Map, Value, json};
 use super::Bedrock;
 use super::hosts::split_s3;
 use crate::models::Reasoning;
-use crate::models::{BatchEvent, BatchEvents, BatchOutcome, BatchRequest, BatchResult, BatchReturn, MediaInput, ModelError, ModelInvocation, ModelResponse, ResponseInfo, Role, StopReason, ToolCall, Usage};
+use crate::models::{
+    BatchEvent, BatchEvents, BatchOutcome, BatchRequest, BatchResult, BatchReturn, MediaInput, ModelError,
+    ModelInvocation, ModelResponse, ResponseInfo, Role, StopReason, ToolCall, Usage,
+};
 
 impl Bedrock {
     pub(super) async fn run_batch(&self, requests: Vec<BatchRequest>, events: BatchEvents) -> BatchReturn {
         let Some(cfg) = &self.batch else {
-            return Err(self.who.unsupported(vec!["this model has no `batch` block in the yml".into()]));
+            return Err(self
+                .who
+                .unsupported(vec!["this model has no `batch` block in the yml".into()]));
         };
-        let bad_uri = |what: &str, uri: &str| self.who.unsupported(vec![format!("{what} `{uri}` is not an s3:// URI")]);
-        let (in_bucket, in_prefix) = split_s3(&cfg.input_s3_uri).ok_or_else(|| bad_uri("input_s3_uri", &cfg.input_s3_uri))?;
-        let (out_bucket, out_prefix) = split_s3(&cfg.output_s3_uri).ok_or_else(|| bad_uri("output_s3_uri", &cfg.output_s3_uri))?;
+        let bad_uri = |what: &str, uri: &str| {
+            self.who
+                .unsupported(vec![format!("{what} `{uri}` is not an s3:// URI")])
+        };
+        let (in_bucket, in_prefix) =
+            split_s3(&cfg.input_s3_uri).ok_or_else(|| bad_uri("input_s3_uri", &cfg.input_s3_uri))?;
+        let (out_bucket, out_prefix) =
+            split_s3(&cfg.output_s3_uri).ok_or_else(|| bad_uri("output_s3_uri", &cfg.output_s3_uri))?;
 
         let mut results: Vec<BatchResult> = Vec::new();
         let mut sent: Vec<(String, String)> = Vec::new(); // (record id, request id)
@@ -35,7 +45,10 @@ impl Bedrock {
                     sent.push((record_id, r.id));
                 }
                 // a request that cannot go in a batch does not stop the others
-                Err(e) => results.push(BatchResult { id: r.id, result: Err(e) }),
+                Err(e) => results.push(BatchResult {
+                    id: r.id,
+                    result: Err(e),
+                }),
             }
         }
         if lines.is_empty() {
@@ -55,11 +68,24 @@ impl Bedrock {
 
         let name = format!("a-graph-{}", uuid::Uuid::new_v4().simple());
         let input_key = format!("{in_prefix}{name}.jsonl");
-        s3.put_object().bucket(&in_bucket).key(&input_key).body(ByteStream::from((lines.join("\n") + "\n").into_bytes())).send().await.map_err(|e| self.sdk_error(e))?;
+        s3.put_object()
+            .bucket(&in_bucket)
+            .key(&input_key)
+            .body(ByteStream::from((lines.join("\n") + "\n").into_bytes()))
+            .send()
+            .await
+            .map_err(|e| self.sdk_error(e))?;
 
         let build = |e: aws_smithy_types::error::operation::BuildError| self.who.unsupported(vec![e.to_string()]);
-        let input = ModelInvocationJobS3InputDataConfig::builder().s3_uri(format!("s3://{in_bucket}/{input_key}")).s3_input_format(S3InputFormat::Jsonl).build().map_err(build)?;
-        let output = ModelInvocationJobS3OutputDataConfig::builder().s3_uri(&cfg.output_s3_uri).build().map_err(build)?;
+        let input = ModelInvocationJobS3InputDataConfig::builder()
+            .s3_uri(format!("s3://{in_bucket}/{input_key}"))
+            .s3_input_format(S3InputFormat::Jsonl)
+            .build()
+            .map_err(build)?;
+        let output = ModelInvocationJobS3OutputDataConfig::builder()
+            .s3_uri(&cfg.output_s3_uri)
+            .build()
+            .map_err(build)?;
         let job = control
             .create_model_invocation_job()
             .job_name(&name)
@@ -73,40 +99,89 @@ impl Bedrock {
             .map_err(|e| self.sdk_error(e))?;
         let arn = job.job_arn().to_string();
         let job_id = arn.rsplit('/').next().unwrap_or(&arn).to_string();
-        let _ = events.send(BatchEvent::Submitted { batch_id: job_id.clone(), requests: sent.len() });
+        let _ = events.send(BatchEvent::Submitted {
+            batch_id: job_id.clone(),
+            requests: sent.len(),
+        });
 
         // polled until a terminal state: there is no maximum wait
         let (status, message) = loop {
-            let got = control.get_model_invocation_job().job_identifier(&arn).send().await.map_err(|e| self.sdk_error(e))?;
+            let got = control
+                .get_model_invocation_job()
+                .job_identifier(&arn)
+                .send()
+                .await
+                .map_err(|e| self.sdk_error(e))?;
             let status = got.status().cloned().unwrap_or(ModelInvocationJobStatus::Submitted);
-            let _ = events.send(BatchEvent::Status { batch_id: job_id.clone(), status: status.as_str().to_string() });
-            if matches!(status, ModelInvocationJobStatus::Completed | ModelInvocationJobStatus::PartiallyCompleted | ModelInvocationJobStatus::Failed | ModelInvocationJobStatus::Stopped | ModelInvocationJobStatus::Expired) {
+            let _ = events.send(BatchEvent::Status {
+                batch_id: job_id.clone(),
+                status: status.as_str().to_string(),
+            });
+            if matches!(
+                status,
+                ModelInvocationJobStatus::Completed
+                    | ModelInvocationJobStatus::PartiallyCompleted
+                    | ModelInvocationJobStatus::Failed
+                    | ModelInvocationJobStatus::Stopped
+                    | ModelInvocationJobStatus::Expired
+            ) {
                 break (status, got.message().map(str::to_string));
             }
             tokio::time::sleep(self.poll_interval).await;
         };
         let outcome = match status {
-            ModelInvocationJobStatus::Completed | ModelInvocationJobStatus::PartiallyCompleted => BatchOutcome::Completed,
+            ModelInvocationJobStatus::Completed | ModelInvocationJobStatus::PartiallyCompleted => {
+                BatchOutcome::Completed
+            }
             ModelInvocationJobStatus::Expired => BatchOutcome::Expired,
             _ => BatchOutcome::Failed,
         };
-        let _ = events.send(BatchEvent::Finished { batch_id: job_id.clone(), outcome });
+        let _ = events.send(BatchEvent::Finished {
+            batch_id: job_id.clone(),
+            outcome,
+        });
 
         // every `.jsonl.out` file of the job folder
         let folder = format!("{out_prefix}{job_id}/");
-        let listed = s3.list_objects_v2().bucket(&out_bucket).prefix(&folder).send().await.map_err(|e| self.sdk_error(e))?;
-        let keys: Vec<String> = listed.contents().iter().filter_map(|o| o.key()).filter(|k| k.ends_with(".jsonl.out")).map(str::to_string).collect();
+        let listed = s3
+            .list_objects_v2()
+            .bucket(&out_bucket)
+            .prefix(&folder)
+            .send()
+            .await
+            .map_err(|e| self.sdk_error(e))?;
+        let keys: Vec<String> = listed
+            .contents()
+            .iter()
+            .filter_map(|o| o.key())
+            .filter(|k| k.ends_with(".jsonl.out"))
+            .map(str::to_string)
+            .collect();
         if keys.is_empty() {
             let why = message.unwrap_or_else(|| "no result file".into());
-            return Err(self.who.provider_error(None, format!("batch {}: {why}", status.as_str())));
+            return Err(self
+                .who
+                .provider_error(None, format!("batch {}: {why}", status.as_str())));
         }
 
         let mut by_record: HashMap<String, Value> = HashMap::new();
         for key in keys {
-            let obj = s3.get_object().bucket(&out_bucket).key(&key).send().await.map_err(|e| self.sdk_error(e))?;
-            let bytes = obj.body.collect().await.map_err(|e| self.who.network_text(e.to_string()))?.into_bytes();
+            let obj = s3
+                .get_object()
+                .bucket(&out_bucket)
+                .key(&key)
+                .send()
+                .await
+                .map_err(|e| self.sdk_error(e))?;
+            let bytes = obj
+                .body
+                .collect()
+                .await
+                .map_err(|e| self.who.network_text(e.to_string()))?
+                .into_bytes();
             for line in String::from_utf8_lossy(&bytes).lines().filter(|l| !l.trim().is_empty()) {
-                let v: Value = serde_json::from_str(line).map_err(|e| self.who.invalid(format!("a result line is not JSON: {e}")))?;
+                let v: Value = serde_json::from_str(line)
+                    .map_err(|e| self.who.invalid(format!("a result line is not JSON: {e}")))?;
                 if let Some(id) = v.get("recordId").and_then(Value::as_str) {
                     by_record.insert(id.to_string(), v);
                 }
@@ -125,11 +200,16 @@ impl Bedrock {
 
     fn batch_result(&self, line: &Value) -> Result<ModelResponse, ModelError> {
         if let Some(err) = line.get("error").filter(|e| !e.is_null()) {
-            let msg = err.get("errorMessage").and_then(Value::as_str).unwrap_or("the request failed");
+            let msg = err
+                .get("errorMessage")
+                .and_then(Value::as_str)
+                .unwrap_or("the request failed");
             let status = err.get("errorCode").and_then(Value::as_u64).map(|c| c as u16);
             return Err(self.who.provider_error(status, format!("batch request failed: {msg}")));
         }
-        let out = line.get("modelOutput").ok_or_else(|| self.who.invalid("a result with neither `modelOutput` nor `error`"))?;
+        let out = line
+            .get("modelOutput")
+            .ok_or_else(|| self.who.invalid("a result with neither `modelOutput` nor `error`"))?;
         // the time of one request inside a batch is not measurable: 0
         self.parse_converse_json(out, 0.0)
     }
@@ -165,7 +245,11 @@ impl Bedrock {
             match m {
                 MediaInput::Markdown(md) => content.push(json!({ "text": md })),
                 MediaInput::Image { format, data } => {
-                    let f = super::convert::image_format(format).ok_or_else(|| self.who.unsupported(vec![format!("image format `{format}` is not accepted (png, jpeg, gif, webp)")]))?;
+                    let f = super::convert::image_format(format).ok_or_else(|| {
+                        self.who.unsupported(vec![format!(
+                            "image format `{format}` is not accepted (png, jpeg, gif, webp)"
+                        )])
+                    })?;
                     content.push(json!({ "image": { "format": f.as_str(), "source": { "bytes": data } } }));
                 }
             }
@@ -193,7 +277,10 @@ impl Bedrock {
         match call.reasoning {
             None => {}
             Some(Reasoning::Off) => {
-                body.insert("additionalModelRequestFields".into(), json!({ "thinking": { "type": "disabled" } }));
+                body.insert(
+                    "additionalModelRequestFields".into(),
+                    json!({ "thinking": { "type": "disabled" } }),
+                );
             }
             Some(level) => {
                 let effort = match level {
@@ -203,7 +290,10 @@ impl Bedrock {
                     _ => "max",
                 };
                 body.insert("outputConfig".into(), json!({ "effort": effort }));
-                body.insert("additionalModelRequestFields".into(), json!({ "thinking": { "type": "adaptive", "display": "summarized" } }));
+                body.insert(
+                    "additionalModelRequestFields".into(),
+                    json!({ "thinking": { "type": "adaptive", "display": "summarized" } }),
+                );
             }
         }
         Ok(Value::Object(body))
@@ -211,7 +301,10 @@ impl Bedrock {
 
     /// The same mapping as `parse_converse`, from the JSON of a batch result.
     fn parse_converse_json(&self, v: &Value, execution_time: f64) -> Result<ModelResponse, ModelError> {
-        let blocks = v.pointer("/output/message/content").and_then(Value::as_array).ok_or_else(|| self.who.invalid("no message in the result"))?;
+        let blocks = v
+            .pointer("/output/message/content")
+            .and_then(Value::as_array)
+            .ok_or_else(|| self.who.invalid("no message in the result"))?;
         let mut text = String::new();
         let mut reasoning = Vec::new();
         let mut tools_call = Vec::new();
@@ -224,9 +317,17 @@ impl Bedrock {
                 reasoning.push(json!({ "redacted": r }));
             } else if let Some(t) = b.get("toolUse") {
                 tools_call.push(ToolCall {
-                    call_id: t.get("toolUseId").and_then(Value::as_str).unwrap_or_default().to_string(),
+                    call_id: t
+                        .get("toolUseId")
+                        .and_then(Value::as_str)
+                        .unwrap_or_default()
+                        .to_string(),
                     function_name: t.get("name").and_then(Value::as_str).unwrap_or_default().to_string(),
-                    arguments: t.get("input").cloned().filter(Value::is_object).ok_or_else(|| self.who.invalid("tool call arguments are not a JSON object"))?,
+                    arguments: t
+                        .get("input")
+                        .cloned()
+                        .filter(Value::is_object)
+                        .ok_or_else(|| self.who.invalid("tool call arguments are not a JSON object"))?,
                     opaque: None,
                 });
             }
@@ -244,7 +345,13 @@ impl Bedrock {
             stop_reason = StopReason::ToolCall;
         }
         let n = |p: &str| v.pointer(p).and_then(Value::as_u64).unwrap_or(0);
-        let usage = Usage { input_tokens: n("/usage/inputTokens"), cache_read_tokens: n("/usage/cacheReadInputTokens"), cache_write_tokens: n("/usage/cacheWriteInputTokens"), output_tokens: n("/usage/outputTokens"), reasoning_tokens: 0 };
+        let usage = Usage {
+            input_tokens: n("/usage/inputTokens"),
+            cache_read_tokens: n("/usage/cacheReadInputTokens"),
+            cache_write_tokens: n("/usage/cacheWriteInputTokens"),
+            output_tokens: n("/usage/outputTokens"),
+            reasoning_tokens: 0,
+        };
         Ok(ModelResponse {
             message: (!text.is_empty()).then_some(text),
             structured: None,
@@ -253,7 +360,12 @@ impl Bedrock {
             reasoning,
             stop_reason,
             stop_detail: Some(stop.to_string()),
-            info: ResponseInfo { provider: self.who.provider.into(), model: self.model.clone(), execution_time, usage },
+            info: ResponseInfo {
+                provider: self.who.provider.into(),
+                model: self.model.clone(),
+                execution_time,
+                usage,
+            },
         })
     }
 }

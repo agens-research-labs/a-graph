@@ -2,11 +2,11 @@
 //! server (on a free port) that answers the text it was asked to the ordinary nodes and
 //! a verdict to the judge, which is the request that carries the schema of the verdict.
 
-pub use std::sync::{Arc, Mutex};
-pub use serde_json::{Value, json};
-pub use a_graph::run::{Content, NodeInput, Program, RunOutput, build};
-pub use super::run::{yml_in, yml_with};
 pub use super::http::{Req, Resp, listen};
+pub use super::run::{yml_in, yml_with};
+pub use a_graph::run::{Content, NodeInput, Program, RunOutput, build};
+pub use serde_json::{Value, json};
+pub use std::sync::{Arc, Mutex};
 
 pub fn chat(text: &str) -> String {
     json!({ "model": "m", "message": { "role": "assistant", "content": text }, "done": true, "done_reason": "stop", "prompt_eval_count": 1, "eval_count": 1 }).to_string()
@@ -17,7 +17,16 @@ pub fn body_of(req: &Req) -> Value {
 }
 
 pub fn user_of(req: &Req) -> String {
-    body_of(req)["messages"].as_array().unwrap().iter().rev().find(|m| m["role"] == "user").unwrap()["content"].as_str().unwrap().to_string()
+    body_of(req)["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .rev()
+        .find(|m| m["role"] == "user")
+        .unwrap()["content"]
+        .as_str()
+        .unwrap()
+        .to_string()
 }
 
 /// The mock: the judge answers `verdict`; every other node answers the text it was asked.
@@ -44,7 +53,18 @@ pub async fn program(dir: &std::path::Path, name: &str, verdict: Value) -> (Arc<
 }
 
 pub fn items(out: &RunOutput) -> Vec<(String, String)> {
-    out.items.iter().map(|i| (i.agent_id.clone(), match &i.message { Some(Content::Text(t)) => t.clone(), _ => String::new() })).collect()
+    out.items
+        .iter()
+        .map(|i| {
+            (
+                i.agent_id.clone(),
+                match &i.message {
+                    Some(Content::Text(t)) => t.clone(),
+                    _ => String::new(),
+                },
+            )
+        })
+        .collect()
 }
 
 pub fn pair(id: &str, text: &str) -> (String, String) {
@@ -53,16 +73,18 @@ pub fn pair(id: &str, text: &str) -> (String, String) {
 
 /// What the mock was asked, node by node: the first letter of each text.
 pub fn order(seen: &Arc<Mutex<Vec<Req>>>) -> String {
-    seen.lock().unwrap().iter().map(|r| user_of(r).chars().next().unwrap()).collect()
+    seen.lock()
+        .unwrap()
+        .iter()
+        .map(|r| user_of(r).chars().next().unwrap())
+        .collect()
 }
 
 pub fn asked(seen: &Arc<Mutex<Vec<Req>>>, first: char) -> String {
-    seen.lock().unwrap().iter().map(user_of).find(|t| t.starts_with(first)).unwrap()
+    seen.lock()
+        .unwrap()
+        .iter()
+        .map(user_of)
+        .find(|t| t.starts_with(first))
+        .unwrap()
 }
-
-
-
-
-
-
-

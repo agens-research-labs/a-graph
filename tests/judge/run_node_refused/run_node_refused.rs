@@ -8,6 +8,9 @@ fn here() -> &'static std::path::Path {
 #[tokio::test]
 async fn run_node_refused() {
     let (p, _) = program(here(), "run_node_refused", approved()).await;
-    let e = p.run_node(p.nodes.entity("judge").unwrap(), NodeInput::default()).await.unwrap_err();
+    let e = p
+        .run_node(p.nodes.entity("judge").unwrap(), NodeInput::default())
+        .await
+        .unwrap_err();
     assert_eq!(e.rule.code(), "not_supported");
 }

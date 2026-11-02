@@ -7,7 +7,10 @@ fn here() -> &'static std::path::Path {
 /// The same transformed text reaches the final output and the next node.
 #[tokio::test]
 async fn output_to_next() {
-    let (p, seen) = program(here(), "output_to_next", |req| Resp::ok(chat(&format!("<{}>", user_of(req))))).await;
+    let (p, seen) = program(here(), "output_to_next", |req| {
+        Resp::ok(chat(&format!("<{}>", user_of(req))))
+    })
+    .await;
     let out = p.run("hi").await.unwrap();
     let ids = items(&out);
     // a answered `<Q: hi>`; wrapped it is `[<Q: hi>]`, in the output and as the text b got

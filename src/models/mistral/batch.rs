@@ -16,7 +16,9 @@ impl Mistral {
             let built = if r.invocation.output_media.is_empty() {
                 self.request_body(&r.invocation)
             } else {
-                Err(self.who.unsupported(vec!["a produced media cannot go in a batch of chat completions".into()]))
+                Err(self
+                    .who
+                    .unsupported(vec!["a produced media cannot go in a batch of chat completions".into()]))
             };
             match built {
                 Ok(body) => {
@@ -24,23 +26,45 @@ impl Mistral {
                     items.push(json!({ "custom_id": r.id, "body": body }));
                 }
                 // a request that cannot even be built does not stop the others
-                Err(e) => results.push(BatchResult { id: r.id, result: Err(e) }),
+                Err(e) => results.push(BatchResult {
+                    id: r.id,
+                    result: Err(e),
+                }),
             }
         }
         if items.is_empty() {
             return Ok(results);
         }
 
-        let created = self.post_text("/v1/batch/jobs", &json!({ "requests": items, "endpoint": "/v1/chat/completions", "model": self.model })).await?;
+        let created = self
+            .post_text(
+                "/v1/batch/jobs",
+                &json!({ "requests": items, "endpoint": "/v1/chat/completions", "model": self.model }),
+            )
+            .await?;
         let created = self.parse_json(created)?;
-        let job_id = created.get("id").and_then(Value::as_str).ok_or_else(|| self.who.invalid("the batch job has no `id`"))?.to_string();
-        let _ = events.send(BatchEvent::Submitted { batch_id: job_id.clone(), requests: sent.len() });
+        let job_id = created
+            .get("id")
+            .and_then(Value::as_str)
+            .ok_or_else(|| self.who.invalid("the batch job has no `id`"))?
+            .to_string();
+        let _ = events.send(BatchEvent::Submitted {
+            batch_id: job_id.clone(),
+            requests: sent.len(),
+        });
 
         // polled until a terminal state: there is no maximum wait
         let last = loop {
             let job = self.parse_json(self.get_text(&format!("/v1/batch/jobs/{job_id}")).await?)?;
-            let state = job.get("status").and_then(Value::as_str).ok_or_else(|| self.who.invalid("the batch job has no `status`"))?.to_string();
-            let _ = events.send(BatchEvent::Status { batch_id: job_id.clone(), status: state.clone() });
+            let state = job
+                .get("status")
+                .and_then(Value::as_str)
+                .ok_or_else(|| self.who.invalid("the batch job has no `status`"))?
+                .to_string();
+            let _ = events.send(BatchEvent::Status {
+                batch_id: job_id.clone(),
+                status: state.clone(),
+            });
             if matches!(state.as_str(), "SUCCESS" | "FAILED" | "TIMEOUT_EXCEEDED" | "CANCELLED") {
                 break job;
             }
@@ -52,19 +76,31 @@ impl Mistral {
             "TIMEOUT_EXCEEDED" => BatchOutcome::Expired,
             _ => BatchOutcome::Failed,
         };
-        let _ = events.send(BatchEvent::Finished { batch_id: job_id.clone(), outcome });
+        let _ = events.send(BatchEvent::Finished {
+            batch_id: job_id.clone(),
+            outcome,
+        });
 
         let output = last.get("output_file").and_then(Value::as_str);
         let errors = last.get("error_file").and_then(Value::as_str);
         if output.is_none() && errors.is_none() {
-            let why = last.pointer("/errors/0/message").and_then(Value::as_str).unwrap_or("no result file");
+            let why = last
+                .pointer("/errors/0/message")
+                .and_then(Value::as_str)
+                .unwrap_or("no result file");
             return Err(self.who.provider_error(None, format!("batch {state}: {why}")));
         }
 
         let mut by_id: HashMap<String, Value> = HashMap::new();
         for file in [output, errors].into_iter().flatten() {
-            for line in self.get_text(&format!("/v1/files/{file}/content")).await?.lines().filter(|l| !l.trim().is_empty()) {
-                let v: Value = serde_json::from_str(line).map_err(|e| self.who.invalid(format!("a result line is not JSON: {e}")))?;
+            for line in self
+                .get_text(&format!("/v1/files/{file}/content"))
+                .await?
+                .lines()
+                .filter(|l| !l.trim().is_empty())
+            {
+                let v: Value = serde_json::from_str(line)
+                    .map_err(|e| self.who.invalid(format!("a result line is not JSON: {e}")))?;
                 if let Some(id) = v.get("custom_id").and_then(Value::as_str) {
                     by_id.insert(id.to_string(), v);
                 }
@@ -83,13 +119,22 @@ impl Mistral {
 
     fn batch_result(&self, schema: bool, line: &Value) -> Result<crate::models::ModelResponse, ModelError> {
         if let Some(err) = line.get("error").filter(|e| !e.is_null()) {
-            let msg = err.get("message").and_then(Value::as_str).unwrap_or("the request failed");
+            let msg = err
+                .get("message")
+                .and_then(Value::as_str)
+                .unwrap_or("the request failed");
             return Err(self.who.provider_error(None, format!("batch request failed: {msg}")));
         }
-        let status = line.pointer("/response/status_code").and_then(Value::as_u64).unwrap_or(200);
+        let status = line
+            .pointer("/response/status_code")
+            .and_then(Value::as_u64)
+            .unwrap_or(200);
         let body = &line["response"]["body"];
         if status != 200 {
-            let msg = body.get("message").and_then(Value::as_str).unwrap_or("the request failed");
+            let msg = body
+                .get("message")
+                .and_then(Value::as_str)
+                .unwrap_or("the request failed");
             return Err(self.who.provider_error(Some(status as u16), msg));
         }
         // the time of one request inside a batch is not measurable: 0

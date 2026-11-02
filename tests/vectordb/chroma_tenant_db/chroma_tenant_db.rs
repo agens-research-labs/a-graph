@@ -13,7 +13,13 @@ async fn chroma_tenant_db() {
         _ => Resp::ok(r#"{"documents":[["one"]]}"#),
     })
     .await;
-    let (p, _) = program_with(here(), "chroma_tenant_db", &[("vectordb", vectordb_port), ("embedding", embedding_port)], Resp::ok(chat("ok", None))).await;
+    let (p, _) = program_with(
+        here(),
+        "chroma_tenant_db",
+        &[("vectordb", vectordb_port), ("embedding", embedding_port)],
+        Resp::ok(chat("ok", None)),
+    )
+    .await;
     p.run_node(entity(&p), user("q")).await.unwrap();
     let db = db.lock().unwrap();
     assert_eq!(db[0].path, "/api/v2/tenants/acme/databases/sales/collections/contracts");

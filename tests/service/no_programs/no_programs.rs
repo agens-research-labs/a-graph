@@ -18,12 +18,30 @@ fn config_path() -> String {
 async fn no_programs() {
     let (model, seen) = listen(|_| Resp::ok(answer("ok"))).await;
     let s = start(&config_path()).await;
-    let (status, body) = s.run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "x" })).await;
+    let (status, body) = s
+        .run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "x" }))
+        .await;
     assert_eq!(status, 422, "{body}");
-    let at: Vec<&str> = body["errors"].as_array().unwrap().iter().map(|e| e["path"].as_str().unwrap()).collect();
-    for wanted in ["utilities[0].transport", "resources.tools[0].transport", "resources.mcp_servers[0].transport", "resources.skills[0]"] {
+    let at: Vec<&str> = body["errors"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e["path"].as_str().unwrap())
+        .collect();
+    for wanted in [
+        "utilities[0].transport",
+        "resources.tools[0].transport",
+        "resources.mcp_servers[0].transport",
+        "resources.skills[0]",
+    ] {
         assert!(at.contains(&wanted), "no error at `{wanted}` in {at:?}");
     }
-    assert!(body["errors"].as_array().unwrap().iter().all(|e| e["rule"] == "not_supported"));
+    assert!(
+        body["errors"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|e| e["rule"] == "not_supported")
+    );
     assert!(seen.lock().unwrap().is_empty(), "nothing was run");
 }

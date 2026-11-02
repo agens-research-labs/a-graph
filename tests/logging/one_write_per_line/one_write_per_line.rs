@@ -19,7 +19,11 @@ impl Write for Writes {
 #[test]
 fn one_write_per_line() {
     let writes = Writes::default();
-    let log = Logger::new(LogLevel::Debug, Redaction { allow_content: true }, Box::new(writes.clone()));
+    let log = Logger::new(
+        LogLevel::Debug,
+        Redaction { allow_content: true },
+        Box::new(writes.clone()),
+    );
     log.log(&Event::new(LogLevel::Info, "a"));
     log.log(&Event::new(LogLevel::Info, "b"));
     let writes = writes.0.lock().unwrap();

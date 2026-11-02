@@ -45,14 +45,26 @@ pub struct Take {
 pub fn read_record(path: &str, node: &str) -> Result<Record, String> {
     let text = match std::fs::read_to_string(path) {
         Ok(t) => t,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Record { id: node.to_string(), ..Record::default() }),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(Record {
+                id: node.to_string(),
+                ..Record::default()
+            });
+        }
         Err(e) => return Err(format!("cannot read `{path}`: {e}")),
     };
     if text.trim().is_empty() {
-        return Ok(Record { id: node.to_string(), ..Record::default() });
+        return Ok(Record {
+            id: node.to_string(),
+            ..Record::default()
+        });
     }
-    let records: Vec<Record> = serde_json::from_str(&text).map_err(|e| format!("`{path}` is not a list of records: {e}"))?;
-    Ok(records.into_iter().find(|r| r.id == node).unwrap_or_else(|| Record { id: node.to_string(), ..Record::default() }))
+    let records: Vec<Record> =
+        serde_json::from_str(&text).map_err(|e| format!("`{path}` is not a list of records: {e}"))?;
+    Ok(records.into_iter().find(|r| r.id == node).unwrap_or_else(|| Record {
+        id: node.to_string(),
+        ..Record::default()
+    }))
 }
 
 impl Record {
@@ -61,10 +73,16 @@ impl Record {
         let mut out: Vec<Exchange> = Vec::new();
         for e in &self.chat {
             match e.role.as_str() {
-                "user" => out.push(Exchange { user: Some(e.clone()), assistant: None }),
+                "user" => out.push(Exchange {
+                    user: Some(e.clone()),
+                    assistant: None,
+                }),
                 _ => match out.last_mut() {
                     Some(last) if last.assistant.is_none() => last.assistant = Some(e.clone()),
-                    _ => out.push(Exchange { user: None, assistant: Some(e.clone()) }),
+                    _ => out.push(Exchange {
+                        user: None,
+                        assistant: Some(e.clone()),
+                    }),
                 },
             }
         }
@@ -82,7 +100,12 @@ impl Record {
                 let mut scored: Vec<(usize, f32)> = exchanges
                     .iter()
                     .enumerate()
-                    .filter_map(|(i, x)| x.user.as_ref().and_then(|u| u.embedding.as_ref()).map(|v| (i, cosine(q, v))))
+                    .filter_map(|(i, x)| {
+                        x.user
+                            .as_ref()
+                            .and_then(|u| u.embedding.as_ref())
+                            .map(|v| (i, cosine(q, v)))
+                    })
                     .collect();
                 scored.sort_by(|a, b| b.1.total_cmp(&a.1));
                 scored.into_iter().take(length).map(|(i, _)| i).collect()
@@ -109,7 +132,10 @@ fn cosine(a: &[f32], b: &[f32]) -> f32 {
         return 0.0;
     }
     let dot: f32 = a.iter().zip(b).map(|(x, y)| x * y).sum();
-    let (na, nb) = (a.iter().map(|x| x * x).sum::<f32>().sqrt(), b.iter().map(|x| x * x).sum::<f32>().sqrt());
+    let (na, nb) = (
+        a.iter().map(|x| x * x).sum::<f32>().sqrt(),
+        b.iter().map(|x| x * x).sum::<f32>().sqrt(),
+    );
     if na == 0.0 || nb == 0.0 { 0.0 } else { dot / (na * nb) }
 }
 
@@ -142,7 +168,10 @@ pub fn update_record(path: &str, node: &str, change: impl FnOnce(&mut Record)) -
     let index = match records.iter().position(|r| r.id == node) {
         Some(i) => i,
         None => {
-            records.push(Record { id: node.to_string(), ..Record::default() });
+            records.push(Record {
+                id: node.to_string(),
+                ..Record::default()
+            });
             records.len() - 1
         }
     };

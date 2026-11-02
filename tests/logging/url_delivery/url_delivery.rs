@@ -4,7 +4,13 @@ use crate::common::logging_delivery::*;
 #[tokio::test]
 async fn url_delivery() {
     let (url, mut rx) = mock_server(vec![], false).await;
-    let log = Logger::to_url(LogLevel::Info, Redaction { allow_content: false }, &url, vec![("Authorization".into(), "Bearer t".into())]).unwrap();
+    let log = Logger::to_url(
+        LogLevel::Info,
+        Redaction { allow_content: false },
+        &url,
+        vec![("Authorization".into(), "Bearer t".into())],
+    )
+    .unwrap();
     log.log(&Event::new(LogLevel::Info, "first").field("n", 1));
     log.log(&Event::new(LogLevel::Debug, "dropped"));
     log.log(&Event::new(LogLevel::Error, "second").content("response", "secret"));

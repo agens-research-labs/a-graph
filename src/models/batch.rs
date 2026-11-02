@@ -29,10 +29,19 @@ pub enum BatchOutcome {
 /// The client is always told the status; showing it is the job of the `verbose` reporter.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BatchEvent {
-    Submitted { batch_id: String, requests: usize },
+    Submitted {
+        batch_id: String,
+        requests: usize,
+    },
     /// At EVERY poll. `status` is the provider's original value.
-    Status { batch_id: String, status: String },
-    Finished { batch_id: String, outcome: BatchOutcome },
+    Status {
+        batch_id: String,
+        status: String,
+    },
+    Finished {
+        batch_id: String,
+        outcome: BatchOutcome,
+    },
 }
 
 pub type BatchEvents = UnboundedSender<BatchEvent>;

@@ -130,7 +130,12 @@ impl BlackboardManager {
 
     fn board(&self, id: &str) -> Result<&Board, Error> {
         self.boards.iter().find(|b| b.id == id).ok_or_else(|| {
-            Error::new(Phase::Execution, Path::root().key(key::BLACKBOARDS), Rule::UnknownRef, format!("blackboard `{id}` is not declared"))
+            Error::new(
+                Phase::Execution,
+                Path::root().key(key::BLACKBOARDS),
+                Rule::UnknownRef,
+                format!("blackboard `{id}` is not declared"),
+            )
         })
     }
 }
@@ -140,11 +145,24 @@ fn at(b: &Board) -> Path {
 }
 
 fn io(b: &Board, path: &str, e: std::io::Error) -> Error {
-    Error::new(Phase::Execution, at(b), Rule::Io, format!("blackboard `{}`: `{path}`: {e}", b.id))
+    Error::new(
+        Phase::Execution,
+        at(b),
+        Rule::Io,
+        format!("blackboard `{}`: `{path}`: {e}", b.id),
+    )
 }
 
 fn not_read(b: &Board, url: &str) -> Error {
-    Error::new(Phase::Execution, at(b), Rule::NotSupported, format!("blackboard `{}`: the board at `{url}` cannot be used, a url source is not supported yet", b.id))
+    Error::new(
+        Phase::Execution,
+        at(b),
+        Rule::NotSupported,
+        format!(
+            "blackboard `{}`: the board at `{url}` cannot be used, a url source is not supported yet",
+            b.id
+        ),
+    )
 }
 
 /// The file exists and starts with the header.
@@ -172,7 +190,10 @@ fn store(v: Value, at: &Path, errs: &mut Errs) -> Option<Store> {
     }
     let mut o = Obj::new(v, at.clone(), errs)?;
     match (o.opt::<String>(key::FILE, errs), o.opt::<String>(key::URL, errs)) {
-        (Some(path), None) => check_file(&at.key(key::FILE), &path, errs).then(|| Store::File { path, lock: Mutex::new(()) }),
+        (Some(path), None) => check_file(&at.key(key::FILE), &path, errs).then(|| Store::File {
+            path,
+            lock: Mutex::new(()),
+        }),
         // `access` is accepted; its content is not defined yet, so it is not kept.
         (None, Some(url)) => Some(Store::Url { url }),
         _ => {

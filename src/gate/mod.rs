@@ -30,10 +30,16 @@ pub struct ToolOutcome {
 
 impl ToolOutcome {
     pub(crate) fn ok(result: Value) -> Self {
-        ToolOutcome { result, is_error: false }
+        ToolOutcome {
+            result,
+            is_error: false,
+        }
     }
 
     pub(crate) fn failed(why: impl Into<String>) -> Self {
-        ToolOutcome { result: Value::String(why.into()), is_error: true }
+        ToolOutcome {
+            result: Value::String(why.into()),
+            is_error: true,
+        }
     }
 }

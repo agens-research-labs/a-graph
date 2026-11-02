@@ -12,6 +12,15 @@ async fn workspace_id() {
     m.workspace_id = Some("wrkspc_demo".into());
     // SAFETY: a variable only these tests use, set to the same value every time.
     unsafe { std::env::set_var(KEY_VAR, "test-key") };
-    Anthropic::new(&m, &Path::root()).unwrap().with_base_url(&base).invoke(&call("q")).await.unwrap();
-    assert!(seen.lock().unwrap()[0].headers.contains("anthropic-workspace-id: wrkspc_demo"));
+    Anthropic::new(&m, &Path::root())
+        .unwrap()
+        .with_base_url(&base)
+        .invoke(&call("q"))
+        .await
+        .unwrap();
+    assert!(
+        seen.lock().unwrap()[0]
+            .headers
+            .contains("anthropic-workspace-id: wrkspc_demo")
+    );
 }

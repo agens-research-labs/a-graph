@@ -18,6 +18,9 @@ fn config_path() -> String {
 async fn together() {
     let (model, _) = listen(|_| Resp::ok(answer("ok"))).await;
     let s = start(&config_path()).await;
-    let (one, two) = tokio::join!(s.run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "one" })), s.run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "two" })));
+    let (one, two) = tokio::join!(
+        s.run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "one" })),
+        s.run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "two" }))
+    );
     assert_eq!((one.0, two.0), (200, 200));
 }

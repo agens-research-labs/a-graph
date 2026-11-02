@@ -16,7 +16,12 @@ async fn times_nest() {
         assert!(end(s) >= start(s), "{}", s["name"]);
         if let Some(parent) = s["parentSpanId"].as_str() {
             let p = spans.iter().find(|x| x["spanId"] == parent).unwrap();
-            assert!(start(s) >= start(p) && end(s) <= end(p), "`{}` is not inside `{}`", s["name"], p["name"]);
+            assert!(
+                start(s) >= start(p) && end(s) <= end(p),
+                "`{}` is not inside `{}`",
+                s["name"],
+                p["name"]
+            );
         }
     }
 }

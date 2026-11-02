@@ -17,11 +17,24 @@ async fn run_events_logged() {
     for wanted in ["node.start", "node.end", "model.call", "group.start", "group.end"] {
         assert!(codes.contains(&wanted), "`{wanted}` not in {codes:?}");
     }
-    let end = lines.iter().find(|l| l["code"] == "node.end" && l["node"] == "s").unwrap();
-    assert_eq!((end["model"].as_str(), end["input_tokens"].as_u64(), end["output_tokens"].as_u64()), (Some("m"), Some(1), Some(1)));
+    let end = lines
+        .iter()
+        .find(|l| l["code"] == "node.end" && l["node"] == "s")
+        .unwrap();
+    assert_eq!(
+        (
+            end["model"].as_str(),
+            end["input_tokens"].as_u64(),
+            end["output_tokens"].as_u64()
+        ),
+        (Some("m"), Some(1), Some(1))
+    );
     assert!(end["duration"].as_f64().unwrap() >= 0.0);
     let group = lines.iter().find(|l| l["code"] == "group.start").unwrap();
-    assert_eq!((group["pattern"].as_str(), group["branches"].as_u64()), (Some("parallel"), Some(2)));
+    assert_eq!(
+        (group["pattern"].as_str(), group["branches"].as_u64()),
+        (Some("parallel"), Some(2))
+    );
     // the contents of the messages are in the log because the data is public
     let call = lines.iter().find(|l| l["code"] == "model.call").unwrap();
     assert_eq!(call["prompt"], "S(hi)");

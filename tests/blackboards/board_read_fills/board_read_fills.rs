@@ -12,5 +12,8 @@ async fn board_read_fills() {
     std::fs::write(path, format!("{HEADER}\nThe lease lasts 12 months.\n")).unwrap();
     let (p, seen) = program(here(), "board_read_fills", Resp::ok(chat("ok", None))).await;
     p.run_node(entity(&p), user("how long?")).await.unwrap();
-    assert_eq!(sent(&seen)["messages"][1]["content"], format!("Notes: {HEADER}\nThe lease lasts 12 months.\n / Question: how long?"));
+    assert_eq!(
+        sent(&seen)["messages"][1]["content"],
+        format!("Notes: {HEADER}\nThe lease lasts 12 months.\n / Question: how long?")
+    );
 }

@@ -10,6 +10,15 @@ async fn memory_read_utility() {
     let (p, seen) = program(here(), "memory_read_utility", Resp::ok(chat("ok", None))).await;
     p.run_node(entity(&p), user("new")).await.unwrap();
     let messages = sent(&seen)["messages"].clone();
-    let contents: Vec<&str> = messages.as_array().unwrap().iter().skip(1).map(|m| m["content"].as_str().unwrap()).collect();
-    assert_eq!(contents, ["EARLIER QUESTION", "EARLIER ANSWER", "Q: new / S: EARLIER SUMMARY"]);
+    let contents: Vec<&str> = messages
+        .as_array()
+        .unwrap()
+        .iter()
+        .skip(1)
+        .map(|m| m["content"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        contents,
+        ["EARLIER QUESTION", "EARLIER ANSWER", "Q: new / S: EARLIER SUMMARY"]
+    );
 }

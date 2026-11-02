@@ -10,5 +10,9 @@ async fn azure_ambient() {
         .with_token_source(Box::new(StaticToken("entra-token".into())));
     m.invoke(&call("q")).await.unwrap();
     let req = seen.lock().unwrap()[0].clone();
-    assert!(req.headers.contains("authorization: bearer entra-token") && !req.headers.contains("api-key"), "{}", req.headers);
+    assert!(
+        req.headers.contains("authorization: bearer entra-token") && !req.headers.contains("api-key"),
+        "{}",
+        req.headers
+    );
 }

@@ -8,5 +8,8 @@ fn here() -> &'static std::path::Path {
 #[test]
 fn prompt_url_kept() {
     let r = build(here(), "prompt_url_kept").unwrap();
-    assert!(matches!(r.prompts.get("chat").unwrap().body, PromptBody::Source(Source::Url { .. })));
+    assert!(matches!(
+        r.prompts.get("chat").unwrap().body,
+        PromptBody::Source(Source::Url { .. })
+    ));
 }

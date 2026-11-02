@@ -8,5 +8,10 @@ fn here() -> &'static std::path::Path {
 #[test]
 fn qdrant_rules() {
     assert!(has(here(), "qdrant_rules", "missing_field", "external.vectordb[0].url"));
-    assert!(has(here(), "qdrant_rules", "missing_field", "external.vectordb[0].collection"));
+    assert!(has(
+        here(),
+        "qdrant_rules",
+        "missing_field",
+        "external.vectordb[0].collection"
+    ));
 }

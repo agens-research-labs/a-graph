@@ -11,9 +11,20 @@ fn count(v: &Value, key: &str) -> u64 {
 
 impl Anthropic {
     /// `schema`: the node asked for structured output, so the text is JSON.
-    pub(crate) fn parse_message(&self, schema: bool, v: &Value, execution_time: f64) -> Result<ModelResponse, ModelError> {
-        let blocks = v.get("content").and_then(Value::as_array).ok_or_else(|| self.invalid("no `content` array"))?;
-        let stop = v.get("stop_reason").and_then(Value::as_str).ok_or_else(|| self.invalid("no `stop_reason`"))?;
+    pub(crate) fn parse_message(
+        &self,
+        schema: bool,
+        v: &Value,
+        execution_time: f64,
+    ) -> Result<ModelResponse, ModelError> {
+        let blocks = v
+            .get("content")
+            .and_then(Value::as_array)
+            .ok_or_else(|| self.invalid("no `content` array"))?;
+        let stop = v
+            .get("stop_reason")
+            .and_then(Value::as_str)
+            .ok_or_else(|| self.invalid("no `stop_reason`"))?;
 
         let mut text = String::new();
         let mut reasoning = Vec::new();
@@ -24,10 +35,22 @@ impl Anthropic {
                 // opaque: the tool loop sends them back as they are
                 Some("thinking" | "redacted_thinking") => reasoning.push(b.clone()),
                 Some("tool_use") => {
-                    let arguments = b.get("input").filter(|i| i.is_object()).cloned().ok_or_else(|| self.invalid("a `tool_use` block without an object `input`"))?;
+                    let arguments = b
+                        .get("input")
+                        .filter(|i| i.is_object())
+                        .cloned()
+                        .ok_or_else(|| self.invalid("a `tool_use` block without an object `input`"))?;
                     tools_call.push(ToolCall {
-                        call_id: b.get("id").and_then(Value::as_str).ok_or_else(|| self.invalid("a `tool_use` block without `id`"))?.to_string(),
-                        function_name: b.get("name").and_then(Value::as_str).ok_or_else(|| self.invalid("a `tool_use` block without `name`"))?.to_string(),
+                        call_id: b
+                            .get("id")
+                            .and_then(Value::as_str)
+                            .ok_or_else(|| self.invalid("a `tool_use` block without `id`"))?
+                            .to_string(),
+                        function_name: b
+                            .get("name")
+                            .and_then(Value::as_str)
+                            .ok_or_else(|| self.invalid("a `tool_use` block without `name`"))?
+                            .to_string(),
                         arguments,
                         opaque: None,
                     });
@@ -55,7 +78,10 @@ impl Anthropic {
             }
             // a model that asks for a tool first has no JSON yet; so does a refusal
             if tools_call.is_empty() && stop_reason != StopReason::Refused {
-                structured = Some(serde_json::from_str(&text).map_err(|e| self.invalid(format!("the output is not the JSON asked for: {e}")))?);
+                structured = Some(
+                    serde_json::from_str(&text)
+                        .map_err(|e| self.invalid(format!("the output is not the JSON asked for: {e}")))?,
+                );
             }
         } else if !text.is_empty() {
             message = Some(text);
@@ -67,7 +93,10 @@ impl Anthropic {
             cache_read_tokens: count(&usage_v, "cache_read_input_tokens"),
             cache_write_tokens: count(&usage_v, "cache_creation_input_tokens"),
             output_tokens: count(&usage_v, "output_tokens"),
-            reasoning_tokens: usage_v.pointer("/output_tokens_details/thinking_tokens").and_then(Value::as_u64).unwrap_or(0),
+            reasoning_tokens: usage_v
+                .pointer("/output_tokens_details/thinking_tokens")
+                .and_then(Value::as_u64)
+                .unwrap_or(0),
         };
         Ok(ModelResponse {
             message,
@@ -79,7 +108,11 @@ impl Anthropic {
             stop_detail: Some(stop.to_string()),
             info: ResponseInfo {
                 provider: self.who.provider.into(),
-                model: v.get("model").and_then(Value::as_str).unwrap_or(&self.model).to_string(),
+                model: v
+                    .get("model")
+                    .and_then(Value::as_str)
+                    .unwrap_or(&self.model)
+                    .to_string(),
                 execution_time,
                 usage,
             },

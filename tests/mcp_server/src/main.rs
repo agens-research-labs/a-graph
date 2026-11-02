@@ -10,7 +10,10 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use rmcp::handler::server::ServerHandler;
-use rmcp::model::{CallToolRequestParams, CallToolResponse, CallToolResult, DiscoverRequestMethod, DiscoverResult, ErrorData, ListToolsResult, PaginatedRequestParams, ServerCapabilities, Tool};
+use rmcp::model::{
+    CallToolRequestParams, CallToolResponse, CallToolResult, DiscoverRequestMethod, DiscoverResult, ErrorData,
+    ListToolsResult, PaginatedRequestParams, ServerCapabilities, Tool,
+};
 use rmcp::service::RequestContext;
 use rmcp::{RoleServer, ServiceExt};
 use serde_json::{Value, json};
@@ -21,7 +24,11 @@ struct Server {
 }
 
 fn tool(name: &'static str, description: &'static str, schema: Value) -> Tool {
-    Tool::new(name, description, std::sync::Arc::new(schema.as_object().cloned().unwrap()))
+    Tool::new(
+        name,
+        description,
+        std::sync::Arc::new(schema.as_object().cloned().unwrap()),
+    )
 }
 
 impl ServerHandler for Server {
@@ -34,27 +41,51 @@ impl ServerHandler for Server {
         if self.legacy {
             return Err(ErrorData::method_not_found::<DiscoverRequestMethod>());
         }
-        Ok(DiscoverResult::from_server_info(self.supported_protocol_versions().into_owned(), self.get_info()))
+        Ok(DiscoverResult::from_server_info(
+            self.supported_protocol_versions().into_owned(),
+            self.get_info(),
+        ))
     }
 
-    async fn list_tools(&self, _: Option<PaginatedRequestParams>, _: RequestContext<RoleServer>) -> Result<ListToolsResult, ErrorData> {
+    async fn list_tools(
+        &self,
+        _: Option<PaginatedRequestParams>,
+        _: RequestContext<RoleServer>,
+    ) -> Result<ListToolsResult, ErrorData> {
         let none = json!({ "type": "object", "properties": {} });
         let tools = vec![
-            tool("say", "Says the text back", json!({ "type": "object", "properties": { "text": { "type": "string" } }, "required": ["text"] })),
+            tool(
+                "say",
+                "Says the text back",
+                json!({ "type": "object", "properties": { "text": { "type": "string" } }, "required": ["text"] }),
+            ),
             tool("count", "Counts the calls of this process", none.clone()),
             tool("boom", "Always fails", none.clone()),
             tool("slow", "Takes ten seconds", none.clone()),
             tool("die", "Ends the process the first time", none),
             tool("odd", "Has a schema that is not valid", json!({ "type": 5 })),
         ];
-        Ok(ListToolsResult { tools, ..Default::default() })
+        Ok(ListToolsResult {
+            tools,
+            ..Default::default()
+        })
     }
 
-    async fn call_tool(&self, request: CallToolRequestParams, _: RequestContext<RoleServer>) -> Result<CallToolResponse, ErrorData> {
+    async fn call_tool(
+        &self,
+        request: CallToolRequestParams,
+        _: RequestContext<RoleServer>,
+    ) -> Result<CallToolResponse, ErrorData> {
         let calls = self.calls.fetch_add(1, Ordering::SeqCst) + 1;
         let result = match request.name.as_ref() {
             "say" => {
-                let text = request.arguments.as_ref().and_then(|a| a.get("text")).and_then(Value::as_str).unwrap_or_default().to_string();
+                let text = request
+                    .arguments
+                    .as_ref()
+                    .and_then(|a| a.get("text"))
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string();
                 CallToolResult::success(vec![rmcp::model::ContentBlock::text(format!("said: {text}"))])
             }
             "count" => CallToolResult::structured(json!({ "calls": calls })),
@@ -80,6 +111,12 @@ impl ServerHandler for Server {
 #[tokio::main]
 async fn main() {
     let legacy = std::env::args().nth(1).as_deref() == Some("legacy");
-    let service = Server { legacy, calls: AtomicU64::new(0) }.serve(rmcp::transport::stdio()).await.expect("cannot serve");
+    let service = Server {
+        legacy,
+        calls: AtomicU64::new(0),
+    }
+    .serve(rmcp::transport::stdio())
+    .await
+    .expect("cannot serve");
     let _ = service.waiting().await;
 }

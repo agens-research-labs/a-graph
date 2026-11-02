@@ -8,6 +8,15 @@ fn here() -> &'static std::path::Path {
 #[test]
 fn schema_yml_to_json() {
     let n = nodes_of(here(), "schema_yml_to_json").unwrap();
-    let o = n.message().get(n.entity("a").unwrap()).unwrap().output.as_ref().unwrap();
-    assert_eq!(o.schema, Some(serde_json::json!({ "type": "object", "required": ["x"] })));
+    let o = n
+        .message()
+        .get(n.entity("a").unwrap())
+        .unwrap()
+        .output
+        .as_ref()
+        .unwrap();
+    assert_eq!(
+        o.schema,
+        Some(serde_json::json!({ "type": "object", "required": ["x"] }))
+    );
 }

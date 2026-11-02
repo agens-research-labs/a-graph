@@ -8,5 +8,8 @@ fn here() -> &'static std::path::Path {
 #[test]
 fn on_error_words() {
     let n = nodes_of(here(), "on_error_words").unwrap();
-    assert_eq!(n.validation().get(n.entity("judge").unwrap()).unwrap().on_error, OnError::Node);
+    assert_eq!(
+        n.validation().get(n.entity("judge").unwrap()).unwrap().on_error,
+        OnError::Node
+    );
 }

@@ -14,7 +14,13 @@ use crate::resources::{MediaKind, Origin, PromptBody, Resources, Source};
 use crate::schema::key;
 
 /// Every rule of the nodes that needs a manager. All the errors are returned, not only the first.
-pub fn interpret(nodes: &Nodes, edges: &Edges, models: &ModelManager, resources: &Resources, external: &External) -> Vec<Error> {
+pub fn interpret(
+    nodes: &Nodes,
+    edges: &Edges,
+    models: &ModelManager,
+    resources: &Resources,
+    external: &External,
+) -> Vec<Error> {
     let mut errs = Vec::new();
     let in_batch = batch_nodes(nodes, edges, &mut errs);
     let previous = previous_nodes(edges);
@@ -25,17 +31,38 @@ pub fn interpret(nodes: &Nodes, edges: &Edges, models: &ModelManager, resources:
         let at = Path::root().key(key::GRAPH).key(key::NODES).idx(e.0 as usize);
         let id = nodes.id(e).unwrap_or_default();
         // a validation node is read like a node, from inside `validation-node`
-        let base = if nodes.validation().get(e).is_some() { at.key(key::VALIDATION_NODE) } else { at.clone() };
+        let base = if nodes.validation().get(e).is_some() {
+            at.key(key::VALIDATION_NODE)
+        } else {
+            at.clone()
+        };
         let Some(m) = nodes.model().get(e) else {
-            errs.push(err(base.key(key::MODEL), Rule::MissingField, format!("node `{id}` needs `model` (or `validation-node`)")));
+            errs.push(err(
+                base.key(key::MODEL),
+                Rule::MissingField,
+                format!("node `{id}` needs `model` (or `validation-node`)"),
+            ));
             continue;
         };
         let asked = Asked {
             // a react controller answers with the routing output, which the model has to be able to give
-            schema: controllers.get(&e).cloned().or_else(|| nodes.validation().get(e).map(|_| Validation::judge_schema())).or_else(|| nodes.message().get(e).and_then(|x| x.output.as_ref()).and_then(|o| o.schema.clone())),
+            schema: controllers
+                .get(&e)
+                .cloned()
+                .or_else(|| nodes.validation().get(e).map(|_| Validation::judge_schema()))
+                .or_else(|| {
+                    nodes
+                        .message()
+                        .get(e)
+                        .and_then(|x| x.output.as_ref())
+                        .and_then(|o| o.schema.clone())
+                }),
             input_media: input_kinds(nodes, e, resources),
             output_media: produced(nodes, e, id, &at, resources, &mut writers, &mut errs),
-            uses_tools: nodes.resources().get(e).is_some_and(|r| !r.tools.is_empty() || !r.mcp_servers.is_empty() || !r.skills.is_empty()),
+            uses_tools: nodes
+                .resources()
+                .get(e)
+                .is_some_and(|r| !r.tools.is_empty() || !r.mcp_servers.is_empty() || !r.skills.is_empty()),
             batch: in_batch.contains(&e),
         };
         check_model(&base.key(key::MODEL), m, asked, models, &mut errs);
@@ -65,8 +92,21 @@ struct Asked {
 /// The types of the media with these ids.
 /// The types of the media a node reads, as the model gets them: what a utility changes is text.
 fn input_kinds(nodes: &Nodes, e: Entity, resources: &Resources) -> Vec<MediaKind> {
-    let Some(m) = nodes.media().get(e) else { return Vec::new() };
-    m.input.iter().filter_map(|i| resources.media.get(&i.id).map(|r| if i.utility.is_empty() { r.kind.clone() } else { MediaKind::Md })).collect()
+    let Some(m) = nodes.media().get(e) else {
+        return Vec::new();
+    };
+    m.input
+        .iter()
+        .filter_map(|i| {
+            resources.media.get(&i.id).map(|r| {
+                if i.utility.is_empty() {
+                    r.kind.clone()
+                } else {
+                    MediaKind::Md
+                }
+            })
+        })
+        .collect()
 }
 
 /// What the model can do with what the node asks (`Llm::check`, no network): the model knows its
@@ -105,9 +145,18 @@ fn skills_rules(nodes: &Nodes, e: Entity, id: &str, at: &Path, resources: &Resou
     }
     let mut names: HashSet<&str> = HashSet::new();
     for (i, sid) in r.skills.iter().enumerate() {
-        let Some(skill) = resources.skills.get(sid) else { continue };
+        let Some(skill) = resources.skills.get(sid) else {
+            continue;
+        };
         if !names.insert(skill.name.as_str()) {
-            errs.push(err(here.key(key::SKILLS).idx(i), Rule::DuplicateId, format!("node `{id}` has two skills called `{}`: the model could not tell them apart", skill.name)));
+            errs.push(err(
+                here.key(key::SKILLS).idx(i),
+                Rule::DuplicateId,
+                format!(
+                    "node `{id}` has two skills called `{}`: the model could not tell them apart",
+                    skill.name
+                ),
+            ));
         }
     }
 }
@@ -115,32 +164,65 @@ fn skills_rules(nodes: &Nodes, e: Entity, id: &str, at: &Path, resources: &Resou
 /// The media a node produces. One made by the model (`from: model`) must have `generate`; one made by
 /// a utility from the text (`from: message`) must be of type `file` and have a utility. Each is
 /// written by one node only. Whether the model can produce its own is for `Llm::check`.
-fn produced(nodes: &Nodes, e: Entity, id: &str, at: &Path, resources: &Resources, writers: &mut HashMap<String, String>, errs: &mut Vec<Error>) -> Vec<ProducedMedia> {
+fn produced(
+    nodes: &Nodes,
+    e: Entity,
+    id: &str,
+    at: &Path,
+    resources: &Resources,
+    writers: &mut HashMap<String, String>,
+    errs: &mut Vec<Error>,
+) -> Vec<ProducedMedia> {
     let mut out = Vec::new();
     let Some(media) = nodes.media().get(e) else { return out };
     for (k, entry) in media.output.iter().enumerate() {
         let ip = at.key(key::MEDIA).key(key::OUTPUT).idx(k);
-        let Some(resource) = resources.media.get(&entry.id) else { continue };
+        let Some(resource) = resources.media.get(&entry.id) else {
+            continue;
+        };
         match (entry.from, &resource.origin) {
             (OutFrom::Model, Origin::Generated { generate, provider }) => {
-                out.push(ProducedMedia { kind: resource.kind.clone(), generate: generate.clone(), provider: provider.clone() });
+                out.push(ProducedMedia {
+                    kind: resource.kind.clone(),
+                    generate: generate.clone(),
+                    provider: provider.clone(),
+                });
             }
             (OutFrom::Model, _) => {
-                errs.push(err(ip.clone(), Rule::MediaNotGenerated, format!("media `{}` has no `generate`: the model cannot produce it", entry.id)));
+                errs.push(err(
+                    ip.clone(),
+                    Rule::MediaNotGenerated,
+                    format!("media `{}` has no `generate`: the model cannot produce it", entry.id),
+                ));
                 continue;
             }
             (OutFrom::Message, Origin::MadeByUtility) => {
                 if entry.utility.is_empty() {
-                    errs.push(err(ip.clone(), Rule::MediaNeedsUtility, format!("media `{}` is made from the text: it needs a `utility`", entry.id)));
+                    errs.push(err(
+                        ip.clone(),
+                        Rule::MediaNeedsUtility,
+                        format!("media `{}` is made from the text: it needs a `utility`", entry.id),
+                    ));
                 }
             }
             (OutFrom::Message, _) => {
-                errs.push(err(ip.clone(), Rule::MediaNotMade, format!("media `{}` is not of type `file`: only a media of that type can be made from the text", entry.id)));
+                errs.push(err(
+                    ip.clone(),
+                    Rule::MediaNotMade,
+                    format!(
+                        "media `{}` is not of type `file`: only a media of that type can be made from the text",
+                        entry.id
+                    ),
+                ));
                 continue;
             }
         }
         if let Some(first) = writers.insert(entry.id.clone(), id.to_string()) {
-            errs.push(err(ip, Rule::MediaTwoWriters, format!("media `{}` is already written by node `{first}`", entry.id)));
+            errs.push(err(
+                ip,
+                Rule::MediaTwoWriters,
+                format!("media `{}` is already written by node `{first}`", entry.id),
+            ));
         }
     }
     out
@@ -148,11 +230,20 @@ fn produced(nodes: &Nodes, e: Entity, id: &str, at: &Path, resources: &Resources
 
 /// The media a node reads: one from `resources` must have a source (and a path, if a utility changes it);
 /// one from `node` must be produced by a node connected before.
-fn media_input_rules(nodes: &Nodes, e: Entity, at: &Path, resources: &Resources, previous: &HashMap<Entity, Vec<Entity>>, errs: &mut Vec<Error>) {
+fn media_input_rules(
+    nodes: &Nodes,
+    e: Entity,
+    at: &Path,
+    resources: &Resources,
+    previous: &HashMap<Entity, Vec<Entity>>,
+    errs: &mut Vec<Error>,
+) {
     let Some(media) = nodes.media().get(e) else { return };
     for (k, entry) in media.input.iter().enumerate() {
         let p = at.key(key::MEDIA).key(key::INPUT).idx(k);
-        let Some(resource) = resources.media.get(&entry.id) else { continue };
+        let Some(resource) = resources.media.get(&entry.id) else {
+            continue;
+        };
         match entry.from {
             InFrom::Resources => match &resource.origin {
                 Origin::Source(source) => {
@@ -161,15 +252,31 @@ fn media_input_rules(nodes: &Nodes, e: Entity, at: &Path, resources: &Resources,
                     }
                 }
                 Origin::Generated { .. } | Origin::MadeByUtility => {
-                    errs.push(err(p.clone(), Rule::MediaInputGenerated, format!("media `{}` is made by a node: it is `from: node`, not from the resources", entry.id)));
+                    errs.push(err(
+                        p.clone(),
+                        Rule::MediaInputGenerated,
+                        format!(
+                            "media `{}` is made by a node: it is `from: node`, not from the resources",
+                            entry.id
+                        ),
+                    ));
                 }
             },
             InFrom::Node => {
                 let produced_before = previous.get(&e).is_some_and(|nodes_before| {
-                    nodes_before.iter().any(|b| nodes.media().get(*b).is_some_and(|m| m.output.iter().any(|o| o.id == entry.id)))
+                    nodes_before.iter().any(|b| {
+                        nodes
+                            .media()
+                            .get(*b)
+                            .is_some_and(|m| m.output.iter().any(|o| o.id == entry.id))
+                    })
                 });
                 if !produced_before {
-                    errs.push(err(p.clone(), Rule::MediaNotFromNode, format!("no node connected before produces media `{}`", entry.id)));
+                    errs.push(err(
+                        p.clone(),
+                        Rule::MediaNotFromNode,
+                        format!("no node connected before produces media `{}`", entry.id),
+                    ));
                 }
             }
         }
@@ -218,8 +325,19 @@ fn previous_nodes(edges: &Edges) -> HashMap<Entity, Vec<Entity>> {
 
 /// A node that writes to its board and cleans it in the same task would lose what it wrote.
 fn board_rules(nodes: &Nodes, e: Entity, id: &str, at: &Path, errs: &mut Vec<Error>) {
-    if let Some(b) = nodes.blackboard().get(e).filter(|b| b.cleanup && b.write.as_ref().is_some_and(|w| w.enabled)) {
-        errs.push(err(at.key(key::BLACKBOARD).key(key::CLEANUP), Rule::CleanupWrite, format!("node `{id}` writes board `{}` and cleans it in the same task: what it writes would be lost", b.id)));
+    if let Some(b) = nodes
+        .blackboard()
+        .get(e)
+        .filter(|b| b.cleanup && b.write.as_ref().is_some_and(|w| w.enabled))
+    {
+        errs.push(err(
+            at.key(key::BLACKBOARD).key(key::CLEANUP),
+            Rule::CleanupWrite,
+            format!(
+                "node `{id}` writes board `{}` and cleans it in the same task: what it writes would be lost",
+                b.id
+            ),
+        ));
     }
 }
 
@@ -227,13 +345,26 @@ fn board_rules(nodes: &Nodes, e: Entity, id: &str, at: &Path, errs: &mut Vec<Err
 pub const CHUNKS: &str = "chunks";
 
 /// `{{name}}` placeholders of the prompt against what the node declares.
-fn placeholders(nodes: &Nodes, e: Entity, id: &str, at: &Path, resources: &Resources, external: &External, errs: &mut Vec<Error>) {
+fn placeholders(
+    nodes: &Nodes,
+    e: Entity,
+    id: &str,
+    at: &Path,
+    resources: &Resources,
+    external: &External,
+    errs: &mut Vec<Error>,
+) {
     // declared names: the ids of what the node reads from outside, in order of appearance
     let mut declared: Vec<&str> = Vec::new();
     if let Some(ext) = nodes.external().get(e) {
         declared.extend(ext.search.iter().map(|q| q.id.as_str()));
         // only a memory that makes summaries has something to put in the prompt: the summary
-        declared.extend(ext.memory.iter().filter(|m| external.memory.get(&m.id).is_some_and(|c| c.synt.is_some())).map(|m| m.id.as_str()));
+        declared.extend(
+            ext.memory
+                .iter()
+                .filter(|m| external.memory.get(&m.id).is_some_and(|c| c.synt.is_some()))
+                .map(|m| m.id.as_str()),
+        );
     }
     // a board the node does not read gives nothing to the prompt: it has no placeholder
     if let Some(b) = nodes.blackboard().get(e).filter(|b| b.read) {
@@ -245,7 +376,11 @@ fn placeholders(nodes: &Nodes, e: Entity, id: &str, at: &Path, resources: &Resou
         let mut seen_db = HashSet::new();
         for q in &ext.vectordb {
             if !seen_db.insert(q.id.as_str()) {
-                errs.push(err(at.key(key::EXTERNAL), Rule::DuplicateId, format!("vectordb `{}` is declared twice on node `{id}`", q.id)));
+                errs.push(err(
+                    at.key(key::EXTERNAL),
+                    Rule::DuplicateId,
+                    format!("vectordb `{}` is declared twice on node `{id}`", q.id),
+                ));
             }
         }
     }
@@ -255,34 +390,70 @@ fn placeholders(nodes: &Nodes, e: Entity, id: &str, at: &Path, resources: &Resou
     let mut seen = HashSet::new();
     for d in &declared {
         if !seen.insert(*d) {
-            errs.push(err(at.key(key::EXTERNAL), Rule::DuplicateId, format!("`{d}` is declared twice on node `{id}`: placeholders would be ambiguous")));
+            errs.push(err(
+                at.key(key::EXTERNAL),
+                Rule::DuplicateId,
+                format!("`{d}` is declared twice on node `{id}`: placeholders would be ambiguous"),
+            ));
         }
     }
 
     let Some(prompt_id) = nodes.resources().get(e).and_then(|r| r.prompt.as_deref()) else {
         if reads_vectordb {
-            errs.push(err(at.key(key::EXTERNAL), Rule::PlaceholderUnused, format!("node `{id}` reads a vectordb and has no prompt that uses {{{{{CHUNKS}}}}}")));
+            errs.push(err(
+                at.key(key::EXTERNAL),
+                Rule::PlaceholderUnused,
+                format!("node `{id}` reads a vectordb and has no prompt that uses {{{{{CHUNKS}}}}}"),
+            ));
         }
         let m = nodes.message().get(e).and_then(|m| m.input).unwrap_or_default();
         if m.user_message && m.agent_message {
-            errs.push(err(at.key(key::MESSAGE), Rule::PromptRequired, format!("node `{id}` takes both messages and has no prompt: the model could not tell them apart")));
+            errs.push(err(
+                at.key(key::MESSAGE),
+                Rule::PromptRequired,
+                format!("node `{id}` takes both messages and has no prompt: the model could not tell them apart"),
+            ));
         }
         return;
     };
-    let Some(prompt) = resources.prompts.get(prompt_id) else { return };
+    let Some(prompt) = resources.prompts.get(prompt_id) else {
+        return;
+    };
     // a prompt not read yet (url) is checked when it is
-    let PromptBody::Content(content) = &prompt.body else { return };
+    let PromptBody::Content(content) = &prompt.body else {
+        return;
+    };
     let input = nodes.message().get(e).and_then(|m| m.input).unwrap_or_default();
     let pp = at.key(key::RESOURCES).key(key::PROMPT);
-    check_placeholders(&pp, prompt_id, [&content.system, &content.user], &declared, reads_vectordb, input, errs);
+    check_placeholders(
+        &pp,
+        prompt_id,
+        [&content.system, &content.user],
+        &declared,
+        reads_vectordb,
+        input,
+        errs,
+    );
 }
 
-fn check_placeholders(p: &Path, prompt: &str, texts: [&String; 2], declared: &[&str], reads_vectordb: bool, input: MessageInput, errs: &mut Vec<Error>) {
+fn check_placeholders(
+    p: &Path,
+    prompt: &str,
+    texts: [&String; 2],
+    declared: &[&str],
+    reads_vectordb: bool,
+    input: MessageInput,
+    errs: &mut Vec<Error>,
+) {
     let mut used: Vec<String> = Vec::new();
     for text in texts {
         match scan(text) {
             Ok(names) => used.extend(names),
-            Err(msg) => errs.push(err(p.clone(), Rule::PlaceholderMalformed, format!("prompt `{prompt}`: {msg}"))),
+            Err(msg) => errs.push(err(
+                p.clone(),
+                Rule::PlaceholderMalformed,
+                format!("prompt `{prompt}`: {msg}"),
+            )),
         }
     }
     let has = |n: &str| used.iter().any(|u| u == n);
@@ -298,28 +469,52 @@ fn check_placeholders(p: &Path, prompt: &str, texts: [&String; 2], declared: &[&
                 _ => false,
             };
         if !ok {
-            errs.push(err(p.clone(), Rule::PlaceholderUnbound, format!("prompt `{prompt}` uses {{{{{name}}}}}, which this node does not declare")));
+            errs.push(err(
+                p.clone(),
+                Rule::PlaceholderUnbound,
+                format!("prompt `{prompt}` uses {{{{{name}}}}}, which this node does not declare"),
+            ));
         }
     }
     for d in declared {
         if !has(d) {
-            errs.push(err(p.clone(), Rule::PlaceholderUnused, format!("prompt `{prompt}` never uses {{{{{d}}}}}, declared on the node")));
+            errs.push(err(
+                p.clone(),
+                Rule::PlaceholderUnused,
+                format!("prompt `{prompt}` never uses {{{{{d}}}}}, declared on the node"),
+            ));
         }
     }
     if reads_vectordb && !has(CHUNKS) {
-        errs.push(err(p.clone(), Rule::PlaceholderUnused, format!("prompt `{prompt}` never uses {{{{{CHUNKS}}}}}, the node reads a vectordb")));
+        errs.push(err(
+            p.clone(),
+            Rule::PlaceholderUnused,
+            format!("prompt `{prompt}` never uses {{{{{CHUNKS}}}}}, the node reads a vectordb"),
+        ));
     }
     if has("input_message") && (has("user_message") || has("agent_message")) {
-        errs.push(err(p.clone(), Rule::PlaceholderInputMixed, "{{input_message}} cannot be used together with {{user_message}} or {{agent_message}}"));
+        errs.push(err(
+            p.clone(),
+            Rule::PlaceholderInputMixed,
+            "{{input_message}} cannot be used together with {{user_message}} or {{agent_message}}",
+        ));
     }
     if u && a {
         for n in ["user_message", "agent_message"] {
             if !has(n) {
-                errs.push(err(p.clone(), Rule::PlaceholderUnused, format!("prompt `{prompt}` never uses {{{{{n}}}}}, enabled on the node")));
+                errs.push(err(
+                    p.clone(),
+                    Rule::PlaceholderUnused,
+                    format!("prompt `{prompt}` never uses {{{{{n}}}}}, enabled on the node"),
+                ));
             }
         }
     } else if (u || a) && !(has("input_message") || has("user_message") || has("agent_message")) {
-        errs.push(err(p.clone(), Rule::PlaceholderUnused, format!("prompt `{prompt}` does not use the node's message")));
+        errs.push(err(
+            p.clone(),
+            Rule::PlaceholderUnused,
+            format!("prompt `{prompt}` does not use the node's message"),
+        ));
     }
 }
 
@@ -359,11 +554,19 @@ fn batch_nodes(nodes: &Nodes, edges: &Edges, errs: &mut Vec<Error>) -> HashSet<E
             inside(step, &mut members);
         }
         // the model of each member, by id; the first one is the model of the group
-        let models: Vec<(Entity, &str)> = members.iter().filter_map(|e| nodes.model().get(*e).map(|m| (*e, m.id.as_str()))).collect();
+        let models: Vec<(Entity, &str)> = members
+            .iter()
+            .filter_map(|e| nodes.model().get(*e).map(|m| (*e, m.id.as_str())))
+            .collect();
         if let Some(&(first, wanted)) = models.first() {
             for &(e, model) in &models[1..] {
                 if model != wanted {
-                    let at = Path::root().key(key::GRAPH).key(key::NODES).idx(e.0 as usize).key(key::MODEL).key(key::ID);
+                    let at = Path::root()
+                        .key(key::GRAPH)
+                        .key(key::NODES)
+                        .idx(e.0 as usize)
+                        .key(key::MODEL)
+                        .key(key::ID);
                     errs.push(err(
                         at,
                         Rule::BatchModels,

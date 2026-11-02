@@ -11,5 +11,8 @@ fn url_parsed() {
     assert_eq!(errors(here(), "backslash"), vec![trace.clone()]);
     assert_eq!(errors(here(), "userinfo"), vec![trace]);
     let bad = |path: &str| ("bad_value".to_string(), path.to_string());
-    assert_eq!(errors(here(), "blanks"), vec![bad("observability.output.url"), bad("trace.endpoint")]);
+    assert_eq!(
+        errors(here(), "blanks"),
+        vec![bad("observability.output.url"), bad("trace.endpoint")]
+    );
 }

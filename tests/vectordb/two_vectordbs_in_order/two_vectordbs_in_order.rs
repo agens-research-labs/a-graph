@@ -11,9 +11,23 @@ async fn two_vectordbs_in_order() {
     let (chroma_port, _) = listen(|r| match r.method.as_str() {
         "GET" => Resp::ok(r#"{"id":"c-1"}"#),
         _ => Resp::ok(r#"{"documents":[["from chroma"]]}"#),
-    }).await;
+    })
+    .await;
     let (qdrant_port, _) = listen(|_| Resp::ok(r#"{"result":{"points":[{"payload":{"text":"from qdrant"}}]}}"#)).await;
-    let (p, seen) = program_with(here(), "two_vectordbs_in_order", &[("embedding", embedding_port), ("chroma", chroma_port), ("qdrant", qdrant_port)], Resp::ok(chat("ok", None))).await;
+    let (p, seen) = program_with(
+        here(),
+        "two_vectordbs_in_order",
+        &[
+            ("embedding", embedding_port),
+            ("chroma", chroma_port),
+            ("qdrant", qdrant_port),
+        ],
+        Resp::ok(chat("ok", None)),
+    )
+    .await;
     p.run_node(entity(&p), user("q")).await.unwrap();
-    assert_eq!(sent(&seen)["messages"][1]["content"], "Context: from chroma\n\nfrom qdrant / Question: q");
+    assert_eq!(
+        sent(&seen)["messages"][1]["content"],
+        "Context: from chroma\n\nfrom qdrant / Question: q"
+    );
 }

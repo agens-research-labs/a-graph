@@ -6,11 +6,19 @@ use super::*;
 async fn live_image() {
     let mut c = call("A small red circle on a white background.");
     // this model makes jpeg only: a png is refused by Google's own message
-    c.output_media = vec![ProducedMedia { kind: MediaKind::Img("png".into()), generate: generate(), provider: None }];
+    c.output_media = vec![ProducedMedia {
+        kind: MediaKind::Img("png".into()),
+        generate: generate(),
+        provider: None,
+    }];
     let err = live("gemini-3.1-flash-image").invoke(&c).await.unwrap_err().to_string();
     assert!(err.contains("image/jpeg") && err.contains("(gemini)"), "{err}");
 
-    c.output_media = vec![ProducedMedia { kind: MediaKind::Img("jpg".into()), generate: generate(), provider: None }];
+    c.output_media = vec![ProducedMedia {
+        kind: MediaKind::Img("jpg".into()),
+        generate: generate(),
+        provider: None,
+    }];
     let r = match live("gemini-3.1-flash-image").invoke(&c).await {
         Ok(r) => r,
         // image generation has no quota on the free tier: the call cannot be verified with such a key

@@ -35,13 +35,25 @@ pub struct Error {
 
 impl Error {
     pub fn new(phase: Phase, path: Path, rule: Rule, message: impl Into<String>) -> Self {
-        Error { phase, path, rule, message: message.into() }
+        Error {
+            phase,
+            path,
+            rule,
+            message: message.into(),
+        }
     }
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[{}] {} ({}): {}", self.phase, self.path, self.rule.code(), self.message)
+        write!(
+            f,
+            "[{}] {} ({}): {}",
+            self.phase,
+            self.path,
+            self.rule.code(),
+            self.message
+        )
     }
 }
 
@@ -60,7 +72,12 @@ pub struct Warning {
 
 impl Warning {
     pub fn new(phase: Phase, path: Path, code: &'static str, message: impl Into<String>) -> Self {
-        Warning { phase, path, code, message: message.into() }
+        Warning {
+            phase,
+            path,
+            code,
+            message: message.into(),
+        }
     }
 }
 

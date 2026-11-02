@@ -7,5 +7,10 @@ fn here() -> &'static std::path::Path {
 /// Prompt file without content is a bad value.
 #[test]
 fn prompt_file_no_content() {
-    assert!(has(here(), "prompt_file_no_content", "bad_value", "resources.prompts[1].source.path"));
+    assert!(has(
+        here(),
+        "prompt_file_no_content",
+        "bad_value",
+        "resources.prompts[1].source.path"
+    ));
 }

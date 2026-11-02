@@ -1,5 +1,5 @@
-use crate::common::run_node::*;
 use crate::common::clean_output;
+use crate::common::run_node::*;
 
 fn here() -> &'static std::path::Path {
     std::path::Path::new(file!()).parent().unwrap()
@@ -16,7 +16,13 @@ async fn writes_exchange() {
     assert_eq!(records.as_array().unwrap().len(), 1);
     let r = &records[0];
     assert_eq!((r["id"].as_str(), r["synt"].as_str()), (Some("n"), Some("")));
-    assert_eq!(r["chat"], json!([{ "role": "user", "content": "the question" }, { "role": "assistant", "content": "the answer" }]));
+    assert_eq!(
+        r["chat"],
+        json!([{ "role": "user", "content": "the question" }, { "role": "assistant", "content": "the answer" }])
+    );
     let ts = r["timestamp"].as_str().unwrap();
-    assert!(chrono::NaiveDateTime::parse_from_str(ts, "%Y-%m-%d_%H:%M:%S").is_ok(), "{ts}");
+    assert!(
+        chrono::NaiveDateTime::parse_from_str(ts, "%Y-%m-%d_%H:%M:%S").is_ok(),
+        "{ts}"
+    );
 }

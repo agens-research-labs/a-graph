@@ -7,5 +7,10 @@ fn here() -> &'static std::path::Path {
 /// Access goes with url only.
 #[test]
 fn access_needs_url() {
-    assert!(has(here(), "access_needs_url", "unexpected_field", "resources.prompts[1].source.access"));
+    assert!(has(
+        here(),
+        "access_needs_url",
+        "unexpected_field",
+        "resources.prompts[1].source.access"
+    ));
 }

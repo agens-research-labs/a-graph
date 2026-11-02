@@ -1,5 +1,5 @@
-use async_trait::async_trait;
 use a_graph::models::*;
+use async_trait::async_trait;
 
 /// A model that answers without any network: enough to exercise the contract.
 struct Fake {
@@ -20,7 +20,11 @@ impl Fake {
                 provider: "fake".into(),
                 model: self.id.into(),
                 execution_time: 0.5,
-                usage: Usage { input_tokens: 10, output_tokens: 5, ..Usage::default() },
+                usage: Usage {
+                    input_tokens: 10,
+                    output_tokens: 5,
+                    ..Usage::default()
+                },
             },
         }
     }
@@ -39,7 +43,11 @@ impl Llm for Fake {
         if problems.is_empty() {
             Ok(())
         } else {
-            Err(ModelError::Unsupported { model: self.id.into(), provider: "fake".into(), problems })
+            Err(ModelError::Unsupported {
+                model: self.id.into(),
+                provider: "fake".into(),
+                problems,
+            })
         }
     }
 
@@ -49,12 +57,31 @@ impl Llm for Fake {
 
     async fn invoke_batch(&self, requests: Vec<BatchRequest>, events: BatchEvents) -> BatchReturn {
         let batch_id = "b1".to_string();
-        let _ = events.send(BatchEvent::Submitted { batch_id: batch_id.clone(), requests: requests.len() });
-        let _ = events.send(BatchEvent::Status { batch_id: batch_id.clone(), status: "in_progress".into() });
-        let _ = events.send(BatchEvent::Status { batch_id: batch_id.clone(), status: "ended".into() });
-        let _ = events.send(BatchEvent::Finished { batch_id, outcome: BatchOutcome::Completed });
+        let _ = events.send(BatchEvent::Submitted {
+            batch_id: batch_id.clone(),
+            requests: requests.len(),
+        });
+        let _ = events.send(BatchEvent::Status {
+            batch_id: batch_id.clone(),
+            status: "in_progress".into(),
+        });
+        let _ = events.send(BatchEvent::Status {
+            batch_id: batch_id.clone(),
+            status: "ended".into(),
+        });
+        let _ = events.send(BatchEvent::Finished {
+            batch_id,
+            outcome: BatchOutcome::Completed,
+        });
         // results come back in any order: the id is what matches them
-        Ok(requests.into_iter().rev().map(|r| BatchResult { id: r.id, result: Ok(self.response(r.invocation.user)) }).collect())
+        Ok(requests
+            .into_iter()
+            .rev()
+            .map(|r| BatchResult {
+                id: r.id,
+                result: Ok(self.response(r.invocation.user)),
+            })
+            .collect())
     }
 }
 

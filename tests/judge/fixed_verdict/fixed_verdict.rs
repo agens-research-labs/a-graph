@@ -9,7 +9,13 @@ fn here() -> &'static std::path::Path {
 async fn fixed_verdict() {
     let (p, seen) = program(here(), "fixed_verdict", approved()).await;
     p.run("hi").await.unwrap();
-    let judge = seen.lock().unwrap().iter().map(body_of).find(|b| b["format"]["properties"]["validation"].is_object()).unwrap();
+    let judge = seen
+        .lock()
+        .unwrap()
+        .iter()
+        .map(body_of)
+        .find(|b| b["format"]["properties"]["validation"].is_object())
+        .unwrap();
     assert_eq!(judge["format"]["required"], json!(["validation", "reasons", "log"]));
     assert_eq!(judge["messages"][0]["content"], "Judge the text.");
 }

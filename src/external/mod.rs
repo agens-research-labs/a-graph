@@ -43,7 +43,11 @@ impl External {
         let memory = MemoryManager::build(block.remove(key::MEMORY));
 
         match (vectordb, search, memory) {
-            (Ok(vectordb), Ok(search), Ok(memory)) => Ok(External { vectordb, search, memory }),
+            (Ok(vectordb), Ok(search), Ok(memory)) => Ok(External {
+                vectordb,
+                search,
+                memory,
+            }),
             (a, b, c) => {
                 let mut all = Vec::new();
                 for r in [a.err(), b.err(), c.err()].into_iter().flatten() {

@@ -8,6 +8,10 @@ async fn silent_endpoint_timeout() {
     log.log(&Event::new(LogLevel::Info, "x"));
     let started = std::time::Instant::now();
     log.close().await;
-    assert!(started.elapsed() < Duration::from_secs(3), "close took {:?}", started.elapsed());
+    assert!(
+        started.elapsed() < Duration::from_secs(3),
+        "close took {:?}",
+        started.elapsed()
+    );
     assert_eq!(drain(&mut rx).await.len(), 3, "1 attempt + 2 retries");
 }

@@ -7,5 +7,10 @@ fn here() -> &'static std::path::Path {
 /// Tool parameters must be an object.
 #[test]
 fn tool_params_object() {
-    assert!(has(here(), "tool_params_object", "bad_value", "resources.tools[0].parameters"));
+    assert!(has(
+        here(),
+        "tool_params_object",
+        "bad_value",
+        "resources.tools[0].parameters"
+    ));
 }

@@ -14,7 +14,10 @@ struct Reader<'a> {
 }
 
 pub(super) fn build(list: Option<Value>, nodes: &Nodes) -> Result<Edges, Errors> {
-    let mut r = Reader { nodes, errs: Errs::default() };
+    let mut r = Reader {
+        nodes,
+        errs: Errs::default(),
+    };
     let base = Path::root().key(key::GRAPH).key(key::EDGES);
     let entries = Obj::items(&base, list, &mut r.errs);
     let entries_len = entries.len();
@@ -35,12 +38,20 @@ pub(super) fn build(list: Option<Value>, nodes: &Nodes) -> Result<Edges, Errors>
     let alone = start.is_some() && end.is_none() && steps.is_empty() && entries_len == 1;
     let (Some(start), Some(end), true) = (start, if alone { start } else { end }, r.errs.0.is_empty()) else {
         if r.errs.0.is_empty() {
-            r.errs.add(&base, Rule::BlockShape, "the edges have no `start` or no `end`: they were not validated by the Loader");
+            r.errs.add(
+                &base,
+                Rule::BlockShape,
+                "the edges have no `start` or no `end`: they were not validated by the Loader",
+            );
         }
         return Err(Errors(r.errs.0));
     };
 
-    Ok(Edges { start, end: if alone { None } else { Some(end) }, steps })
+    Ok(Edges {
+        start,
+        end: if alone { None } else { Some(end) },
+        steps,
+    })
 }
 
 impl Reader<'_> {
@@ -52,7 +63,8 @@ impl Reader<'_> {
         };
         let e = self.nodes.entity(id);
         if e.is_none() {
-            self.errs.add(at, Rule::UnknownRef, format!("node `{id}` is not declared"));
+            self.errs
+                .add(at, Rule::UnknownRef, format!("node `{id}` is not declared"));
         }
         e
     }
@@ -71,7 +83,8 @@ impl Reader<'_> {
             key::BATCH => self.group(Pattern::Batch, v, at).map(Step::Group),
             key::REACT => self.react(v, at).map(Step::React),
             other => {
-                self.errs.add(at, Rule::UnexpectedField, format!("`{other}` is not allowed here"));
+                self.errs
+                    .add(at, Rule::UnexpectedField, format!("`{other}` is not allowed here"));
                 None
             }
         }
@@ -82,7 +95,9 @@ impl Reader<'_> {
         let mut out = Vec::new();
         for o in Obj::items(at, Some(list), &mut self.errs) {
             let entry = o.at().clone();
-            let Some((k, v)) = o.single(&mut self.errs) else { continue };
+            let Some((k, v)) = o.single(&mut self.errs) else {
+                continue;
+            };
             if let Some(step) = self.step_of(&k, v, &entry.key(&k), plain) {
                 out.push(step);
             }
@@ -95,7 +110,9 @@ impl Reader<'_> {
         let (mut limit, mut r#in, mut fan, mut out) = (None, None, Vec::new(), None);
         for o in Obj::items(at, Some(v), &mut self.errs) {
             let entry = o.at().clone();
-            let Some((k, v)) = o.single(&mut self.errs) else { continue };
+            let Some((k, v)) = o.single(&mut self.errs) else {
+                continue;
+            };
             let here = entry.key(&k);
             match k.as_str() {
                 key::LIMIT => limit = serde_norway::from_value::<u32>(v).ok(),
@@ -105,7 +122,13 @@ impl Reader<'_> {
                 _ => {}
             }
         }
-        Some(Group { pattern, limit, r#in: r#in?, fan, out })
+        Some(Group {
+            pattern,
+            limit,
+            r#in: r#in?,
+            fan,
+            out,
+        })
     }
 
     fn react(&mut self, v: Value, at: &Path) -> Option<React> {
@@ -114,7 +137,13 @@ impl Reader<'_> {
         let max_iterations = o.req::<u32>(key::MAX_ITERATIONS, &mut self.errs);
         let components = o.value(key::COMPONENTS);
         let controller = controller.and_then(|id| self.node(&Value::String(id), &at.key(key::CONTROLLER)));
-        let workers = components.map(|c| self.steps(c, &at.key(key::COMPONENTS), key::WORKER)).unwrap_or_default();
-        Some(React { controller: controller?, max_iterations: max_iterations?, workers })
+        let workers = components
+            .map(|c| self.steps(c, &at.key(key::COMPONENTS), key::WORKER))
+            .unwrap_or_default();
+        Some(React {
+            controller: controller?,
+            max_iterations: max_iterations?,
+            workers,
+        })
     }
 }

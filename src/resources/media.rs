@@ -88,7 +88,10 @@ pub enum Origin {
     /// A media made by a utility from the text of a node (`type: file`): it has neither a source nor `generate`.
     MadeByUtility,
     /// A media produced by a node.
-    Generated { generate: Generate, provider: Option<MediaProvider> },
+    Generated {
+        generate: Generate,
+        provider: Option<MediaProvider>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -113,7 +116,9 @@ impl MediaManager {
             let at = o.at().clone();
             let id = o.req::<String>(key::ID, &mut errs);
             errs.require(&at, key::TYPE, o.has(key::TYPE), "`type` is mandatory");
-            let kind = o.value(key::TYPE).and_then(|v| read_kind(v, &at.key(key::TYPE), &mut errs));
+            let kind = o
+                .value(key::TYPE)
+                .and_then(|v| read_kind(v, &at.key(key::TYPE), &mut errs));
             let (has_source, has_generate) = (o.has(key::SOURCE), o.has(key::GENERATE));
             let src = o.sub(key::SOURCE, &mut errs);
             let generate = o.sub(key::GENERATE, &mut errs).map(|g| read_generate(g, &mut errs));
@@ -122,7 +127,11 @@ impl MediaManager {
             let origin = match (has_source, has_generate) {
                 (false, false) if kind == Some(MediaKind::File) => Some(Origin::MadeByUtility),
                 (true, _) | (_, true) if kind == Some(MediaKind::File) => {
-                    errs.add(&at, Rule::ExactlyOne, "a media of type `file` has neither `source` nor `generate`: a utility makes it");
+                    errs.add(
+                        &at,
+                        Rule::ExactlyOne,
+                        "a media of type `file` has neither `source` nor `generate`: a utility makes it",
+                    );
                     None
                 }
                 (true, false) => {
@@ -153,7 +162,9 @@ impl MediaManager {
             .iter()
             .enumerate()
             .filter_map(|(i, m)| match &m.origin {
-                Origin::Source(Source::Url { url, .. }) => Some(Destination::url(base.idx(i).key(key::SOURCE).key(key::URL), url)),
+                Origin::Source(Source::Url { url, .. }) => {
+                    Some(Destination::url(base.idx(i).key(key::SOURCE).key(key::URL), url))
+                }
                 _ => None,
             })
             .collect()
@@ -177,13 +188,21 @@ fn read_kind(v: Value, at: &Path, errs: &mut Errs) -> Option<MediaKind> {
         return Some(MediaKind::File);
     }
     let mut o = Obj::new(v, at.clone(), errs)?;
-    let (img, audio, video) = (o.opt::<String>(key::IMG, errs), o.opt::<String>(key::AUDIO, errs), o.opt::<String>(key::VIDEO, errs));
+    let (img, audio, video) = (
+        o.opt::<String>(key::IMG, errs),
+        o.opt::<String>(key::AUDIO, errs),
+        o.opt::<String>(key::VIDEO, errs),
+    );
     match (img, audio, video) {
         (Some(f), None, None) => Some(MediaKind::Img(f)),
         (None, Some(f), None) => Some(MediaKind::Audio(f)),
         (None, None, Some(f)) => Some(MediaKind::Video(f)),
         _ => {
-            errs.add(at, Rule::ExactlyOne, "type is `md`, `file` or one of img, audio, video with its format");
+            errs.add(
+                at,
+                Rule::ExactlyOne,
+                "type is `md`, `file` or one of img, audio, video with its format",
+            );
             None
         }
     }
@@ -205,7 +224,13 @@ fn read_generate(mut g: Obj, errs: &mut Errs) -> Generate {
 
 /// The rules of a produced media: the format that allows transparency and compression,
 /// and the fields of the provider family.
-fn read_provider(at: &Path, kind: Option<&MediaKind>, g: &Generate, raw: Option<Obj>, errs: &mut Errs) -> Option<MediaProvider> {
+fn read_provider(
+    at: &Path,
+    kind: Option<&MediaKind>,
+    g: &Generate,
+    raw: Option<Obj>,
+    errs: &mut Errs,
+) -> Option<MediaProvider> {
     let format = match kind {
         Some(MediaKind::Img(f)) => Some(f.to_lowercase()),
         _ => None,
@@ -213,13 +238,21 @@ fn read_provider(at: &Path, kind: Option<&MediaKind>, g: &Generate, raw: Option<
     let is = |formats: &[&str]| format.as_deref().is_some_and(|f| formats.contains(&f));
 
     if g.background == Some(true) && !is(&["png", "webp"]) {
-        errs.add(&at.key(key::GENERATE).key(key::BACKGROUND), Rule::MediaTypeUnsupported, "transparency needs an img of type png or webp");
+        errs.add(
+            &at.key(key::GENERATE).key(key::BACKGROUND),
+            Rule::MediaTypeUnsupported,
+            "transparency needs an img of type png or webp",
+        );
     }
     let mut raw = raw?;
     let (openai, gemini) = (raw.sub(key::OPENAI, errs), raw.sub(key::GEMINI, errs));
     match (openai, gemini) {
         (Some(_), Some(_)) => {
-            errs.add(&at.key(key::PROVIDER), Rule::ExactlyOne, "provider holds the fields of ONE family only");
+            errs.add(
+                &at.key(key::PROVIDER),
+                Rule::ExactlyOne,
+                "provider holds the fields of ONE family only",
+            );
             None
         }
         (Some(mut o), None) => {
@@ -231,14 +264,26 @@ fn read_provider(at: &Path, kind: Option<&MediaKind>, g: &Generate, raw: Option<
             };
             if let Some(c) = m.output_compression {
                 if c > 100 {
-                    errs.add(&op.key(key::OUTPUT_COMPRESSION), Rule::BadValue, "output_compression is 0-100");
+                    errs.add(
+                        &op.key(key::OUTPUT_COMPRESSION),
+                        Rule::BadValue,
+                        "output_compression is 0-100",
+                    );
                 }
                 if !is(&["jpeg", "jpg", "webp"]) {
-                    errs.add(&op.key(key::OUTPUT_COMPRESSION), Rule::MediaTypeUnsupported, "output_compression needs an img of type jpeg or webp");
+                    errs.add(
+                        &op.key(key::OUTPUT_COMPRESSION),
+                        Rule::MediaTypeUnsupported,
+                        "output_compression needs an img of type jpeg or webp",
+                    );
                 }
             }
             if m.style.is_some() && (m.moderation.is_some() || m.output_compression.is_some()) {
-                errs.add(&op.key(key::STYLE), Rule::MediaProviderConflict, "style cannot be used with moderation or output_compression");
+                errs.add(
+                    &op.key(key::STYLE),
+                    Rule::MediaProviderConflict,
+                    "style cannot be used with moderation or output_compression",
+                );
             }
             Some(MediaProvider::Openai(m))
         }
@@ -249,11 +294,18 @@ fn read_provider(at: &Path, kind: Option<&MediaKind>, g: &Generate, raw: Option<
                 "2K" => Some(GeminiImageSize::K2),
                 "4K" => Some(GeminiImageSize::K4),
                 other => {
-                    errs.add(&g.at().key(key::IMAGE_SIZE), Rule::BadValue, format!("`{other}` is not one of 512, 1K, 2K, 4K"));
+                    errs.add(
+                        &g.at().key(key::IMAGE_SIZE),
+                        Rule::BadValue,
+                        format!("`{other}` is not one of 512, 1K, 2K, 4K"),
+                    );
                     None
                 }
             });
-            Some(MediaProvider::Gemini(GeminiMedia { image_size, aspect_ratio: g.opt(key::ASPECT_RATIO, errs) }))
+            Some(MediaProvider::Gemini(GeminiMedia {
+                image_size,
+                aspect_ratio: g.opt(key::ASPECT_RATIO, errs),
+            }))
         }
         (None, None) => None,
     }

@@ -1,10 +1,10 @@
 //! The host each model is reached at: what the network permission checks. Every case is a yml
 //! folder with its own yml files.
 
+use super::common::yml_in;
 use a_graph::loader::load;
 use a_graph::models::{Model, ModelManager};
 use a_graph::schema::key;
-use super::common::{yml_in};
 
 fn models_of(src: &str) -> ModelManager {
     // SAFETY: the values are never used to call anything.

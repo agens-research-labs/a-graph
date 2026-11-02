@@ -13,5 +13,8 @@ async fn detail_shows_calls() {
     p.run("hi").await.unwrap();
     let text = screen.text();
     assert!(text.contains("model m · 1 in / 1 out tokens"), "{text}");
-    assert!(text.contains("prompt: S(hi)") && text.contains("answer: S(hi)"), "{text}");
+    assert!(
+        text.contains("prompt: S(hi)") && text.contains("answer: S(hi)"),
+        "{text}"
+    );
 }

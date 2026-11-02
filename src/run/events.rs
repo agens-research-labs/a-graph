@@ -102,7 +102,11 @@ impl Program {
     pub(super) fn run_finished(&self, started: Instant, failure: Option<&crate::error::Error>) {
         let id = self.spans.run.load(std::sync::atomic::Ordering::SeqCst);
         match failure {
-            None => self.emit(Event::new(LogLevel::Info, "run.end").span(id, 0).field("duration", started.elapsed().as_secs_f64())),
+            None => self.emit(
+                Event::new(LogLevel::Info, "run.end")
+                    .span(id, 0)
+                    .field("duration", started.elapsed().as_secs_f64()),
+            ),
             Some(e) => self.emit(Event::from(e).span(id, 0)),
         }
     }
@@ -113,7 +117,12 @@ impl Program {
         let parent = self.parent_of(None);
         let id = self.spans.id();
         self.spans.nodes.lock().unwrap().insert(name.to_string(), id);
-        self.emit(Event::new(LogLevel::Info, "node.start").node(name).field("model", model).span(id, parent));
+        self.emit(
+            Event::new(LogLevel::Info, "node.start")
+                .node(name)
+                .field("model", model)
+                .span(id, parent),
+        );
     }
 
     pub(super) fn node_finished(&self, node: Entity, response: &ModelResponse, verdict: Option<&str>) {
@@ -136,7 +145,11 @@ impl Program {
 
     /// One call to a model, with the text it got and the text it gave.
     pub(super) fn model_called(&self, node: &str, model: &str, call: &ModelInvocation, response: &ModelResponse) {
-        let answer = response.message.clone().or_else(|| response.structured.as_ref().map(Value::to_string)).unwrap_or_default();
+        let answer = response
+            .message
+            .clone()
+            .or_else(|| response.structured.as_ref().map(Value::to_string))
+            .unwrap_or_default();
         let mut ev = Event::new(LogLevel::Debug, "model.call")
             .node(node)
             .field("model", model)
@@ -156,11 +169,21 @@ impl Program {
     pub(super) fn group_started(&self, pattern: &str, branches: usize) -> (Instant, u64) {
         let parent = self.parent_of(None);
         let id = self.spans.id();
-        self.emit(Event::new(LogLevel::Info, "group.start").field("pattern", pattern).field("branches", branches).span(id, parent));
+        self.emit(
+            Event::new(LogLevel::Info, "group.start")
+                .field("pattern", pattern)
+                .field("branches", branches)
+                .span(id, parent),
+        );
         (Instant::now(), id)
     }
 
     pub(super) fn group_finished(&self, pattern: &str, started: Instant, span: u64) {
-        self.emit(Event::new(LogLevel::Info, "group.end").field("pattern", pattern).field("duration", started.elapsed().as_secs_f64()).span(span, 0));
+        self.emit(
+            Event::new(LogLevel::Info, "group.end")
+                .field("pattern", pattern)
+                .field("duration", started.elapsed().as_secs_f64())
+                .span(span, 0),
+        );
     }
 }

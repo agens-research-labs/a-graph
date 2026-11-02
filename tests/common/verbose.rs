@@ -1,7 +1,7 @@
 //! The display of a run (`verbose`) captured in memory, so a test can read what was shown.
 
-pub use a_graph::logging::{Verbose, VerboseLevel};
 pub use a_graph::logging::Redaction;
+pub use a_graph::logging::{Verbose, VerboseLevel};
 use std::io::Write;
 use std::sync::{Arc, Mutex};
 
@@ -33,6 +33,7 @@ impl Screen {
 /// Puts a display of this level in the program; the program must not be shared yet.
 pub fn show(p: &mut Arc<a_graph::run::Program>, level: VerboseLevel, allow_content: bool, color: bool) -> Screen {
     let screen = Screen::default();
-    Arc::get_mut(p).expect("the program is not shared yet").verbose = Verbose::new(level, Redaction { allow_content }, color, Box::new(screen.clone()));
+    Arc::get_mut(p).expect("the program is not shared yet").verbose =
+        Verbose::new(level, Redaction { allow_content }, color, Box::new(screen.clone()));
     screen
 }

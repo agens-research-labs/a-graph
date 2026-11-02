@@ -11,6 +11,8 @@ fn utility() -> Utility {
 /// An answer that is not JSON is an error.
 #[tokio::test]
 async fn not_json() {
-    let e = call_utility(&utility(), &UtilityInput::Text("x".into())).await.unwrap_err();
+    let e = call_utility(&utility(), &UtilityInput::Text("x".into()))
+        .await
+        .unwrap_err();
     assert!(e.contains("utility `u`") && e.contains("JSON"), "{e}");
 }

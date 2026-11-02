@@ -1,16 +1,12 @@
 //! The logging: every test is a folder with its own yml files.
 
-
-
-
+pub use a_graph::loader::load;
+pub use a_graph::logging::{Delivery, Event, LogLevel, Logger, Redaction};
+pub use a_graph::schema::key;
+pub use a_graph::{Error, Path, Phase, Rule, Warning};
 pub use std::io::{self, Write};
 pub use std::sync::{Arc, Mutex};
 pub use std::time::Duration;
-pub use a_graph::logging::{Delivery, Event, LogLevel, Logger, Redaction};
-pub use a_graph::loader::load;
-pub use a_graph::schema::key;
-pub use a_graph::{Error, Path, Phase, Rule, Warning};
-
 
 #[derive(Clone, Default)]
 pub struct Buf(pub Arc<Mutex<Vec<u8>>>);
@@ -34,7 +30,10 @@ impl Buf {
 
 pub fn logger(level: LogLevel, allow_content: bool) -> (Logger, Buf) {
     let buf = Buf::default();
-    (Logger::new(level, Redaction { allow_content }, Box::new(buf.clone())), buf)
+    (
+        Logger::new(level, Redaction { allow_content }, Box::new(buf.clone())),
+        buf,
+    )
 }
 
 /// The `passport` and `observability` blocks of a yml, as the Loader hands them over.

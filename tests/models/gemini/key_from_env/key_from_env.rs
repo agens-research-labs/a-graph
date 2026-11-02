@@ -10,6 +10,12 @@ fn key_from_env() {
 
     // SAFETY: a variable only this test uses.
     unsafe { std::env::set_var("A_GRAPH_TEST_GEMINI_SECRET", "super-secret-value") };
-    let shown = format!("{:?}", Gemini::new(&api_model("A_GRAPH_TEST_GEMINI_SECRET"), &at).unwrap());
-    assert!(!shown.contains("super-secret-value") && shown.contains("redacted"), "{shown}");
+    let shown = format!(
+        "{:?}",
+        Gemini::new(&api_model("A_GRAPH_TEST_GEMINI_SECRET"), &at).unwrap()
+    );
+    assert!(
+        !shown.contains("super-secret-value") && shown.contains("redacted"),
+        "{shown}"
+    );
 }

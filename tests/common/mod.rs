@@ -3,13 +3,13 @@
 
 #![allow(dead_code, unused_imports)]
 
-pub mod http;
 pub mod blackboards;
 pub mod cli;
 pub mod embeddings;
 pub mod external;
 pub mod graph;
 pub mod graph_edges;
+pub mod http;
 pub mod loader;
 pub mod logging;
 pub mod logging_delivery;
@@ -29,8 +29,8 @@ pub mod run_skills;
 pub mod run_tools;
 pub mod service;
 pub mod toolmock;
-pub mod utilities;
 pub mod trace;
+pub mod utilities;
 pub mod verbose;
 
 /// The fixtures with a `trace` block name the variable `TRACE_TOKEN` for a header, and the tracer reads it
@@ -55,7 +55,10 @@ pub fn yml_in(dir: &std::path::Path, stem: &str) -> String {
 pub fn yml_with(dir: &std::path::Path, stem: &str, ports: &[(&str, u16)]) -> String {
     trace_token();
     let path = dir.join(format!("{stem}.yml"));
-    with_ports(&std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display())), ports)
+    with_ports(
+        &std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display())),
+        ports,
+    )
 }
 
 /// The fixtures never name a fixed port: a mock server listens on a free one, so that tests (and two
@@ -68,7 +71,11 @@ pub fn with_ports(text: &str, ports: &[(&str, u16)]) -> String {
         return replace_ports(text, |_| 1);
     }
     replace_ports(text, |name| {
-        ports.iter().find(|(n, _)| *n == name).unwrap_or_else(|| panic!("fixture names port `{name}` but the test did not pass it")).1
+        ports
+            .iter()
+            .find(|(n, _)| *n == name)
+            .unwrap_or_else(|| panic!("fixture names port `{name}` but the test did not pass it"))
+            .1
     })
 }
 
@@ -78,7 +85,9 @@ fn replace_ports(text: &str, mut port_of: impl FnMut(&str) -> u16) -> String {
     while let Some(at) = rest.find("{{port:") {
         out.push_str(&rest[..at]);
         let after = &rest[at + "{{port:".len()..];
-        let end = after.find("}}").unwrap_or_else(|| panic!("a `{{{{port:` that does not end: {}", &rest[at..]));
+        let end = after
+            .find("}}")
+            .unwrap_or_else(|| panic!("a `{{{{port:` that does not end: {}", &rest[at..]));
         let name = &after[..end];
         out.push_str(&port_of(name).to_string());
         rest = &after[end + 2..];
@@ -124,7 +133,17 @@ pub fn ensure_mcp_server() {
     static BUILT: std::sync::Once = std::sync::Once::new();
     BUILT.call_once(|| {
         let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
-        let status = std::process::Command::new(cargo).args(["build", "--quiet", "--manifest-path", "tests/mcp_server/Cargo.toml", "--target-dir", "target/mcp-test-server"]).status().expect("cannot run cargo");
+        let status = std::process::Command::new(cargo)
+            .args([
+                "build",
+                "--quiet",
+                "--manifest-path",
+                "tests/mcp_server/Cargo.toml",
+                "--target-dir",
+                "target/mcp-test-server",
+            ])
+            .status()
+            .expect("cannot run cargo");
         assert!(status.success(), "the MCP server of the tests did not build");
     });
 }

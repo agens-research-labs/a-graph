@@ -12,8 +12,15 @@ use crate::schema::key;
 /// A secret is kept as the name of the environment variable, never as its value.
 #[derive(Debug, Clone)]
 pub enum McpTransport {
-    Stdio { command: String, args: Vec<String>, env: BTreeMap<String, String> },
-    Http { url: String, headers: BTreeMap<String, String> },
+    Stdio {
+        command: String,
+        args: Vec<String>,
+        env: BTreeMap<String, String>,
+    },
+    Http {
+        url: String,
+        headers: BTreeMap<String, String>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -59,7 +66,12 @@ impl McpManager {
                 Some(RawTransport::Stdio) => {
                     errs.require(&at, key::COMMAND, command.is_some(), "transport stdio needs `command`");
                     errs.forbid(&at, key::URL, url.is_some(), "`url` is for transport http");
-                    errs.forbid(&at, key::HEADERS, !headers.is_empty(), "`headers` is for transport http");
+                    errs.forbid(
+                        &at,
+                        key::HEADERS,
+                        !headers.is_empty(),
+                        "`headers` is for transport http",
+                    );
                     command.map(|command| McpTransport::Stdio { command, args, env })
                 }
                 Some(RawTransport::Http) => {
@@ -71,8 +83,15 @@ impl McpManager {
                 }
                 None => None,
             };
-            if let (Some(id), Some(transport), Some(max_iter), Some(timeout), true) = (id, transport, max_iter, timeout, errs.0.len() == before) {
-                servers.push(McpServer { id, transport, max_iter, timeout });
+            if let (Some(id), Some(transport), Some(max_iter), Some(timeout), true) =
+                (id, transport, max_iter, timeout, errs.0.len() == before)
+            {
+                servers.push(McpServer {
+                    id,
+                    transport,
+                    max_iter,
+                    timeout,
+                });
             }
         }
         errs.finish(McpManager { servers })

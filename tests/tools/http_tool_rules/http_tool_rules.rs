@@ -7,6 +7,16 @@ fn here() -> &'static std::path::Path {
 /// Http tool needs a url and refuses args.
 #[test]
 fn http_tool_rules() {
-    assert!(has(here(), "http_tool_rules", "missing_field", "resources.tools[0].url"));
-    assert!(has(here(), "http_tool_rules", "unexpected_field", "resources.tools[0].args"));
+    assert!(has(
+        here(),
+        "http_tool_rules",
+        "missing_field",
+        "resources.tools[0].url"
+    ));
+    assert!(has(
+        here(),
+        "http_tool_rules",
+        "unexpected_field",
+        "resources.tools[0].args"
+    ));
 }

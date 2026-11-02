@@ -21,7 +21,9 @@ use super::http;
 use super::identity::Identity;
 use super::spec::{ApiModel, AzureCredentials, AzureModel};
 use super::timing::timed;
-use super::{BatchEvents, BatchRequest, BatchReturn, Llm, ModelError, ModelInvocation, ModelRequirements, ModelResponse};
+use super::{
+    BatchEvents, BatchRequest, BatchReturn, Llm, ModelError, ModelInvocation, ModelRequirements, ModelResponse,
+};
 use crate::error::{Error, Path, Phase, Rule};
 use crate::resources::MediaKind;
 use crate::schema::key;
@@ -51,7 +53,11 @@ pub struct OpenAi {
 
 impl fmt::Debug for OpenAi {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("OpenAi").field("provider", &self.who.provider).field("model", &self.model).field("key", &"<redacted>").finish()
+        f.debug_struct("OpenAi")
+            .field("provider", &self.who.provider)
+            .field("model", &self.model)
+            .field("key", &"<redacted>")
+            .finish()
     }
 }
 
@@ -60,7 +66,15 @@ impl OpenAi {
     /// the model is in the yml. A variable that is not set is an error now, not at the first call.
     pub fn new(m: &ApiModel, at: &Path) -> Result<Self, Error> {
         let key = env_key(&m.api_key, &at.key(key::API_KEY))?;
-        Self::assemble(&m.common.id, &m.common.model, "openai", Auth::Bearer(key), BASE_URL.into(), None, at)
+        Self::assemble(
+            &m.common.id,
+            &m.common.model,
+            "openai",
+            Auth::Bearer(key),
+            BASE_URL.into(),
+            None,
+            at,
+        )
     }
 
     /// A model hosted by Azure Foundry (publisher openai): `resource` builds the endpoint, the
@@ -69,15 +83,48 @@ impl OpenAi {
     pub fn azure(m: &AzureModel, at: &Path) -> Result<Self, Error> {
         let auth = match &m.credentials {
             AzureCredentials::ApiKey(var) => Auth::ApiKey(env_key(var, &at.key(key::CREDENTIALS).key(key::API_KEY))?),
-            AzureCredentials::Ambient => Auth::Token(Box::new(AzureAmbient::new("https://cognitiveservices.azure.com/.default"))),
+            AzureCredentials::Ambient => Auth::Token(Box::new(AzureAmbient::new(
+                "https://cognitiveservices.azure.com/.default",
+            ))),
         };
         let base = format!("https://{}.openai.azure.com/openai/v1", m.resource.to_lowercase());
-        Self::assemble(&m.common.id, &m.common.model, "azure_foundry", auth, base, m.batch.as_ref().map(|b| b.deployment.clone()), at)
+        Self::assemble(
+            &m.common.id,
+            &m.common.model,
+            "azure_foundry",
+            auth,
+            base,
+            m.batch.as_ref().map(|b| b.deployment.clone()),
+            at,
+        )
     }
 
-    fn assemble(id: &str, model: &str, provider: &'static str, auth: Auth, base_url: String, batch_model: Option<String>, at: &Path) -> Result<Self, Error> {
-        let client = http::client().map_err(|e| Error::new(Phase::Interpretation, at.clone(), Rule::Io, format!("cannot build the HTTP client: {e}")))?;
-        Ok(OpenAi { who: Identity::new(id, provider), model: model.to_string(), auth, base_url, batch_model, poll_interval: batch::POLL_INTERVAL, client })
+    fn assemble(
+        id: &str,
+        model: &str,
+        provider: &'static str,
+        auth: Auth,
+        base_url: String,
+        batch_model: Option<String>,
+        at: &Path,
+    ) -> Result<Self, Error> {
+        let client = http::client().map_err(|e| {
+            Error::new(
+                Phase::Interpretation,
+                at.clone(),
+                Rule::Io,
+                format!("cannot build the HTTP client: {e}"),
+            )
+        })?;
+        Ok(OpenAi {
+            who: Identity::new(id, provider),
+            model: model.to_string(),
+            auth,
+            base_url,
+            batch_model,
+            poll_interval: batch::POLL_INTERVAL,
+            client,
+        })
     }
 
     /// Azure: the name of the Global-Batch deployment (a test can set it without a `batch` block).
@@ -139,22 +186,41 @@ impl OpenAi {
             .ok()
             .and_then(|v| v.pointer("/error/message").and_then(Value::as_str).map(str::to_string))
             .unwrap_or_else(|| body.chars().take(500).collect());
-        if status == 401 || status == 403 { self.who.credentials(message) } else { self.who.provider_error(Some(status), message) }
+        if status == 401 || status == 403 {
+            self.who.credentials(message)
+        } else {
+            self.who.provider_error(Some(status), message)
+        }
     }
 
     async fn post_text(&self, path: &str, body: &Value) -> Result<String, ModelError> {
-        let req = self.client.post(format!("{}{path}", self.base_url)).headers(self.headers().await?).json(body);
+        let req = self
+            .client
+            .post(format!("{}{path}", self.base_url))
+            .headers(self.headers().await?)
+            .json(body);
         http::send(&self.who, req, |status, body| self.api_error(status, body)).await
     }
 
     async fn post_bytes(&self, path: &str, body: &Value) -> Result<Vec<u8>, ModelError> {
-        let req = self.client.post(format!("{}{path}", self.base_url)).headers(self.headers().await?).json(body);
+        let req = self
+            .client
+            .post(format!("{}{path}", self.base_url))
+            .headers(self.headers().await?)
+            .json(body);
         http::send_bytes(&self.who, req, |status, body| self.api_error(status, body)).await
     }
 }
 
 fn env_key(var: &str, at: &Path) -> Result<String, Error> {
-    std::env::var(var).map_err(|_| Error::new(Phase::Interpretation, at.clone(), Rule::EnvMissing, format!("environment variable `{var}` is not set")))
+    std::env::var(var).map_err(|_| {
+        Error::new(
+            Phase::Interpretation,
+            at.clone(),
+            Rule::EnvMissing,
+            format!("environment variable `{var}` is not set"),
+        )
+    })
 }
 
 #[async_trait]
@@ -164,23 +230,35 @@ impl Llm for OpenAi {
         for t in &req.input_media {
             match t {
                 MediaKind::Md | MediaKind::Img(_) => {}
-                MediaKind::File => problems.push("a file of any format cannot go to a model: a utility has to change it into text first".to_string()),
-                MediaKind::Audio(_) | MediaKind::Video(_) => problems.push("audio and video input are not supported yet (text and images only)".to_string()),
+                MediaKind::File => problems.push(
+                    "a file of any format cannot go to a model: a utility has to change it into text first".to_string(),
+                ),
+                MediaKind::Audio(_) | MediaKind::Video(_) => {
+                    problems.push("audio and video input are not supported yet (text and images only)".to_string())
+                }
             }
         }
         if let Err(mut p) = self.media_kind(&req.output_media) {
             problems.append(&mut p);
         }
-        if problems.is_empty() { Ok(()) } else { Err(self.who.unsupported(problems)) }
+        if problems.is_empty() {
+            Ok(())
+        } else {
+            Err(self.who.unsupported(problems))
+        }
     }
 
     async fn invoke(&self, call: &ModelInvocation) -> Result<ModelResponse, ModelError> {
-        if let Some(kind) = self.media_kind(&call.output_media).map_err(|p| self.who.unsupported(p))? {
+        if let Some(kind) = self
+            .media_kind(&call.output_media)
+            .map_err(|p| self.who.unsupported(p))?
+        {
             return self.invoke_media(call, kind).await;
         }
         let body = self.request_body(call)?;
         let (text, secs) = timed(self.post_text("/responses", &body)).await;
-        let value: Value = serde_json::from_str(&text?).map_err(|e| self.who.invalid(format!("the answer is not JSON: {e}")))?;
+        let value: Value =
+            serde_json::from_str(&text?).map_err(|e| self.who.invalid(format!("the answer is not JSON: {e}")))?;
         self.parse_response(call.schema.is_some(), &value, secs)
     }
 

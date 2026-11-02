@@ -18,10 +18,16 @@ fn config_path() -> String {
 async fn runs_forgotten() {
     let (model, _) = listen(|_| Resp::ok(answer("ok"))).await;
     let s = start(&config_path()).await;
-    let (_, body) = s.start_run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "how long?" })).await;
+    let (_, body) = s
+        .start_run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "how long?" }))
+        .await;
     let id = body["run"].as_str().unwrap().to_string();
     s.finished(&id).await;
-    assert_eq!(s.get(&format!("/runs/{id}")).await.0, 200, "still there just after the end");
+    assert_eq!(
+        s.get(&format!("/runs/{id}")).await.0,
+        200,
+        "still there just after the end"
+    );
     tokio::time::sleep(std::time::Duration::from_millis(2500)).await;
     assert_eq!(s.get(&format!("/runs/{id}")).await.0, 404);
 }

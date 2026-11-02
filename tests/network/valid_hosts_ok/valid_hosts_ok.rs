@@ -1,5 +1,5 @@
 use crate::common::network::*;
-use crate::common::{own_yml};
+use crate::common::own_yml;
 
 fn here() -> &'static std::path::Path {
     std::path::Path::new(file!()).parent().unwrap()

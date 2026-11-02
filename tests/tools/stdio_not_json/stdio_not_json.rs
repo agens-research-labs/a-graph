@@ -10,5 +10,8 @@ async fn stdio_not_json() {
     let (p, _) = program(here(), "stdio_not_json", model(city(), false)).await;
     let out = p.run("hi").await.unwrap();
     let said = &items(&out)[0].1;
-    assert!(said.starts_with("R(error: the tool did not answer with JSON") && said.contains("hello there"), "{said}");
+    assert!(
+        said.starts_with("R(error: the tool did not answer with JSON") && said.contains("hello there"),
+        "{said}"
+    );
 }

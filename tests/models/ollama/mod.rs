@@ -1,12 +1,20 @@
-use std::sync::{Arc, Mutex};
-use serde_json::{Value, json};
-use a_graph::resources::{Generate, MediaKind};
-use a_graph::models::*;
-use a_graph::Path;
 use crate::common::http::{Req, Resp, serve};
+use a_graph::Path;
+use a_graph::models::*;
+use a_graph::resources::{Generate, MediaKind};
+use serde_json::{Value, json};
+use std::sync::{Arc, Mutex};
 
 fn local(host: &str) -> LocalModel {
-    LocalModel { common: Common { id: "local".into(), model: "llama3.2:latest".into(), input: vec![Modality::Text], output: vec![Modality::Text] }, host: host.into() }
+    LocalModel {
+        common: Common {
+            id: "local".into(),
+            model: "llama3.2:latest".into(),
+            input: vec![Modality::Text],
+            output: vec![Modality::Text],
+        },
+        host: host.into(),
+    }
 }
 
 fn call(user: &str) -> ModelInvocation {
@@ -37,7 +45,10 @@ fn text_answer(text: &str) -> String {
 async fn one_call(call: ModelInvocation, answer: Resp) -> (Result<ModelResponse, ModelError>, Req) {
     let answer = Arc::new(Mutex::new(Some(answer)));
     let (base, seen) = serve(move |_| answer.lock().unwrap().take().unwrap_or(Resp::ok("{}"))).await;
-    let result = Ollama::ollama(&local(&base), &Path::root()).unwrap().invoke(&call).await;
+    let result = Ollama::ollama(&local(&base), &Path::root())
+        .unwrap()
+        .invoke(&call)
+        .await;
     let req = seen.lock().unwrap()[0].clone();
     (result, req)
 }
@@ -55,7 +66,8 @@ fn live(model: &str) -> Ollama {
 }
 
 /// A valid 1x1 red PNG.
-const RED_PNG: &str = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+const RED_PNG: &str =
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
 
 #[path = "plain_call/plain_call.rs"]
 mod plain_call;

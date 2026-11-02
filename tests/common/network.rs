@@ -1,6 +1,6 @@
 //! The network permission: every test is a folder with its own yml files.
 
-
+pub use super::yml_in;
 pub use a_graph::blackboards::BlackboardManager;
 pub use a_graph::external::External;
 pub use a_graph::loader::load;
@@ -8,7 +8,6 @@ pub use a_graph::models::ModelManager;
 pub use a_graph::network::{allowed_hosts, check, logging_destinations};
 pub use a_graph::resources::Resources;
 pub use a_graph::schema::key;
-pub use super::{yml_in};
 
 /// The (rule, path) pairs the network check reports for this yml.
 pub fn errors_of(src: &str) -> Vec<(String, String)> {
@@ -28,7 +27,10 @@ pub fn errors_of(src: &str) -> Vec<(String, String)> {
     destinations.extend(resources.destinations());
     destinations.extend(external.destinations());
     destinations.extend(boards.destinations());
-    check(&allowed, destinations).iter().map(|e| (e.rule.code().to_string(), e.path.to_string())).collect()
+    check(&allowed, destinations)
+        .iter()
+        .map(|e| (e.rule.code().to_string(), e.path.to_string()))
+        .collect()
 }
 
 /// The errors of `<dir>/<name>.yml`, a file of the test whose folder is `dir`.
@@ -37,14 +39,7 @@ pub fn errors(dir: &std::path::Path, name: &str) -> Vec<(String, String)> {
 }
 
 pub fn refused(dir: &std::path::Path, name: &str, path: &str) -> bool {
-    errors(dir, name).iter().any(|(r, p)| r == "network_not_allowed" && p == path)
+    errors(dir, name)
+        .iter()
+        .any(|(r, p)| r == "network_not_allowed" && p == path)
 }
-
-
-
-
-
-
-
-
-

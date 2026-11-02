@@ -18,9 +18,14 @@ fn config_path() -> String {
 async fn run_ok() {
     let (model, seen) = listen(|_| Resp::ok(answer("the lease lasts 12 months"))).await;
     let s = start(&config_path()).await;
-    let (status, body) = s.run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "how long?" })).await;
+    let (status, body) = s
+        .run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "how long?" }))
+        .await;
     assert_eq!(status, 200, "{body}");
-    assert_eq!(body, json!({ "items": [{ "node": "b", "message": "the lease lasts 12 months", "media": [], "reasoning": [] }] }));
+    assert_eq!(
+        body,
+        json!({ "items": [{ "node": "b", "message": "the lease lasts 12 months", "media": [], "reasoning": [] }] })
+    );
     let first: Value = serde_json::from_str(&seen.lock().unwrap()[0].body).unwrap();
     assert_eq!(first["messages"][1]["content"], "Q: how long?");
 }

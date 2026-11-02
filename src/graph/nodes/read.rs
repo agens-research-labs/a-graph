@@ -22,19 +22,34 @@ pub(super) fn model(mut o: Obj, errs: &mut Errs) -> Option<Model> {
 
 fn query(mut o: Obj, errs: &mut Errs) -> Option<Retrieval> {
     let (id, q) = (o.req::<String>(key::ID, errs), o.req::<String>(key::QUERY, errs));
-    let query = if q.as_deref()? == key::USER_MESSAGE { Query::UserMessage } else { Query::Static(q?) };
+    let query = if q.as_deref()? == key::USER_MESSAGE {
+        Query::UserMessage
+    } else {
+        Query::Static(q?)
+    };
     let (mut query_utility, mut chunks_utility) = (Vec::new(), Vec::new());
     if let Some(mut u) = o.sub(key::UTILITY, errs) {
         query_utility = utility_ids_at(&mut u, key::QUERY, errs);
         chunks_utility = utility_ids_at(&mut u, key::CHUNKS, errs);
     }
-    Some(Retrieval { id: id?, query, query_utility, chunks_utility })
+    Some(Retrieval {
+        id: id?,
+        query,
+        query_utility,
+        chunks_utility,
+    })
 }
 
 fn roles(mut o: Obj, errs: &mut Errs) -> Option<(Roles, Vec<String>)> {
     let utility = utility_ids(&mut o, errs);
     let (user, assistant) = (o.req::<bool>(key::USER, errs), o.req::<bool>(key::ASSISTANT, errs));
-    Some((Roles { user: user?, assistant: assistant? }, utility))
+    Some((
+        Roles {
+            user: user?,
+            assistant: assistant?,
+        },
+        utility,
+    ))
 }
 
 fn memory(mut o: Obj, errs: &mut Errs) -> Option<MemoryUse> {
@@ -42,30 +57,59 @@ fn memory(mut o: Obj, errs: &mut Errs) -> Option<MemoryUse> {
     let read = o.req_sub(key::READ, errs).and_then(|r| roles(r, errs));
     let write = o.req_sub(key::WRITE, errs).and_then(|w| roles(w, errs));
     let ((read, read_utility), (write, write_utility)) = (read?, write?);
-    Some(MemoryUse { id: id?, read, write, read_utility, write_utility })
+    Some(MemoryUse {
+        id: id?,
+        read,
+        write,
+        read_utility,
+        write_utility,
+    })
 }
 
 /// A list of maps under `name`, each read with `one`.
 fn list<T>(o: &mut Obj, name: &str, errs: &mut Errs, one: fn(Obj, &mut Errs) -> Option<T>) -> Vec<T> {
     let Some(v) = o.value(name) else { return Vec::new() };
-    Obj::items(&o.at().key(name), Some(v), errs).into_iter().filter_map(|item| one(item, errs)).collect()
+    Obj::items(&o.at().key(name), Some(v), errs)
+        .into_iter()
+        .filter_map(|item| one(item, errs))
+        .collect()
 }
 
 /// A validator reads the whole conversation of a memory and never writes it.
 fn judge_memory(mut o: Obj, errs: &mut Errs) -> Option<MemoryUse> {
     let id = o.req::<String>(key::ID, errs)?;
-    Some(MemoryUse { id, read: Roles { user: true, assistant: true }, write: Roles { user: false, assistant: false }, read_utility: Vec::new(), write_utility: Vec::new() })
+    Some(MemoryUse {
+        id,
+        read: Roles {
+            user: true,
+            assistant: true,
+        },
+        write: Roles {
+            user: false,
+            assistant: false,
+        },
+        read_utility: Vec::new(),
+        write_utility: Vec::new(),
+    })
 }
 
 pub(super) fn external(mut o: Obj, errs: &mut Errs, judge: bool) -> External {
     let memory = if judge { judge_memory } else { memory };
-    External { vectordb: list(&mut o, key::VECTORDB, errs, query), search: list(&mut o, key::SEARCH, errs, query), memory: list(&mut o, key::MEMORY, errs, memory) }
+    External {
+        vectordb: list(&mut o, key::VECTORDB, errs, query),
+        search: list(&mut o, key::SEARCH, errs, query),
+        memory: list(&mut o, key::MEMORY, errs, memory),
+    }
 }
 
 pub(super) fn resources(mut o: Obj, errs: &mut Errs) -> Resources {
     let max_rounds = o.opt::<u32>(key::MAX_ROUNDS, errs);
     if max_rounds == Some(0) {
-        errs.add(&o.at().key(key::MAX_ROUNDS), Rule::BadValue, "`max_rounds` is at least 1");
+        errs.add(
+            &o.at().key(key::MAX_ROUNDS),
+            Rule::BadValue,
+            "`max_rounds` is at least 1",
+        );
     }
     Resources {
         max_rounds,
@@ -81,27 +125,53 @@ pub(super) fn blackboard(mut o: Obj, errs: &mut Errs) -> Option<Blackboard> {
     let write = o.sub(key::WRITE, errs).and_then(|mut w| {
         let utility = utility_ids(&mut w, errs);
         let (enabled, place) = (w.req::<bool>(key::ENABLED, errs), w.req::<Place>(key::PLACE, errs));
-        Some(BlackboardWrite { enabled: enabled?, place: place?, utility })
+        Some(BlackboardWrite {
+            enabled: enabled?,
+            place: place?,
+            utility,
+        })
     });
-    Some(Blackboard { read: o.opt(key::READ, errs).unwrap_or(false), write, cleanup: o.opt(key::CLEANUP, errs).unwrap_or(false), id: id? })
+    Some(Blackboard {
+        read: o.opt(key::READ, errs).unwrap_or(false),
+        write,
+        cleanup: o.opt(key::CLEANUP, errs).unwrap_or(false),
+        id: id?,
+    })
 }
 
 fn media_in(mut o: Obj, errs: &mut Errs) -> Option<MediaIn> {
     let utility = utility_ids(&mut o, errs);
     let (id, from) = (o.req::<String>(key::ID, errs), o.req::<String>(key::FROM, errs));
-    let from = if from.as_deref()? == "node" { InFrom::Node } else { InFrom::Resources };
+    let from = if from.as_deref()? == "node" {
+        InFrom::Node
+    } else {
+        InFrom::Resources
+    };
     Some(MediaIn { id: id?, from, utility })
 }
 
 fn media_out(mut o: Obj, errs: &mut Errs) -> Option<MediaOut> {
     let utility = utility_ids(&mut o, errs);
     let id = o.req::<String>(key::ID, errs);
-    let from = if o.opt::<String>(key::FROM, errs).as_deref() == Some("message") { OutFrom::Message } else { OutFrom::Model };
-    Some(MediaOut { id: id?, from, utility, assistant: o.opt(key::ASSISTANT, errs).unwrap_or(false), node: o.opt(key::NODE, errs).unwrap_or(false) })
+    let from = if o.opt::<String>(key::FROM, errs).as_deref() == Some("message") {
+        OutFrom::Message
+    } else {
+        OutFrom::Model
+    };
+    Some(MediaOut {
+        id: id?,
+        from,
+        utility,
+        assistant: o.opt(key::ASSISTANT, errs).unwrap_or(false),
+        node: o.opt(key::NODE, errs).unwrap_or(false),
+    })
 }
 
 pub(super) fn media(mut o: Obj, errs: &mut Errs) -> Media {
-    Media { input: list(&mut o, key::INPUT, errs, media_in), output: list(&mut o, key::OUTPUT, errs, media_out) }
+    Media {
+        input: list(&mut o, key::INPUT, errs, media_in),
+        output: list(&mut o, key::OUTPUT, errs, media_out),
+    }
 }
 
 /// The ids of a `utility` key: one id, or a list of ids.
@@ -123,7 +193,13 @@ pub(super) fn utility_ids_at(o: &mut Obj, name: &str, errs: &mut Errs) -> Vec<St
 
 fn message_input(mut o: Obj, errs: &mut Errs) -> (MessageInput, Vec<String>) {
     let utility = utility_ids(&mut o, errs);
-    (MessageInput { user_message: o.opt(key::USER_MESSAGE, errs).unwrap_or(false), agent_message: o.opt(key::AGENT_MESSAGE, errs).unwrap_or(false) }, utility)
+    (
+        MessageInput {
+            user_message: o.opt(key::USER_MESSAGE, errs).unwrap_or(false),
+            agent_message: o.opt(key::AGENT_MESSAGE, errs).unwrap_or(false),
+        },
+        utility,
+    )
 }
 
 pub(super) fn message(mut o: Obj, errs: &mut Errs) -> Message {
@@ -142,13 +218,19 @@ pub(super) fn message(mut o: Obj, errs: &mut Errs) -> Message {
             schema: p.value(key::SCHEMA).and_then(|v| schema(v, &at, errs)),
         }
     });
-    Message { input, output, input_utility }
+    Message {
+        input,
+        output,
+        input_utility,
+    }
 }
 
 /// A JSON Schema written as a JSON string or as yml: a-graph checks only that it is a JSON object.
 fn schema(v: Value, at: &crate::error::Path, errs: &mut Errs) -> Option<serde_json::Value> {
     let json = match v {
-        Value::String(s) => serde_json::from_str::<serde_json::Value>(&s).map_err(|e| format!("the schema is not valid JSON: {e}")),
+        Value::String(s) => {
+            serde_json::from_str::<serde_json::Value>(&s).map_err(|e| format!("the schema is not valid JSON: {e}"))
+        }
         other => serde_json::to_value(other).map_err(|e| format!("the schema cannot be read as JSON: {e}")),
     };
     match json {
@@ -165,6 +247,8 @@ fn schema(v: Value, at: &crate::error::Path, errs: &mut Errs) -> Option<serde_js
 }
 
 pub(super) fn validation(mut o: Obj, errs: &mut Errs) -> Option<Validation> {
-    let on_error = o.req::<String>(key::ON_ERROR, errs).map(|t| if t == "stop" { OnError::Stop } else { OnError::Node });
+    let on_error = o
+        .req::<String>(key::ON_ERROR, errs)
+        .map(|t| if t == "stop" { OnError::Stop } else { OnError::Node });
     Some(Validation { on_error: on_error? })
 }

@@ -25,28 +25,54 @@ pub struct Logger {
 
 impl Logger {
     pub fn new(level: LogLevel, redaction: Redaction, out: Box<dyn Write + Send>) -> Self {
-        Logger { level, redaction, out: Mutex::new(out), task: None }
+        Logger {
+            level,
+            redaction,
+            out: Mutex::new(out),
+            task: None,
+        }
     }
 
     /// Sends the events to `url` with the default `Delivery`. See `to_url_with`.
-    pub fn to_url(level: LogLevel, redaction: Redaction, url: &str, headers: Vec<(String, String)>) -> Result<Self, Error> {
+    pub fn to_url(
+        level: LogLevel,
+        redaction: Redaction,
+        url: &str,
+        headers: Vec<(String, String)>,
+    ) -> Result<Self, Error> {
         Self::to_url_with(level, redaction, url, headers, Delivery::default())
     }
 
     /// Sends the events as `application/x-ndjson` POSTs from a background task.
     /// Needs a running tokio runtime; call `close` before exit to deliver what is queued.
-    pub fn to_url_with(level: LogLevel, redaction: Redaction, url: &str, headers: Vec<(String, String)>, delivery: Delivery) -> Result<Self, Error> {
+    pub fn to_url_with(
+        level: LogLevel,
+        redaction: Redaction,
+        url: &str,
+        headers: Vec<(String, String)>,
+        delivery: Delivery,
+    ) -> Result<Self, Error> {
         let at = Path::root().key("observability").key("output");
         let fail = |key: &str, rule: Rule, msg: String| Error::new(Phase::Interpretation, at.key(key), rule, msg);
-        let handle = tokio::runtime::Handle::try_current()
-            .map_err(|_| fail("url", Rule::NotSupported, "logging to a network endpoint needs a running tokio runtime".into()))?;
+        let handle = tokio::runtime::Handle::try_current().map_err(|_| {
+            fail(
+                "url",
+                Rule::NotSupported,
+                "logging to a network endpoint needs a running tokio runtime".into(),
+            )
+        })?;
         let mut map = reqwest::header::HeaderMap::new();
         for (name, value) in headers {
-            let n = reqwest::header::HeaderName::from_bytes(name.as_bytes()).map_err(|_| fail("headers", Rule::BadValue, format!("invalid header name `{name}`")))?;
-            let v = reqwest::header::HeaderValue::from_str(&value).map_err(|_| fail("headers", Rule::BadValue, format!("invalid value for header `{name}`")))?;
+            let n = reqwest::header::HeaderName::from_bytes(name.as_bytes())
+                .map_err(|_| fail("headers", Rule::BadValue, format!("invalid header name `{name}`")))?;
+            let v = reqwest::header::HeaderValue::from_str(&value)
+                .map_err(|_| fail("headers", Rule::BadValue, format!("invalid value for header `{name}`")))?;
             map.insert(n, v);
         }
-        map.insert(reqwest::header::CONTENT_TYPE, reqwest::header::HeaderValue::from_static("application/x-ndjson"));
+        map.insert(
+            reqwest::header::CONTENT_TYPE,
+            reqwest::header::HeaderValue::from_static("application/x-ndjson"),
+        );
         let client = crate::net::client()
             .timeout(delivery.timeout)
             .build()
@@ -84,7 +110,10 @@ impl Logger {
 
     /// Builds the logger from the `passport` and `observability` blocks, already validated by the
     /// Loader. `{ env }` header values are read here: a variable not set is an error.
-    pub fn build(passport: Option<serde_norway::Value>, observability: Option<serde_norway::Value>) -> Result<Self, Errors> {
+    pub fn build(
+        passport: Option<serde_norway::Value>,
+        observability: Option<serde_norway::Value>,
+    ) -> Result<Self, Errors> {
         let redaction = Redaction::from_passport(passport)?;
         let mut errs = Errs::default();
         let base = Path::root().key(key::OBSERVABILITY);
@@ -107,7 +136,13 @@ impl Logger {
     }
 
     /// `stdout`, `{ file }` or `{ url, headers }`.
-    fn with_output(level: LogLevel, redaction: Redaction, output: serde_norway::Value, at: &Path, errs: &mut Errs) -> Option<Self> {
+    fn with_output(
+        level: LogLevel,
+        redaction: Redaction,
+        output: serde_norway::Value,
+        at: &Path,
+        errs: &mut Errs,
+    ) -> Option<Self> {
         match output.as_str() {
             Some("stdout") => return Some(Logger::new(level, redaction, Box::new(io::stdout()))),
             Some("stderr") => return Some(Logger::new(level, redaction, Box::new(io::stderr()))),
@@ -128,7 +163,11 @@ impl Logger {
         for (name, var) in o.secrets(key::HEADERS, errs) {
             match std::env::var(&var) {
                 Ok(value) => headers.push((name, value)),
-                Err(_) => errs.add(&at.key(key::HEADERS).key(&name), Rule::EnvMissing, format!("environment variable `{var}` is not set")),
+                Err(_) => errs.add(
+                    &at.key(key::HEADERS).key(&name),
+                    Rule::EnvMissing,
+                    format!("environment variable `{var}` is not set"),
+                ),
             }
         }
         if !errs.0.is_empty() {
@@ -152,7 +191,10 @@ impl Logger {
             line.insert(k.clone(), v.clone());
         }
         // the fixed keys come last: an event field cannot overwrite them
-        line.insert("ts".into(), json!(chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)));
+        line.insert(
+            "ts".into(),
+            json!(chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)),
+        );
         line.insert("level".into(), json!(format!("{:?}", ev.level).to_lowercase()));
         line.insert("code".into(), json!(ev.code));
         if let Some(n) = &ev.node {
@@ -194,7 +236,9 @@ impl Write for ChannelWriter {
         while let Some(pos) = self.buf.iter().position(|b| *b == b'\n') {
             let line: Vec<u8> = self.buf.drain(..=pos).collect();
             let line = String::from_utf8_lossy(&line[..pos]).into_owned();
-            self.tx.send(line).map_err(|_| io::Error::new(io::ErrorKind::BrokenPipe, "the log task has ended"))?;
+            self.tx
+                .send(line)
+                .map_err(|_| io::Error::new(io::ErrorKind::BrokenPipe, "the log task has ended"))?;
         }
         Ok(bytes.len())
     }

@@ -8,6 +8,10 @@ fn here() -> &'static std::path::Path {
 #[tokio::test]
 #[ignore = "needs a local Ollama with the model qwen3.5:4b"]
 async fn image() {
-    let out = ask(&program(here(), "image"), "What color is the image? Reply with one word.").await;
+    let out = ask(
+        &program(here(), "image"),
+        "What color is the image? Reply with one word.",
+    )
+    .await;
     assert!(text(&out.assistant.message).to_lowercase().contains("red"));
 }

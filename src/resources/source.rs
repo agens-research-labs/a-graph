@@ -26,7 +26,12 @@ pub(super) fn build(mut o: Obj, allow_base64: bool, errs: &mut Errs) -> Option<S
         errs.add(&at, Rule::ExactlyOne, "a source needs exactly one of path, url, base64");
         return None;
     }
-    errs.forbid(&at, key::ACCESS, access.is_some() && url.is_none(), "access goes with url only");
+    errs.forbid(
+        &at,
+        key::ACCESS,
+        access.is_some() && url.is_none(),
+        "access goes with url only",
+    );
     if base64.is_some() && !allow_base64 {
         errs.forbid(&at, key::BASE64, true, "base64 is not allowed here");
         return None;

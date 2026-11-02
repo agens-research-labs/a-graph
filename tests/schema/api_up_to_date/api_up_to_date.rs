@@ -3,5 +3,8 @@
 #[test]
 fn api_up_to_date() {
     let written = std::fs::read_to_string("spec/service.openapi.json").expect("spec/service.openapi.json is missing");
-    assert!(written == a_graph::service::openapi(), "spec/service.openapi.json is not the API of the code: run `cargo run -- --print-service-api > spec/service.openapi.json`");
+    assert!(
+        written == a_graph::service::openapi(),
+        "spec/service.openapi.json is not the API of the code: run `cargo run -- --print-service-api > spec/service.openapi.json`"
+    );
 }

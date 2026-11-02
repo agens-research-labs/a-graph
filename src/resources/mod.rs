@@ -36,7 +36,13 @@ pub struct Resources {
 impl Resources {
     /// Every network destination of the resources, for the network permission.
     pub fn destinations(&self) -> Vec<Destination> {
-        [self.prompts.destinations(), self.tools.destinations(), self.mcp.destinations(), self.media.destinations()].concat()
+        [
+            self.prompts.destinations(),
+            self.tools.destinations(),
+            self.mcp.destinations(),
+            self.media.destinations(),
+        ]
+        .concat()
     }
 
     /// What the managers found worth saying while they built.
@@ -57,7 +63,13 @@ impl Resources {
         let skills = SkillsManager::build(block.remove(key::SKILLS));
 
         match (prompts, tools, mcp, media, skills) {
-            (Ok(prompts), Ok(tools), Ok(mcp), Ok(media), Ok(skills)) => Ok(Resources { prompts, tools, mcp, media, skills }),
+            (Ok(prompts), Ok(tools), Ok(mcp), Ok(media), Ok(skills)) => Ok(Resources {
+                prompts,
+                tools,
+                mcp,
+                media,
+                skills,
+            }),
             (a, b, c, d, e) => {
                 let mut all = Vec::new();
                 for r in [a.err(), b.err(), c.err(), d.err(), e.err()].into_iter().flatten() {

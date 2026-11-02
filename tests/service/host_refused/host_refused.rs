@@ -20,5 +20,11 @@ async fn host_refused() {
     let (status, body) = s.run(json!({ "yml": read("graph.yml", &[]), "message": "x" })).await;
     assert_eq!(status, 422, "{body}");
     let e = &body["errors"][0];
-    assert_eq!((e["rule"].as_str(), e["path"].as_str()), (Some("network_not_allowed"), Some("passport.adl.permissions.network.allowed_hosts[1]")));
+    assert_eq!(
+        (e["rule"].as_str(), e["path"].as_str()),
+        (
+            Some("network_not_allowed"),
+            Some("passport.adl.permissions.network.allowed_hosts[1]")
+        )
+    );
 }

@@ -9,5 +9,12 @@ fn here() -> &'static std::path::Path {
 async fn sequence_passes_on() {
     let (p, _) = program(here(), "sequence_passes_on", echo).await;
     let out = p.run("hello").await.unwrap();
-    assert_eq!(items(&out), [pair("a", "A(hello)"), pair("b", "B(A(hello))"), pair("c", "C(B(A(hello)))")]);
+    assert_eq!(
+        items(&out),
+        [
+            pair("a", "A(hello)"),
+            pair("b", "B(A(hello))"),
+            pair("c", "C(B(A(hello)))")
+        ]
+    );
 }

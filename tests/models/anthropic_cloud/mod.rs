@@ -1,14 +1,19 @@
 //! Claude on Vertex AI and on Azure Foundry: same format, other URL, other credentials.
 
-use std::sync::{Arc, Mutex};
-use serde_json::{Value, json};
+use crate::common::http::{Req, Resp, serve};
 use a_graph::models::*;
 use a_graph::{Path, Rule};
-use crate::common::http::{Req, Resp, serve};
+use serde_json::{Value, json};
+use std::sync::{Arc, Mutex};
 
 fn vertex_model(location: &str) -> VertexModel {
     VertexModel {
-        common: Common { id: "claude_gcp".into(), model: "claude-sonnet-5-5".into(), input: vec![Modality::Text], output: vec![Modality::Text] },
+        common: Common {
+            id: "claude_gcp".into(),
+            model: "claude-sonnet-5-5".into(),
+            input: vec![Modality::Text],
+            output: vec![Modality::Text],
+        },
         publisher: VertexPublisher::Anthropic,
         project: "my-project".into(),
         location: location.into(),
@@ -18,7 +23,12 @@ fn vertex_model(location: &str) -> VertexModel {
 
 fn azure_model(credentials: AzureCredentials) -> AzureModel {
     AzureModel {
-        common: Common { id: "claude_azure".into(), model: "my-claude-deployment".into(), input: vec![Modality::Text], output: vec![Modality::Text] },
+        common: Common {
+            id: "claude_azure".into(),
+            model: "my-claude-deployment".into(),
+            input: vec![Modality::Text],
+            output: vec![Modality::Text],
+        },
         publisher: AzurePublisher::Anthropic,
         resource: "My-Res".into(),
         credentials,

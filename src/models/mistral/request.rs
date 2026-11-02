@@ -95,7 +95,12 @@ fn tool_round(round: &ToolRound) -> Vec<Value> {
         .collect();
     let mut messages = vec![json!({ "role": "assistant", "content": content, "tool_calls": calls })];
     for r in &round.results {
-        let name = round.calls.iter().find(|c| c.call_id == r.call_id).map(|c| c.function_name.clone()).unwrap_or_default();
+        let name = round
+            .calls
+            .iter()
+            .find(|c| c.call_id == r.call_id)
+            .map(|c| c.function_name.clone())
+            .unwrap_or_default();
         let text = match &r.result {
             Value::String(s) => s.clone(),
             other => other.to_string(),

@@ -51,7 +51,11 @@ pub(super) fn check(v: &Value, shape: &Shape, path: &Path, c: &mut Collector) {
         }
         Shape::Int => {
             if !matches!(v, Value::Number(n) if n.is_i64() || n.is_u64()) {
-                c.err(path, Rule::BadValue, format!("expected a whole number, found {}", kind_of(v)));
+                c.err(
+                    path,
+                    Rule::BadValue,
+                    format!("expected a whole number, found {}", kind_of(v)),
+                );
             }
         }
         Shape::Number => {
@@ -61,7 +65,11 @@ pub(super) fn check(v: &Value, shape: &Shape, path: &Path, c: &mut Collector) {
         }
         Shape::Bool => {
             if !v.is_bool() {
-                c.err(path, Rule::BadValue, format!("expected true or false, found {}", kind_of(v)));
+                c.err(
+                    path,
+                    Rule::BadValue,
+                    format!("expected true or false, found {}", kind_of(v)),
+                );
             }
         }
         Shape::Words(words) => match word(v) {
@@ -70,11 +78,19 @@ pub(super) fn check(v: &Value, shape: &Shape, path: &Path, c: &mut Collector) {
         },
         Shape::Id(kind) => match v.as_str() {
             Some(id) => c.defs.push((*kind, id.to_string(), path.clone())),
-            None => c.err(path, Rule::BadValue, format!("expected the id of a {}, found {}", kind.name(), kind_of(v))),
+            None => c.err(
+                path,
+                Rule::BadValue,
+                format!("expected the id of a {}, found {}", kind.name(), kind_of(v)),
+            ),
         },
         Shape::Ref(kind) => match v.as_str() {
             Some(id) => c.refs.push((*kind, id.to_string(), path.clone())),
-            None => c.err(path, Rule::BadValue, format!("expected the id of a {}, found {}", kind.name(), kind_of(v))),
+            None => c.err(
+                path,
+                Rule::BadValue,
+                format!("expected the id of a {}, found {}", kind.name(), kind_of(v)),
+            ),
         },
         Shape::List(inner) => match v.as_sequence() {
             Some(items) => {
@@ -99,16 +115,30 @@ pub(super) fn check(v: &Value, shape: &Shape, path: &Path, c: &mut Collector) {
             }
             None => c.err(path, Rule::BadValue, format!("expected a map, found {}", kind_of(v))),
         },
-        Shape::Tagged { by, common, variants, .. } => {
+        Shape::Tagged {
+            by, common, variants, ..
+        } => {
             let Some(m) = v.as_mapping() else {
                 c.err(path, Rule::BadValue, format!("expected a map, found {}", kind_of(v)));
                 return;
             };
-            let names = variants.iter().map(|variant| variant.name).collect::<Vec<_>>().join(", ");
+            let names = variants
+                .iter()
+                .map(|variant| variant.name)
+                .collect::<Vec<_>>()
+                .join(", ");
             match m.get(*by).and_then(word) {
-                None => c.err(&path.key(by), Rule::MissingField, format!("`{by}` is missing; one of: {names}")),
+                None => c.err(
+                    &path.key(by),
+                    Rule::MissingField,
+                    format!("`{by}` is missing; one of: {names}"),
+                ),
                 Some(tag) => match variants.iter().find(|variant| variant.name == tag) {
-                    None => c.err(&path.key(by), Rule::BadValue, format!("`{tag}` is not a {by}; one of: {names}")),
+                    None => c.err(
+                        &path.key(by),
+                        Rule::BadValue,
+                        format!("`{tag}` is not a {by}; one of: {names}"),
+                    ),
                     Some(variant) => check_map(m, &[common, variant.fields], Some(by), path, c),
                 },
             }
@@ -147,12 +177,20 @@ fn check_map(m: &Mapping, field_lists: &[&[Field]], tag: Option<&str>, path: &Pa
         }
         match find(k) {
             Some(f) => check(val, &f.shape, &path.key(k), c),
-            None => c.err(&path.key(k), Rule::UnexpectedField, format!("`{k}` is not a key allowed here")),
+            None => c.err(
+                &path.key(k),
+                Rule::UnexpectedField,
+                format!("`{k}` is not a key allowed here"),
+            ),
         }
     }
     for f in field_lists.iter().flat_map(|l| l.iter()).filter(|f| f.required) {
         if !m.contains_key(f.name) {
-            c.err(&path.key(f.name), Rule::MissingField, format!("`{}` is mandatory", f.name));
+            c.err(
+                &path.key(f.name),
+                Rule::MissingField,
+                format!("`{}` is mandatory", f.name),
+            );
         }
     }
 }

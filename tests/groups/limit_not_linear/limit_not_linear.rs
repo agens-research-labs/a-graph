@@ -7,5 +7,10 @@ fn here() -> &'static std::path::Path {
 /// Limit is not for linear.
 #[test]
 fn limit_not_linear() {
-    assert!(has(here(), "limit_not_linear", "unexpected_field", "graph.edges[2].parallel[2].fan[1].linear.limit"));
+    assert!(has(
+        here(),
+        "limit_not_linear",
+        "unexpected_field",
+        "graph.edges[2].parallel[2].fan[1].linear.limit"
+    ));
 }

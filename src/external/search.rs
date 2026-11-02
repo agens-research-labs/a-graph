@@ -32,7 +32,12 @@ impl SearchManager {
             let url = o.req::<String>(key::URL, &mut errs);
             let access = o.value(key::ACCESS);
             if let (Some(id), Some(provider), Some(url)) = (id, provider, url) {
-                engines.push(Search { id, provider, url, access });
+                engines.push(Search {
+                    id,
+                    provider,
+                    url,
+                    access,
+                });
             }
         }
         errs.finish(SearchManager { engines })
@@ -41,7 +46,11 @@ impl SearchManager {
     /// The urls of the engines, for the network permission.
     pub fn destinations(&self) -> Vec<Destination> {
         let base = Path::root().key(key::EXTERNAL).key(key::SEARCH);
-        self.engines.iter().enumerate().map(|(i, s)| Destination::url(base.idx(i).key(key::URL), &s.url)).collect()
+        self.engines
+            .iter()
+            .enumerate()
+            .map(|(i, s)| Destination::url(base.idx(i).key(key::URL), &s.url))
+            .collect()
     }
 
     pub fn get(&self, id: &str) -> Option<&Search> {

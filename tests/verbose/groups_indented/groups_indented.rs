@@ -12,9 +12,19 @@ async fn groups_indented() {
     let screen = show(&mut p, VerboseLevel::Steps, true, false);
     p.run("hi").await.unwrap();
     let lines = screen.lines();
-    let at = |needle: &str| lines.iter().find(|l| l.contains(needle)).unwrap_or_else(|| panic!("no `{needle}` in {lines:?}")).clone();
+    let at = |needle: &str| {
+        lines
+            .iter()
+            .find(|l| l.contains(needle))
+            .unwrap_or_else(|| panic!("no `{needle}` in {lines:?}"))
+            .clone()
+    };
     assert!(at("▶ s").starts_with("▶"), "the first node is not inside a group");
     assert!(at("▶ d").starts_with("│ ▶"), "{:?}", at("▶ d"));
-    assert!(at("▶ k").starts_with("│ │ ▶"), "a node of the linear group inside the parallel one: {:?}", at("▶ k"));
+    assert!(
+        at("▶ k").starts_with("│ │ ▶"),
+        "a node of the linear group inside the parallel one: {:?}",
+        at("▶ k")
+    );
     assert!(at("┌─ linear").starts_with("│ ┌─"));
 }

@@ -5,10 +5,10 @@ use std::collections::HashMap;
 
 use super::Program;
 use super::node::{Content, NodeInput, fill};
-use crate::logging::{Event, LogLevel};
 use crate::error::{Error, Path, Phase, Rule};
-use crate::external::{Entry, Memory, MemoryBackend, Record, SYNT_PLACEHOLDER, CHAT_PLACEHOLDER, Take, read_record};
+use crate::external::{CHAT_PLACEHOLDER, Entry, Memory, MemoryBackend, Record, SYNT_PLACEHOLDER, Take, read_record};
 use crate::graph::Entity;
+use crate::logging::{Event, LogLevel};
 use crate::models::{ChatEntry, ModelInvocation, Role};
 use crate::resources::PromptBody;
 
@@ -23,35 +23,74 @@ impl Program {
     pub(super) async fn read_memories(&self, node: Entity, input: &NodeInput) -> Result<MemoryRead, Error> {
         let id = self.nodes.id(node).unwrap_or_default().to_string();
         let fail = |rule: Rule, msg: String| Error::new(Phase::Execution, Path::node(&id), rule, msg);
-        let mut read = MemoryRead { history: Vec::new(), synt: HashMap::new() };
-        let Some(external) = self.nodes.external().get(node) else { return Ok(read) };
+        let mut read = MemoryRead {
+            history: Vec::new(),
+            synt: HashMap::new(),
+        };
+        let Some(external) = self.nodes.external().get(node) else {
+            return Ok(read);
+        };
 
         // the message the node takes is what the exchanges are compared with
         let query = input.user_message.clone().or_else(|| input.agent_message.clone());
         for m in &external.memory {
             let began = std::time::Instant::now();
-            let memory = self.external.memory.get(&m.id).ok_or_else(|| fail(Rule::UnknownRef, format!("memory `{}` is not built", m.id)))?;
+            let memory = self
+                .external
+                .memory
+                .get(&m.id)
+                .ok_or_else(|| fail(Rule::UnknownRef, format!("memory `{}` is not built", m.id)))?;
             let MemoryBackend::JsonFile { path } = &memory.backend else {
-                return Err(fail(Rule::NotSupported, format!("memory `{}` is kept in a vectordb, which is not supported yet", m.id)));
+                return Err(fail(
+                    Rule::NotSupported,
+                    format!("memory `{}` is kept in a vectordb, which is not supported yet", m.id),
+                ));
             };
             let record = read_record(path, &id).map_err(|e| fail(Rule::Io, format!("memory `{}`: {e}", m.id)))?;
             if memory.synt.is_some() {
-                let summary = self.text_through(&id, "memory.read", &m.read_utility, record.synt.clone()).await?;
+                let summary = self
+                    .text_through(&id, "memory.read", &m.read_utility, record.synt.clone())
+                    .await?;
                 read.synt.insert(m.id.clone(), summary);
             }
             let Some(chat) = &memory.chat else { continue };
             let vector = match (&chat.embedding, &query) {
                 (Some(embedding), Some(text)) => {
-                    let mut vectors = self.embeddings.embed(embedding, std::slice::from_ref(text)).await.map_err(|e| fail(Rule::ModelFailed, e.to_string()))?;
+                    let mut vectors = self
+                        .embeddings
+                        .embed(embedding, std::slice::from_ref(text))
+                        .await
+                        .map_err(|e| fail(Rule::ModelFailed, e.to_string()))?;
                     vectors.pop()
                 }
                 _ => None,
             };
-            let entries = record.select(chat, vector.as_deref(), Take { user: m.read.user, assistant: m.read.assistant });
-            self.emit(self.traced(Event::new(LogLevel::Debug, "read.memory").node(&id).field("id", m.id.clone()).field("messages", entries.len()).field("summary", memory.synt.is_some() && !record.synt.is_empty()).field("duration", began.elapsed().as_secs_f64())));
+            let entries = record.select(
+                chat,
+                vector.as_deref(),
+                Take {
+                    user: m.read.user,
+                    assistant: m.read.assistant,
+                },
+            );
+            self.emit(
+                self.traced(
+                    Event::new(LogLevel::Debug, "read.memory")
+                        .node(&id)
+                        .field("id", m.id.clone())
+                        .field("messages", entries.len())
+                        .field("summary", memory.synt.is_some() && !record.synt.is_empty())
+                        .field("duration", began.elapsed().as_secs_f64()),
+                ),
+            );
             for e in entries {
-                let content = self.text_through(&id, "memory.read", &m.read_utility, e.content).await?;
-                read.history.push(ChatEntry { role: if e.role == "user" { Role::User } else { Role::Assistant }, content });
+                let content = self
+                    .text_through(&id, "memory.read", &m.read_utility, e.content)
+                    .await?;
+                read.history.push(ChatEntry {
+                    role: if e.role == "user" { Role::User } else { Role::Assistant },
+                    content,
+                });
             }
         }
         Ok(read)
@@ -65,20 +104,38 @@ const DEFAULT_SYNT_USER: &str = "Previous summary:\n{{synt}}\n\nNew exchanges:\n
 impl Program {
     /// Saves the exchange of this turn in every memory of the node, and makes the summary of the
     /// memories that have reached `synt.length` exchanges.
-    pub(super) async fn write_memories(&self, node: Entity, input: &NodeInput, answer: Option<&Content>) -> Result<(), Error> {
+    pub(super) async fn write_memories(
+        &self,
+        node: Entity,
+        input: &NodeInput,
+        answer: Option<&Content>,
+    ) -> Result<(), Error> {
         let id = self.nodes.id(node).unwrap_or_default().to_string();
         let fail = |rule: Rule, msg: String| Error::new(Phase::Execution, Path::node(&id), rule, msg);
-        let Some(external) = self.nodes.external().get(node) else { return Ok(()) };
+        let Some(external) = self.nodes.external().get(node) else {
+            return Ok(());
+        };
 
         for m in &external.memory {
             if !m.write.user && !m.write.assistant {
                 continue;
             }
-            let memory = self.external.memory.get(&m.id).ok_or_else(|| fail(Rule::UnknownRef, format!("memory `{}` is not built", m.id)))?;
+            let memory = self
+                .external
+                .memory
+                .get(&m.id)
+                .ok_or_else(|| fail(Rule::UnknownRef, format!("memory `{}` is not built", m.id)))?;
             let MemoryBackend::JsonFile { path } = &memory.backend else {
-                return Err(fail(Rule::NotSupported, format!("memory `{}` is kept in a vectordb, which is not supported yet", m.id)));
+                return Err(fail(
+                    Rule::NotSupported,
+                    format!("memory `{}` is kept in a vectordb, which is not supported yet", m.id),
+                ));
             };
-            let question = input.user_message.clone().or_else(|| input.agent_message.clone()).filter(|_| m.write.user);
+            let question = input
+                .user_message
+                .clone()
+                .or_else(|| input.agent_message.clone())
+                .filter(|_| m.write.user);
             // what is saved has gone through the utilities of the memory; the vector is of that text
             let question = match question {
                 Some(q) => Some(self.text_through(&id, "memory.write", &m.write_utility, q).await?),
@@ -86,7 +143,11 @@ impl Program {
             };
             let vector = match (&memory.chat.as_ref().and_then(|c| c.embedding.as_ref()), &question) {
                 (Some(embedding), Some(text)) => {
-                    let mut vectors = self.embeddings.embed(embedding, std::slice::from_ref(text)).await.map_err(|e| fail(Rule::ModelFailed, e.to_string()))?;
+                    let mut vectors = self
+                        .embeddings
+                        .embed(embedding, std::slice::from_ref(text))
+                        .await
+                        .map_err(|e| fail(Rule::ModelFailed, e.to_string()))?;
                     vectors.pop()
                 }
                 _ => None,
@@ -101,10 +162,18 @@ impl Program {
                 .memory
                 .update(path, &id, |r| {
                     if let Some(content) = question {
-                        r.chat.push(Entry { role: "user".into(), content, embedding: vector });
+                        r.chat.push(Entry {
+                            role: "user".into(),
+                            content,
+                            embedding: vector,
+                        });
                     }
                     if let Some(content) = reply {
-                        r.chat.push(Entry { role: "assistant".into(), content, embedding: None });
+                        r.chat.push(Entry {
+                            role: "assistant".into(),
+                            content,
+                            embedding: None,
+                        });
                     }
                 })
                 .map_err(|e| fail(Rule::Io, format!("memory `{}`: {e}", m.id)))?;
@@ -122,12 +191,24 @@ impl Program {
     async fn summarize(&self, node: &str, memory: &Memory, path: &str, saved: Record) -> Result<(), Error> {
         let fail = |rule: Rule, msg: String| Error::new(Phase::Execution, Path::node(node), rule, msg);
         let Some(synt) = &memory.synt else { return Ok(()) };
-        let lines: Vec<String> = saved.chat.iter().map(|e| format!("{}: {}", e.role, e.content)).collect();
-        let values = std::collections::HashMap::from([(SYNT_PLACEHOLDER.to_string(), saved.synt.clone()), (CHAT_PLACEHOLDER.to_string(), lines.join("\n"))]);
+        let lines: Vec<String> = saved
+            .chat
+            .iter()
+            .map(|e| format!("{}: {}", e.role, e.content))
+            .collect();
+        let values = std::collections::HashMap::from([
+            (SYNT_PLACEHOLDER.to_string(), saved.synt.clone()),
+            (CHAT_PLACEHOLDER.to_string(), lines.join("\n")),
+        ]);
         let (system, user) = match synt.prompt.as_deref() {
             Some(pid) => match self.resources.prompts.get(pid).map(|p| &p.body) {
                 Some(PromptBody::Content(c)) => (c.system.clone(), c.user.clone()),
-                _ => return Err(fail(Rule::NotSupported, format!("prompt `{pid}` has no text yet (a prompt from a url is not read)"))),
+                _ => {
+                    return Err(fail(
+                        Rule::NotSupported,
+                        format!("prompt `{pid}` has no text yet (a prompt from a url is not read)"),
+                    ));
+                }
             },
             None => (DEFAULT_SYNT_SYSTEM.to_string(), DEFAULT_SYNT_USER.to_string()),
         };
@@ -145,11 +226,25 @@ impl Program {
             reasoning: None,
             tool_rounds: Vec::new(),
         };
-        let llm = self.models.get(&synt.model).ok_or_else(|| fail(Rule::UnknownRef, format!("model `{}` is not built", synt.model)))?;
-        let response = llm.invoke(&call).await.map_err(|e| fail(Rule::ModelFailed, format!("summary of memory `{}`: {e}", memory.id)))?;
+        let llm = self
+            .models
+            .get(&synt.model)
+            .ok_or_else(|| fail(Rule::UnknownRef, format!("model `{}` is not built", synt.model)))?;
+        let response = llm
+            .invoke(&call)
+            .await
+            .map_err(|e| fail(Rule::ModelFailed, format!("summary of memory `{}`: {e}", memory.id)))?;
         self.model_called(node, &synt.model, &call, &response);
         let (stop, thought) = (response.stop_reason, !response.reasoning.is_empty());
-        let summary = response.message.filter(|m| !m.trim().is_empty()).ok_or_else(|| fail(Rule::ModelFailed, format!("summary of memory `{}`: the model wrote no text (stop reason {stop:?}, it reasoned: {thought})", memory.id)))?;
+        let summary = response.message.filter(|m| !m.trim().is_empty()).ok_or_else(|| {
+            fail(
+                Rule::ModelFailed,
+                format!(
+                    "summary of memory `{}`: the model wrote no text (stop reason {stop:?}, it reasoned: {thought})",
+                    memory.id
+                ),
+            )
+        })?;
 
         // the messages that were summarized are the first ones; any added in the meantime stay
         let summarized = saved.chat.len();

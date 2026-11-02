@@ -5,7 +5,11 @@ use crate::common::cli::*;
 async fn usage_errors() {
     let missing = a_graph(&["tests/cli/usage_errors/does_not_exist.yml", "x"], None).await;
     assert_eq!(missing.code, 2);
-    assert!(missing.stderr.contains("cannot read") && missing.stdout.is_empty(), "{}", missing.stderr);
+    assert!(
+        missing.stderr.contains("cannot read") && missing.stdout.is_empty(),
+        "{}",
+        missing.stderr
+    );
 
     let nothing = a_graph(&[], None).await;
     assert_eq!(nothing.code, 2);

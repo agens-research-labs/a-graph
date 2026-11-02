@@ -3,9 +3,8 @@
 use super::key::*;
 use super::{Field, Shape};
 
-pub(super) const PASSPORT: Shape = Shape::Map(&[
-    Field::req(ADL, ADL_BODY).doc("The passport, in the ADL format (https://www.adl-spec.org/). The key names are those of ADL."),
-]);
+pub(super) const PASSPORT: Shape = Shape::Map(&[Field::req(ADL, ADL_BODY)
+    .doc("The passport, in the ADL format (https://www.adl-spec.org/). The key names are those of ADL.")]);
 
 const ADL_BODY: Shape = Shape::Map(&[
     Field::req(ADL_SPEC, Shape::Text).doc("The version of ADL the passport is written in: `\"0.3.0\"`."),
@@ -19,18 +18,29 @@ const ADL_BODY: Shape = Shape::Map(&[
 ]);
 
 const DATA_CLASSIFICATION_BODY: Shape = Shape::Map(&[
-    Field::req(SENSITIVITY, Shape::Words(&["public", "internal", "confidential", "restricted"]))
-        .doc("The level of sensitivity of the data. The contents are written only with `public` and no `categories`."),
+    Field::req(
+        SENSITIVITY,
+        Shape::Words(&["public", "internal", "confidential", "restricted"]),
+    )
+    .doc("The level of sensitivity of the data. The contents are written only with `public` and no `categories`."),
     Field::opt(
         CATEGORIES,
-        Shape::List(&Shape::Words(&["pii", "phi", "financial", "credentials", "intellectual_property", "regulatory"])),
+        Shape::List(&Shape::Words(&[
+            "pii",
+            "phi",
+            "financial",
+            "credentials",
+            "intellectual_property",
+            "regulatory",
+        ])),
     )
     .doc("The kinds of regulated data the graph handles. Any category hides the contents."),
 ]);
 
 const LIFECYCLE_BODY: Shape = Shape::Map(&[
     Field::req(STATUS, Shape::Words(&["draft", "active", "deprecated", "retired"])).doc("The stage the agent is in."),
-    Field::opt(SUNSET_DATE, Shape::Text).doc("When the agent is retired, in RFC 3339 with a time zone (for example `2027-01-01T00:00:00Z`)."),
+    Field::opt(SUNSET_DATE, Shape::Text)
+        .doc("When the agent is retired, in RFC 3339 with a time zone (for example `2027-01-01T00:00:00Z`)."),
 ]);
 
 const PERMISSIONS_BODY: Shape = Shape::Map(&[Field::opt(

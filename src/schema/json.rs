@@ -52,15 +52,26 @@ fn shape(s: &Shape, defs: &mut Defs) -> Value {
         Shape::List(inner) => json!({ "type": "array", "items": shape(inner, defs) }),
         Shape::Map(fields) => Value::Object(map(fields, defs)),
         Shape::MapOf(inner) => json!({ "type": "object", "additionalProperties": shape(inner, defs) }),
-        Shape::Tagged { by, by_doc, common, variants } => {
+        Shape::Tagged {
+            by,
+            by_doc,
+            common,
+            variants,
+        } => {
             let names: Vec<&str> = variants.iter().map(|v| v.name).collect();
             let branches: Vec<Value> = variants
                 .iter()
                 .map(|v| {
                     let mut branch = map(&[common, v.fields].concat(), defs);
-                    let props = branch.get_mut("properties").and_then(Value::as_object_mut).expect("a map has properties");
+                    let props = branch
+                        .get_mut("properties")
+                        .and_then(Value::as_object_mut)
+                        .expect("a map has properties");
                     props.insert((*by).into(), json!({ "const": v.name }));
-                    let required = branch.get_mut("required").and_then(Value::as_array_mut).expect("a map has required");
+                    let required = branch
+                        .get_mut("required")
+                        .and_then(Value::as_array_mut)
+                        .expect("a map has required");
                     required.insert(0, json!(by));
                     branch.insert("description".into(), json!(v.doc));
                     Value::Object(branch)
@@ -73,7 +84,9 @@ fn shape(s: &Shape, defs: &mut Defs) -> Value {
                 "oneOf": branches,
             })
         }
-        Shape::Either(alternatives) => json!({ "anyOf": alternatives.iter().map(|a| shape(a, defs)).collect::<Vec<_>>() }),
+        Shape::Either(alternatives) => {
+            json!({ "anyOf": alternatives.iter().map(|a| shape(a, defs)).collect::<Vec<_>>() })
+        }
         Shape::Lazy { name, doc, get } => {
             if !defs.contains_key(*name) {
                 // reserved first: a shape that contains itself stops here

@@ -13,5 +13,10 @@ fn max_tokens_anthropic() {
     let e = errors(here(), "anthropic");
     assert!(e[0].0 == "not_supported" && e.len() == 1, "one error, not two");
     // the judge too
-    assert!(has(here(), "judge", "not_supported", "graph.nodes[3].validation-node.model"));
+    assert!(has(
+        here(),
+        "judge",
+        "not_supported",
+        "graph.nodes[3].validation-node.model"
+    ));
 }

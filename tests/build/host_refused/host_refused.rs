@@ -1,5 +1,5 @@
+use crate::common::clean_output;
 use crate::common::run::*;
-use crate::common::{clean_output};
 
 fn here() -> &'static std::path::Path {
     std::path::Path::new(file!()).parent().unwrap()
@@ -13,5 +13,8 @@ fn host_refused() {
     let e = build(&yml(here(), "host_refused")).err().unwrap();
     assert_eq!(e.rules(), ["network_not_allowed"]);
     let lines = log_lines("host_not_allowed");
-    assert_eq!((lines.len(), lines[0]["code"].as_str(), lines[0]["path"].as_str()), (1, Some("network_not_allowed"), Some("models[5]")));
+    assert_eq!(
+        (lines.len(), lines[0]["code"].as_str(), lines[0]["path"].as_str()),
+        (1, Some("network_not_allowed"), Some("models[5]"))
+    );
 }

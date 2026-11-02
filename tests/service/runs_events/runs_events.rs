@@ -18,7 +18,9 @@ fn config_path() -> String {
 async fn runs_events() {
     let (model, _) = listen(|_| Resp::ok(answer("ok"))).await;
     let s = start(&config_path()).await;
-    let (_, body) = s.start_run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "how long?" })).await;
+    let (_, body) = s
+        .start_run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "how long?" }))
+        .await;
     let id = body["run"].as_str().unwrap().to_string();
     let events = s.events(&id).await;
     let names: Vec<&str> = events.iter().map(|(n, _)| n.as_str()).collect();
@@ -28,7 +30,17 @@ async fn runs_events() {
         assert!(names.contains(&wanted), "no `{wanted}` in {names:?}");
     }
     let call = events.iter().find(|(n, _)| n == "model.call").unwrap();
-    assert_eq!((call.1["node"].as_str(), call.1["model"].as_str(), call.1["input_tokens"].as_u64()), (Some("a"), Some("m"), Some(1)));
-    assert_eq!(call.1["prompt"], "Q: how long?", "the data is public: the text is there");
+    assert_eq!(
+        (
+            call.1["node"].as_str(),
+            call.1["model"].as_str(),
+            call.1["input_tokens"].as_u64()
+        ),
+        (Some("a"), Some("m"), Some(1))
+    );
+    assert_eq!(
+        call.1["prompt"], "Q: how long?",
+        "the data is public: the text is there"
+    );
     assert_eq!(events.last().unwrap().1["items"][0]["node"], "b");
 }

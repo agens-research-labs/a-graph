@@ -11,5 +11,9 @@ async fn concurrent_limit() {
     let (p, _) = blocking_program(here(), "concurrent_limit");
     let started = Instant::now();
     p.run("hi").await.unwrap();
-    assert!(started.elapsed() >= Duration::from_millis(1200), "took {:?}", started.elapsed());
+    assert!(
+        started.elapsed() >= Duration::from_millis(1200),
+        "took {:?}",
+        started.elapsed()
+    );
 }

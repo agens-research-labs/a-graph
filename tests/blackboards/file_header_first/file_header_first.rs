@@ -13,5 +13,9 @@ fn file_header_first() {
     m.write("notes", "top", Place::Top).unwrap();
     let want = format!("{HEADER}\ntop\n\none\n\ntwo\n");
     assert_eq!(m.read("notes").unwrap(), want);
-    assert_eq!(std::fs::read_to_string(path).unwrap(), want, "the file itself is changed");
+    assert_eq!(
+        std::fs::read_to_string(path).unwrap(),
+        want,
+        "the file itself is changed"
+    );
 }

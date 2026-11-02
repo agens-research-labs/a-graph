@@ -18,14 +18,32 @@ pub struct Delivery {
 
 impl Default for Delivery {
     fn default() -> Self {
-        Delivery { timeout: Duration::from_secs(10), max_batch: 100, retries: 3, backoff: Duration::from_millis(200) }
+        Delivery {
+            timeout: Duration::from_secs(10),
+            max_batch: 100,
+            retries: 3,
+            backoff: Duration::from_millis(200),
+        }
     }
 }
 
-pub(super) async fn deliver(client: &reqwest::Client, url: &str, headers: &reqwest::header::HeaderMap, body: String, d: &Delivery, what: &str) {
+pub(super) async fn deliver(
+    client: &reqwest::Client,
+    url: &str,
+    headers: &reqwest::header::HeaderMap,
+    body: String,
+    d: &Delivery,
+    what: &str,
+) {
     let mut last = String::new();
     for attempt in 0..=d.retries {
-        match client.post(url).headers(headers.clone()).body(body.clone()).send().await {
+        match client
+            .post(url)
+            .headers(headers.clone())
+            .body(body.clone())
+            .send()
+            .await
+        {
             Ok(r) if r.status().is_success() => return,
             Ok(r) if r.status().is_client_error() && r.status() != reqwest::StatusCode::TOO_MANY_REQUESTS => {
                 eprintln!("a-graph: the {what} endpoint refused the data ({})", r.status());

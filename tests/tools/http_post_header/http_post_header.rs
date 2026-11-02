@@ -14,6 +14,9 @@ async fn http_post_header() {
     assert_eq!(items(&out)[0].1, r#"R({"temp":22})"#);
     let req = service.lock().unwrap()[0].clone();
     assert_eq!((req.method.as_str(), req.path.as_str()), ("POST", "/weather"));
-    assert_eq!(serde_json::from_str::<Value>(&req.body).unwrap(), json!({ "city": "Roma" }));
+    assert_eq!(
+        serde_json::from_str::<Value>(&req.body).unwrap(),
+        json!({ "city": "Roma" })
+    );
     assert!(req.headers.contains("x-key: secret-value"), "{}", req.headers);
 }

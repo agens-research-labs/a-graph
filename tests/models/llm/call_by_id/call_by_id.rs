@@ -9,7 +9,12 @@ async fn call_by_id() {
     assert_eq!(manager.len(), 2);
     assert!(manager.get("ghost").is_none());
 
-    let r = manager.get("strong").unwrap().invoke(&invocation("be brief", "hi")).await.unwrap();
+    let r = manager
+        .get("strong")
+        .unwrap()
+        .invoke(&invocation("be brief", "hi"))
+        .await
+        .unwrap();
     assert_eq!(r.message.as_deref(), Some("be brief|hi"));
     assert_eq!(r.info.model, "strong");
     assert_eq!(r.stop_reason, StopReason::End);

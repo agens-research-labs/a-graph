@@ -4,7 +4,10 @@ use crate::common::logging_delivery::*;
 #[tokio::test]
 async fn batches_in_order() {
     let (url, mut rx) = mock_server(vec![], false).await;
-    let d = Delivery { max_batch: 10, ..fast() };
+    let d = Delivery {
+        max_batch: 10,
+        ..fast()
+    };
     let log = Logger::to_url_with(LogLevel::Info, Redaction { allow_content: false }, &url, vec![], d).unwrap();
     for n in 0..95 {
         log.log(&Event::new(LogLevel::Info, "e").field("n", n));

@@ -2,8 +2,8 @@
 //! input, and what it wrote and the code it ended with. The model of a test is a mock server in the
 //! same test (`tests/common/http.rs`), reached by the executable over the network as a real one.
 
-pub use serde_json::{Value, json};
 pub use super::http::{Resp, listen};
+pub use serde_json::{Value, json};
 
 pub struct Ran {
     pub code: i32,
@@ -28,7 +28,11 @@ pub async fn a_graph(args: &[&str], stdin: Option<&str>) -> Ran {
     }
     drop(input);
     let out = child.wait_with_output().await.unwrap();
-    Ran { code: out.status.code().unwrap_or(-1), stdout: String::from_utf8_lossy(&out.stdout).to_string(), stderr: String::from_utf8_lossy(&out.stderr).to_string() }
+    Ran {
+        code: out.status.code().unwrap_or(-1),
+        stdout: String::from_utf8_lossy(&out.stdout).to_string(),
+        stderr: String::from_utf8_lossy(&out.stderr).to_string(),
+    }
 }
 
 /// The answer of a mock Ollama model: the text.
@@ -40,6 +44,10 @@ pub fn answer(text: &str) -> String {
 /// program can read; its path.
 pub fn ported(path: &str, ports: &[(&str, u16)]) -> String {
     let text = std::fs::read_to_string(path).unwrap_or_else(|e| panic!("cannot read {path}: {e}"));
-    let stem = std::path::Path::new(path).file_stem().unwrap().to_string_lossy().to_string();
+    let stem = std::path::Path::new(path)
+        .file_stem()
+        .unwrap()
+        .to_string_lossy()
+        .to_string();
     super::ported_file(&format!("cli-{stem}"), &super::with_ports(&text, ports))
 }

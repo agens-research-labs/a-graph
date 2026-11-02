@@ -7,5 +7,8 @@ fn here() -> &'static std::path::Path {
 /// Azure host follows the publisher.
 #[test]
 fn azure_host() {
-    assert_eq!(host(&models(here(), "azure_host"), "claude_azure").unwrap(), "my-res.openai.azure.com");
+    assert_eq!(
+        host(&models(here(), "azure_host"), "claude_azure").unwrap(),
+        "my-res.openai.azure.com"
+    );
 }

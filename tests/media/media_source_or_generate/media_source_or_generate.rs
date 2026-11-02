@@ -7,5 +7,10 @@ fn here() -> &'static std::path::Path {
 /// Media needs exactly one of source and generate.
 #[test]
 fn media_source_or_generate() {
-    assert!(has(here(), "media_source_or_generate", "exactly_one", "resources.media[0]"));
+    assert!(has(
+        here(),
+        "media_source_or_generate",
+        "exactly_one",
+        "resources.media[0]"
+    ));
 }

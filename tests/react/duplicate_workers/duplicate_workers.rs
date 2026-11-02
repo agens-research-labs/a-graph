@@ -7,5 +7,10 @@ fn here() -> &'static std::path::Path {
 /// Two workers with the same name are refused.
 #[test]
 fn duplicate_workers() {
-    assert!(has(here(), "duplicate_workers", "duplicate_id", "graph.edges[1].react.components[1]"));
+    assert!(has(
+        here(),
+        "duplicate_workers",
+        "duplicate_id",
+        "graph.edges[1].react.components[1]"
+    ));
 }

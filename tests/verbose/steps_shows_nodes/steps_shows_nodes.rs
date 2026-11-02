@@ -12,8 +12,19 @@ async fn steps_shows_nodes() {
     let screen = show(&mut p, VerboseLevel::Steps, true, false);
     p.run("hi").await.unwrap();
     let text = screen.text();
-    for wanted in ["run started", "▶ s · m", "✓ s · ", "┌─ parallel · 2 branches", "└─ parallel done", "┌─ linear · 1 branches", "run finished"] {
+    for wanted in [
+        "run started",
+        "▶ s · m",
+        "✓ s · ",
+        "┌─ parallel · 2 branches",
+        "└─ parallel done",
+        "┌─ linear · 1 branches",
+        "run finished",
+    ] {
         assert!(text.contains(wanted), "`{wanted}` is missing in:\n{text}");
     }
-    assert!(!text.contains("model m ·") && !text.contains("prompt:"), "the calls are for `detail`:\n{text}");
+    assert!(
+        !text.contains("model m ·") && !text.contains("prompt:"),
+        "the calls are for `detail`:\n{text}"
+    );
 }

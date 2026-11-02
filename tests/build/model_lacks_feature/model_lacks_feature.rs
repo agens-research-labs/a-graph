@@ -8,5 +8,10 @@ fn here() -> &'static std::path::Path {
 #[test]
 fn model_lacks_feature() {
     // Anthropic produces text only
-    assert!(has(here(), "model_lacks_feature", "not_supported", "graph.nodes[1].model"));
+    assert!(has(
+        here(),
+        "model_lacks_feature",
+        "not_supported",
+        "graph.nodes[1].model"
+    ));
 }

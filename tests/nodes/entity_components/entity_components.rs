@@ -1,5 +1,5 @@
 use crate::common::graph::*;
-use crate::common::{own_yml};
+use crate::common::own_yml;
 
 fn here() -> &'static std::path::Path {
     std::path::Path::new(file!()).parent().unwrap()
@@ -21,7 +21,9 @@ fn entity_components() {
     assert!(n.validation().get(a).is_none());
     // `c` only has a model; the judge has the components it reads with, and `Validation`
     assert!(n.model().get(c).is_some() && n.message().get(c).is_none() && n.resources().get(c).is_none());
-    assert!(n.model().get(judge).is_some() && n.resources().get(judge).is_some() && n.validation().get(judge).is_some());
+    assert!(
+        n.model().get(judge).is_some() && n.resources().get(judge).is_some() && n.validation().get(judge).is_some()
+    );
     assert!(n.media().get(judge).is_none());
     // the components are listed by entity
     assert_eq!(n.model().iter().count(), 8, "every node has a model");

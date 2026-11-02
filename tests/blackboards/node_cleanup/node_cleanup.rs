@@ -1,5 +1,5 @@
+use crate::common::fresh_copy;
 use crate::common::run_node::*;
-use crate::common::{fresh_copy};
 
 fn here() -> &'static std::path::Path {
     std::path::Path::new(file!()).parent().unwrap()

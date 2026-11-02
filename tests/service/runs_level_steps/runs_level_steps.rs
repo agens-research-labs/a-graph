@@ -18,8 +18,13 @@ fn config_path() -> String {
 async fn runs_level_steps() {
     let (model, _) = listen(|_| Resp::ok(answer("ok"))).await;
     let s = start(&config_path()).await;
-    let (_, body) = s.start_run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "how long?" })).await;
+    let (_, body) = s
+        .start_run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "how long?" }))
+        .await;
     let events = s.events(body["run"].as_str().unwrap()).await;
     let names: Vec<&str> = events.iter().map(|(n, _)| n.as_str()).collect();
-    assert!(names.contains(&"node.start") && names.contains(&"node.end") && !names.contains(&"model.call"), "{names:?}");
+    assert!(
+        names.contains(&"node.start") && names.contains(&"node.end") && !names.contains(&"model.call"),
+        "{names:?}"
+    );
 }

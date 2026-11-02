@@ -7,5 +7,10 @@ fn here() -> &'static std::path::Path {
 /// Provider with two families is refused.
 #[test]
 fn two_families() {
-    assert!(has(here(), "two_families", "exactly_one", "resources.media[1].provider"));
+    assert!(has(
+        here(),
+        "two_families",
+        "exactly_one",
+        "resources.media[1].provider"
+    ));
 }

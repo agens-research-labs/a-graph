@@ -12,5 +12,9 @@ async fn call_timeout() {
     let out = p.run("go").await.unwrap();
     assert_eq!(items(&out)[0].1, "R(error: the tool did not answer within 1 s)");
     // the tool takes ten seconds: the run does not wait for it
-    assert!(started.elapsed() < std::time::Duration::from_secs(6), "{:?}", started.elapsed());
+    assert!(
+        started.elapsed() < std::time::Duration::from_secs(6),
+        "{:?}",
+        started.elapsed()
+    );
 }

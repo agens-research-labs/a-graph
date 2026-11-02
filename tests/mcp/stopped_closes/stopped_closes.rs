@@ -19,7 +19,15 @@ async fn stopped_closes() {
     let e = p.run_until("go", stop).await.unwrap_err();
     assert_eq!(e.rule, Rule::RunTimeout);
     // the tool takes ten seconds: the run does not wait for it
-    assert!(started.elapsed() < std::time::Duration::from_secs(6), "{:?}", started.elapsed());
+    assert!(
+        started.elapsed() < std::time::Duration::from_secs(6),
+        "{:?}",
+        started.elapsed()
+    );
     let lines = crate::common::run::log_lines("stopped_closes");
-    assert_eq!(lines.last().map(|l| &l["code"]), Some(&json!("run_timeout")), "{lines:?}");
+    assert_eq!(
+        lines.last().map(|l| &l["code"]),
+        Some(&json!("run_timeout")),
+        "{lines:?}"
+    );
 }

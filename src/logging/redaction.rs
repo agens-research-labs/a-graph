@@ -37,10 +37,16 @@ impl Redaction {
         let allow_content = match passport {
             Some(p) => read(p, &mut errs),
             None => {
-                errs.add(&Path::root().key(key::PASSPORT), crate::error::Rule::MissingField, "`passport` is mandatory");
+                errs.add(
+                    &Path::root().key(key::PASSPORT),
+                    crate::error::Rule::MissingField,
+                    "`passport` is mandatory",
+                );
                 None
             }
         };
-        errs.finish(Redaction { allow_content: allow_content.unwrap_or(false) })
+        errs.finish(Redaction {
+            allow_content: allow_content.unwrap_or(false),
+        })
     }
 }

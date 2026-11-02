@@ -9,7 +9,8 @@ fn here() -> &'static std::path::Path {
 #[tokio::test]
 async fn http_redirect() {
     let (elsewhere_port, elsewhere) = listen(|_| Resp::ok("{}")).await;
-    let (tool_port, _) = listen(move |_| Resp::redirect(302, format!("http://127.0.0.1:{elsewhere_port}/weather"))).await;
+    let (tool_port, _) =
+        listen(move |_| Resp::redirect(302, format!("http://127.0.0.1:{elsewhere_port}/weather"))).await;
     let (p, _) = program_with(here(), "http_redirect", &[("tool", tool_port)], model(city(), false)).await;
     let out = p.run("hi").await.unwrap();
     let said = &items(&out)[0].1;

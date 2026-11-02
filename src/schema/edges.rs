@@ -20,7 +20,11 @@ static GROUP_ITEM: Shape = Shape::Either(&[
 
 static GROUP_SHAPE: Shape = Shape::List(&GROUP_ITEM);
 
-const GROUP: Shape = Shape::Lazy { name: "group", doc: "The entries of a group: `limit`, `in`, `fan` and `out`, each written once and in this order.", get: group };
+const GROUP: Shape = Shape::Lazy {
+    name: "group",
+    doc: "The entries of a group: `limit`, `in`, `fan` and `out`, each written once and in this order.",
+    get: group,
+};
 
 static REACT_SHAPE: Shape = Shape::Map(&[
     Field::req(CONTROLLER, NODE_REF).doc(
@@ -30,11 +34,16 @@ static REACT_SHAPE: Shape = Shape::Map(&[
     Field::req(COMPONENTS, Shape::List(&WORKER_ENTRY)).doc("The workers the controller may call. Two workers with the same id are an error (`duplicate_id`)."),
 ]);
 
-const REACT_BODY: Shape = Shape::Lazy { name: "react", doc: "A controller and the workers it calls.", get: react };
+const REACT_BODY: Shape = Shape::Lazy {
+    name: "react",
+    doc: "A controller and the workers it calls.",
+    get: react,
+};
 
 const NEXT_DOC: &str = "A node that runs after the entry before it. A node may appear more than once in the edges, and each appearance is a run of it.";
 
-const LINEAR_GROUP: Field = Field::req(LINEAR, GROUP).doc("A group whose branches run one after the other. `limit` is not allowed.");
+const LINEAR_GROUP: Field =
+    Field::req(LINEAR, GROUP).doc("A group whose branches run one after the other. `limit` is not allowed.");
 const PARALLEL_GROUP: Field = Field::req(PARALLEL, GROUP).doc(
     "A group whose branches run all together, each as a task of its own; with `limit`, at most that many at a time. The first branch that fails ends the run.",
 );
@@ -42,7 +51,8 @@ const CONCURRENT_GROUP: Field = Field::req(CONCURRENT, GROUP).doc("A group whose
 const BATCH_GROUP: Field = Field::req(BATCH, GROUP).doc(
     "A group whose branches are sent to the provider as one batch job; with `limit`, at most that many requests in each job. The branches are plain nodes, all with the same model.",
 );
-const REACT_ENTRY: Field = Field::req(REACT, REACT_BODY).doc("A controller that decides at run time which worker to call. A `react` inside a `react` cannot run yet.");
+const REACT_ENTRY: Field = Field::req(REACT, REACT_BODY)
+    .doc("A controller that decides at run time which worker to call. A `react` inside a `react` cannot run yet.");
 
 /// What can be a branch of a `fan`.
 static BRANCH_SHAPE: Shape = Shape::Either(&[
@@ -54,7 +64,11 @@ static BRANCH_SHAPE: Shape = Shape::Either(&[
     Shape::Map(&[REACT_ENTRY]),
 ]);
 
-const BRANCH: Shape = Shape::Lazy { name: "branch", doc: "One branch of a `fan`: a node, or a whole group or `react`.", get: branch };
+const BRANCH: Shape = Shape::Lazy {
+    name: "branch",
+    doc: "One branch of a `fan`: a node, or a whole group or `react`.",
+    get: branch,
+};
 
 /// What can be a `worker` of a `react`.
 static WORKER_SHAPE: Shape = Shape::Either(&[
@@ -104,4 +118,8 @@ fn step() -> &'static Shape {
     &STEP_SHAPE
 }
 
-pub(super) const EDGES: Shape = Shape::List(&Shape::Lazy { name: "step", doc: "One entry of `graph.edges`.", get: step });
+pub(super) const EDGES: Shape = Shape::List(&Shape::Lazy {
+    name: "step",
+    doc: "One entry of `graph.edges`.",
+    get: step,
+});

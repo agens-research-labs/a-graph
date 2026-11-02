@@ -10,5 +10,9 @@ async fn linear_in_order() {
     let (p, _) = blocking_program(here(), "linear_in_order");
     let started = Instant::now();
     p.run("hi").await.unwrap();
-    assert!(started.elapsed() >= Duration::from_millis(1200), "took {:?}", started.elapsed());
+    assert!(
+        started.elapsed() >= Duration::from_millis(1200),
+        "took {:?}",
+        started.elapsed()
+    );
 }

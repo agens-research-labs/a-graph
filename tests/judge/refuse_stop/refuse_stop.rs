@@ -11,5 +11,11 @@ async fn refuse_stop() {
     let out = p.run("hi").await.unwrap();
     assert_eq!(order(&seen), "SJ");
     // the output says why the run ended
-    assert_eq!(items(&out), [pair("s", "S(hi)"), pair("judge", "reasons: too long\nlog: checked the length")]);
+    assert_eq!(
+        items(&out),
+        [
+            pair("s", "S(hi)"),
+            pair("judge", "reasons: too long\nlog: checked the length")
+        ]
+    );
 }

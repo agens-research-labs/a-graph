@@ -13,7 +13,13 @@ async fn content_redacted() {
     p.run("hi").await.unwrap();
     let spans = spans_of(&collector);
     let call = named(&spans, "model m");
-    assert_eq!(attribute(call, "a_graph.content_redacted"), Some(json!({ "boolValue": true })));
+    assert_eq!(
+        attribute(call, "a_graph.content_redacted"),
+        Some(json!({ "boolValue": true }))
+    );
     assert!(attribute(call, "a_graph.prompt").is_none() && attribute(call, "a_graph.answer").is_none());
-    assert_eq!(attribute(call, "a_graph.input_tokens"), Some(json!({ "intValue": "1" })));
+    assert_eq!(
+        attribute(call, "a_graph.input_tokens"),
+        Some(json!({ "intValue": "1" }))
+    );
 }

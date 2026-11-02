@@ -33,7 +33,11 @@ impl Gemini {
     /// `Ok(None)`: no media is produced. `Err`: everything Gemini cannot do with what is asked.
     pub(super) fn media_format(&self, produced: &[ProducedMedia]) -> Result<Option<MediaFormat>, Vec<String>> {
         let [media] = produced else {
-            return if produced.is_empty() { Ok(None) } else { Err(vec!["Gemini produces one media per call".to_string()]) };
+            return if produced.is_empty() {
+                Ok(None)
+            } else {
+                Err(vec!["Gemini produces one media per call".to_string()])
+            };
         };
         let mut problems = Vec::new();
         let g = &media.generate;
@@ -41,7 +45,8 @@ impl Gemini {
             problems.push("the media provider fields are for openai, not gemini".to_string());
         }
         if g.size.is_some() {
-            problems.push("`size` is not accepted by Gemini: use provider.gemini image_size and aspect_ratio".to_string());
+            problems
+                .push("`size` is not accepted by Gemini: use provider.gemini image_size and aspect_ratio".to_string());
         }
         if g.quality.is_some() {
             problems.push("`quality` is not accepted by Gemini".to_string());
@@ -50,7 +55,8 @@ impl Gemini {
             problems.push("`background` is not accepted by Gemini".to_string());
         }
         if g.language_code.is_some() {
-            problems.push("`language_code` is not accepted by Gemini: the language is detected from the text".to_string());
+            problems
+                .push("`language_code` is not accepted by Gemini: the language is detected from the text".to_string());
         }
 
         let result = match &media.kind {
@@ -76,7 +82,11 @@ impl Gemini {
                         rf.insert("aspect_ratio".into(), json!(ratio));
                     }
                 }
-                MediaFormat { response_format: Value::Object(rf), speech_config: None, mime_type }
+                MediaFormat {
+                    response_format: Value::Object(rf),
+                    speech_config: None,
+                    mime_type,
+                }
             }
             MediaKind::Audio(format) => {
                 if matches!(media.provider, Some(MediaProvider::Gemini(_))) {
@@ -94,6 +104,10 @@ impl Gemini {
                 return Err(problems);
             }
         };
-        if problems.is_empty() { Ok(Some(result)) } else { Err(problems) }
+        if problems.is_empty() {
+            Ok(Some(result))
+        } else {
+            Err(problems)
+        }
     }
 }

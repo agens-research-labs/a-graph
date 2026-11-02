@@ -21,14 +21,19 @@ const VECTORDB_UTILITY: Shape = Shape::Map(&[
     Field::opt(CHUNKS, UTILITY_LIST).doc("Utilities that change each chunk found, before the prompt."),
 ]);
 
-const QUERY_FIELD: Field = Field::req(QUERY, Shape::Text).doc("What is searched: `user_message`, the message of the user, or a fixed text.");
+const QUERY_FIELD: Field =
+    Field::req(QUERY, Shape::Text).doc("What is searched: `user_message`, the message of the user, or a fixed text.");
 
 const QUERY_REF_VECTORDB: Shape = Shape::Map(&[
     Field::req(ID, Shape::Ref(Kind::Vectordb)).doc("The vector database."),
     QUERY_FIELD,
     Field::opt(UTILITY, VECTORDB_UTILITY).doc("Utilities on the query and on the chunks."),
 ]);
-const QUERY_REF_SEARCH: Shape = Shape::Map(&[Field::req(ID, Shape::Ref(Kind::Search)).doc("The search engine. Its result goes where the prompt writes `{{<search-id>}}`."), QUERY_FIELD]);
+const QUERY_REF_SEARCH: Shape = Shape::Map(&[
+    Field::req(ID, Shape::Ref(Kind::Search))
+        .doc("The search engine. Its result goes where the prompt writes `{{<search-id>}}`."),
+    QUERY_FIELD,
+]);
 
 const ROLES: Shape = Shape::Map(&[
     Field::req(USER, Shape::Bool).doc("The messages of the user."),
@@ -37,7 +42,8 @@ const ROLES: Shape = Shape::Map(&[
 ]);
 
 const NODE_MEMORY_ITEM: Shape = Shape::Map(&[
-    Field::req(ID, Shape::Ref(Kind::Memory)).doc("The memory. Its summary, if it has `synt`, goes where the prompt writes `{{<memory-id>}}`."),
+    Field::req(ID, Shape::Ref(Kind::Memory))
+        .doc("The memory. Its summary, if it has `synt`, goes where the prompt writes `{{<memory-id>}}`."),
     Field::req(READ, ROLES).doc("Which roles of the saved conversation come back as the history of the call."),
     Field::req(WRITE, ROLES).doc("Which roles of this exchange are saved."),
 ]);
@@ -47,7 +53,6 @@ const NODE_EXTERNAL: Shape = Shape::Map(&[
     Field::opt(SEARCH, Shape::List(&QUERY_REF_SEARCH)).doc("The search engines the node uses. They cannot run yet."),
     Field::opt(MEMORY, Shape::List(&NODE_MEMORY_ITEM)).doc("The memories the node reads and writes."),
 ]);
-
 
 const NODE_RESOURCES: Shape = Shape::Map(&[
     Field::opt(PROMPT, Shape::Ref(Kind::Prompt)).doc(
@@ -96,7 +101,10 @@ const MEDIA_OUT: Shape = Shape::Map(&[
 
 const MEDIA_INPUT_FIELD: Field = Field::opt(INPUT, Shape::List(&MEDIA_IN)).doc("The media the node reads.");
 
-const NODE_MEDIA: Shape = Shape::Map(&[MEDIA_INPUT_FIELD, Field::opt(OUTPUT, Shape::List(&MEDIA_OUT)).doc("The media the node produces.")]);
+const NODE_MEDIA: Shape = Shape::Map(&[
+    MEDIA_INPUT_FIELD,
+    Field::opt(OUTPUT, Shape::List(&MEDIA_OUT)).doc("The media the node produces."),
+]);
 
 /// The utilities of a place, in the order they run: a list of ids, or one id alone.
 const UTILITY_LIST: Shape = Shape::Either(&[Shape::Ref(Kind::Utility), Shape::List(&Shape::Ref(Kind::Utility))]);
@@ -127,14 +135,20 @@ const NODE_MESSAGE: Shape = Shape::Map(&[
 // A validation node reads and judges, it produces nothing: it has the blocks of a node where a
 // node has them, but only what it reads. `read` is implicit, and tools, MCP servers, skills,
 // writing and every output are not accepted.
-const JUDGE_RESOURCES: Shape = Shape::Map(&[Field::req(PROMPT, Shape::Ref(Kind::Prompt)).doc("The prompt of the judgment: its criterion. Mandatory.")]);
-const JUDGE_MEMORY_ITEM: Shape = Shape::Map(&[Field::req(ID, Shape::Ref(Kind::Memory)).doc("The memory, read whole, both roles, without writing it.")]);
+const JUDGE_RESOURCES: Shape = Shape::Map(&[
+    Field::req(PROMPT, Shape::Ref(Kind::Prompt)).doc("The prompt of the judgment: its criterion. Mandatory.")
+]);
+const JUDGE_MEMORY_ITEM: Shape = Shape::Map(&[
+    Field::req(ID, Shape::Ref(Kind::Memory)).doc("The memory, read whole, both roles, without writing it.")
+]);
 const JUDGE_EXTERNAL: Shape = Shape::Map(&[
-    Field::opt(VECTORDB, Shape::List(&QUERY_REF_VECTORDB)).doc("The vector databases the node searches, as for a node."),
+    Field::opt(VECTORDB, Shape::List(&QUERY_REF_VECTORDB))
+        .doc("The vector databases the node searches, as for a node."),
     Field::opt(SEARCH, Shape::List(&QUERY_REF_SEARCH)).doc("The search engines the node uses. They cannot run yet."),
     Field::opt(MEMORY, Shape::List(&JUDGE_MEMORY_ITEM)).doc("The memories the node reads."),
 ]);
-const JUDGE_BLACKBOARD: Shape = Shape::Map(&[Field::req(ID, Shape::Ref(Kind::Blackboard)).doc("The blackboard, read without writing it.")]);
+const JUDGE_BLACKBOARD: Shape =
+    Shape::Map(&[Field::req(ID, Shape::Ref(Kind::Blackboard)).doc("The blackboard, read without writing it.")]);
 const JUDGE_MEDIA: Shape = Shape::Map(&[MEDIA_INPUT_FIELD]);
 const JUDGE_MESSAGE: Shape = Shape::Map(&[MESSAGE_INPUT_FIELD]);
 
@@ -167,6 +181,7 @@ const NODE_ITEM: Shape = Shape::Map(&[
 ]);
 
 pub(super) const GRAPH: Shape = Shape::Map(&[
-    Field::req(NODES, Shape::List(&NODE_ITEM)).doc("The nodes: each a model, what it uses, where its input comes from and where its output goes."),
+    Field::req(NODES, Shape::List(&NODE_ITEM))
+        .doc("The nodes: each a model, what it uses, where its input comes from and where its output goes."),
     Field::req(EDGES, super::edges::EDGES).doc("The order in which the nodes run: a list read in order."),
 ]);

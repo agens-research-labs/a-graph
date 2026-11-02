@@ -6,6 +6,14 @@ fn here() -> &'static std::path::Path {
 #[test]
 fn file_limits_min() {
     for what in ["max_files", "max_file_bytes", "max_depth"] {
-        assert!(crate::common::resources::has(here(), "file_limits_min", "bad_value", &format!("resources.skills[0].{what}")), "{what}");
+        assert!(
+            crate::common::resources::has(
+                here(),
+                "file_limits_min",
+                "bad_value",
+                &format!("resources.skills[0].{what}")
+            ),
+            "{what}"
+        );
     }
 }

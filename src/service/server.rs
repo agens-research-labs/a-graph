@@ -18,8 +18,8 @@ use serde_json::{Value, json};
 use tokio::sync::{Semaphore, watch};
 
 use super::api::Endpoint;
-use super::runs::{Next, Runs, SessionInUse, errors_json, run_within};
 use super::rules::{SESSION_MARKER, valid_session};
+use super::runs::{Next, Runs, SessionInUse, errors_json, run_within};
 use super::{ServiceConfig, prepare};
 use crate::error::{Error, Path, Phase, Rule};
 use crate::run::{Program, build};
@@ -60,7 +60,12 @@ pub async fn serve(config: ServiceConfig, shutdown: impl Future<Output = ()> + S
     let port = config.port;
     let max_runs = config.max_runs;
     let permits = Arc::new(Semaphore::new(max_runs));
-    let runs = Runs::new(Duration::from_secs(config.retention_seconds), Duration::from_secs(config.run_timeout_seconds), config.data_dir.clone(), config.session_retention_seconds.map(Duration::from_secs));
+    let runs = Runs::new(
+        Duration::from_secs(config.retention_seconds),
+        Duration::from_secs(config.run_timeout_seconds),
+        config.data_dir.clone(),
+        config.session_retention_seconds.map(Duration::from_secs),
+    );
     let sweeping = runs.clone();
     tokio::spawn(async move {
         loop {
@@ -75,10 +80,15 @@ pub async fn serve(config: ServiceConfig, shutdown: impl Future<Output = ()> + S
     }
     // the time to stop is known when the signal comes
     let (told, mut deadline) = watch::channel(None::<Instant>);
-    let app = app
-        .layer(DefaultBodyLimit::max(BODY_LIMIT))
-        .with_state(Arc::new(App { permits: permits.clone(), config, runs, deadline: deadline.clone() }));
-    let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await.map_err(|e| format!("cannot listen on port {port}: {e}"))?;
+    let app = app.layer(DefaultBodyLimit::max(BODY_LIMIT)).with_state(Arc::new(App {
+        permits: permits.clone(),
+        config,
+        runs,
+        deadline: deadline.clone(),
+    }));
+    let listener = tokio::net::TcpListener::bind(("0.0.0.0", port))
+        .await
+        .map_err(|e| format!("cannot listen on port {port}: {e}"))?;
 
     let signal = async move {
         shutdown.await;
@@ -117,7 +127,11 @@ pub async fn serve(config: ServiceConfig, shutdown: impl Future<Output = ()> + S
 
 /// The handler of a route, on the method the API gives it.
 fn handler(e: Endpoint) -> MethodRouter<Arc<App>> {
-    let method = if e.method() == "post" { MethodFilter::POST } else { MethodFilter::GET };
+    let method = if e.method() == "post" {
+        MethodFilter::POST
+    } else {
+        MethodFilter::GET
+    };
     match e {
         Endpoint::Health => on(method, || async { Json200(json!({ "status": "ok" })) }),
         Endpoint::Run => on(method, run),
@@ -141,7 +155,10 @@ fn failure(status: StatusCode, errors: &[Error]) -> Response {
 }
 
 fn bad_request(message: String) -> Response {
-    failure(StatusCode::BAD_REQUEST, &[Error::new(Phase::Validation, Path::root(), Rule::BadValue, message)])
+    failure(
+        StatusCode::BAD_REQUEST,
+        &[Error::new(Phase::Validation, Path::root(), Rule::BadValue, message)],
+    )
 }
 
 /// Whether the files under this folder weigh more than `cap` bytes; a folder that is not there weighs 0. The walk
@@ -176,26 +193,51 @@ fn folder_over(folder: &std::path::Path, cap: u64) -> std::io::Result<bool> {
 /// The program of a request, built, its message and the session it keeps in use; or the answer that refuses the request.
 async fn accept(app: &App, body: &[u8]) -> Result<(Program, String, SessionInUse), Response> {
     let config = &app.config;
-    let request: Request = serde_json::from_slice(body)
-        .map_err(|e| bad_request(format!("the request must be a JSON object with `yml`, `message` and, if wanted, `session`: {e}")))?;
+    let request: Request = serde_json::from_slice(body).map_err(|e| {
+        bad_request(format!(
+            "the request must be a JSON object with `yml`, `message` and, if wanted, `session`: {e}"
+        ))
+    })?;
     let session = request.session.unwrap_or_else(|| "default".to_string());
     if !valid_session(&session) {
-        return Err(bad_request("`session` is a name of letters, digits, `-`, `_` and `.`, at most 64 characters".to_string()));
+        return Err(bad_request(
+            "`session` is a name of letters, digits, `-`, `_` and `.`, at most 64 characters".to_string(),
+        ));
     }
-    let yml = prepare(&request.yml, config, &session).map_err(|errors| failure(StatusCode::UNPROCESSABLE_ENTITY, &errors))?;
+    let yml =
+        prepare(&request.yml, config, &session).map_err(|errors| failure(StatusCode::UNPROCESSABLE_ENTITY, &errors))?;
     // in use before the folder exists, so the sweep cannot delete it from under the request
     let mut using = app.runs.enter(&session);
     let folder = config.data_dir.join(&session);
     // the folder is there before the build, which may open files in it (the log)
-    std::fs::create_dir_all(&folder)
-        .map_err(|e| failure(StatusCode::INTERNAL_SERVER_ERROR, &[Error::new(Phase::Execution, Path::root(), Rule::Io, format!("cannot create the folder of the session: {e}"))]))?;
+    std::fs::create_dir_all(&folder).map_err(|e| {
+        failure(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            &[Error::new(
+                Phase::Execution,
+                Path::root(),
+                Rule::Io,
+                format!("cannot create the folder of the session: {e}"),
+            )],
+        )
+    })?;
     // the sweep deletes only the folders with this mark, so it never touches what the service did not make; it is
     // only made here, not stamped: a refused request does not keep the session alive
     std::fs::OpenOptions::new()
         .create(true)
         .append(true)
         .open(folder.join(SESSION_MARKER))
-        .map_err(|e| failure(StatusCode::INTERNAL_SERVER_ERROR, &[Error::new(Phase::Execution, Path::root(), Rule::Io, format!("cannot mark the folder of the session: {e}"))]))?;
+        .map_err(|e| {
+            failure(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &[Error::new(
+                    Phase::Execution,
+                    Path::root(),
+                    Rule::Io,
+                    format!("cannot mark the folder of the session: {e}"),
+                )],
+            )
+        })?;
     // the program is built again for each request: requests share nothing
     let program = build(&yml).map_err(|errors| failure(StatusCode::UNPROCESSABLE_ENTITY, &errors.0))?;
     if let Some(cap) = config.session_max_bytes {
@@ -207,12 +249,37 @@ async fn accept(app: &App, body: &[u8]) -> Result<(Program, String, SessionInUse
         .await;
         let over = match weighed {
             Ok(Ok(over)) => over,
-            Ok(Err(e)) => return Err(failure(StatusCode::INTERNAL_SERVER_ERROR, &[Error::new(Phase::Execution, Path::root(), Rule::Io, format!("cannot weigh the folder of the session: {e}"))])),
-            Err(e) => return Err(failure(StatusCode::INTERNAL_SERVER_ERROR, &[Error::new(Phase::Execution, Path::root(), Rule::Io, format!("cannot weigh the folder of the session: {e}"))])),
+            Ok(Err(e)) => {
+                return Err(failure(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    &[Error::new(
+                        Phase::Execution,
+                        Path::root(),
+                        Rule::Io,
+                        format!("cannot weigh the folder of the session: {e}"),
+                    )],
+                ));
+            }
+            Err(e) => {
+                return Err(failure(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    &[Error::new(
+                        Phase::Execution,
+                        Path::root(),
+                        Rule::Io,
+                        format!("cannot weigh the folder of the session: {e}"),
+                    )],
+                ));
+            }
         };
         if over {
-            let message = format!("the session `{session}` weighs more than session_max_bytes ({cap}): use another session, or ask the operator of the service to free it");
-            return Err(failure(StatusCode::UNPROCESSABLE_ENTITY, &[Error::new(Phase::Execution, Path::root(), Rule::SessionFull, message)]));
+            let message = format!(
+                "the session `{session}` weighs more than session_max_bytes ({cap}): use another session, or ask the operator of the service to free it"
+            );
+            return Err(failure(
+                StatusCode::UNPROCESSABLE_ENTITY,
+                &[Error::new(Phase::Execution, Path::root(), Rule::SessionFull, message)],
+            ));
         }
     }
     using.accepted();
@@ -222,13 +289,18 @@ async fn accept(app: &App, body: &[u8]) -> Result<(Program, String, SessionInUse
 /// The answer that refuses a request when every permit to run is taken (503).
 fn busy(max_runs: usize) -> Response {
     let message = format!("the service is running its most runs (max_runs: {max_runs}): try again later");
-    failure(StatusCode::SERVICE_UNAVAILABLE, &[Error::new(Phase::Execution, Path::root(), Rule::TooManyRuns, message)])
+    failure(
+        StatusCode::SERVICE_UNAVAILABLE,
+        &[Error::new(Phase::Execution, Path::root(), Rule::TooManyRuns, message)],
+    )
 }
 
 async fn run(State(app): State<Arc<App>>, body: axum::body::Bytes) -> Response {
     // taken without waiting and before anything else, so a request that is refused costs nothing; held until the
     // run ends, or dropped with a request that is not accepted
-    let Ok(permit) = app.permits.clone().try_acquire_owned() else { return busy(app.config.max_runs) };
+    let Ok(permit) = app.permits.clone().try_acquire_owned() else {
+        return busy(app.config.max_runs);
+    };
     let (program, message, using) = match accept(&app, &body).await {
         Ok(x) => x,
         Err(refusal) => return refusal,
@@ -243,7 +315,14 @@ async fn run(State(app): State<Arc<App>>, body: axum::body::Bytes) -> Response {
         let _using = using;
         run_within(program, &message, timeout, deadline).await
     });
-    let outcome = task.await.unwrap_or_else(|e| Err(Error::new(Phase::Execution, Path::root(), Rule::Io, format!("the run stopped: {e}"))));
+    let outcome = task.await.unwrap_or_else(|e| {
+        Err(Error::new(
+            Phase::Execution,
+            Path::root(),
+            Rule::Io,
+            format!("the run stopped: {e}"),
+        ))
+    });
     match outcome {
         Ok(output) => Json200(output.to_json()).into_response(),
         Err(e) => failure(StatusCode::BAD_GATEWAY, &[e]),
@@ -251,7 +330,9 @@ async fn run(State(app): State<Arc<App>>, body: axum::body::Bytes) -> Response {
 }
 
 async fn start(State(app): State<Arc<App>>, body: axum::body::Bytes) -> Response {
-    let Ok(permit) = app.permits.clone().try_acquire_owned() else { return busy(app.config.max_runs) };
+    let Ok(permit) = app.permits.clone().try_acquire_owned() else {
+        return busy(app.config.max_runs);
+    };
     let (program, message, using) = match accept(&app, &body).await {
         Ok(x) => x,
         Err(refusal) => return refusal,
@@ -261,7 +342,15 @@ async fn start(State(app): State<Arc<App>>, body: axum::body::Bytes) -> Response
 }
 
 fn not_found(id: &str) -> Response {
-    failure(StatusCode::NOT_FOUND, &[Error::new(Phase::Execution, Path::root(), Rule::UnknownRef, format!("there is no run `{id}` (it never existed, or it ended long ago)"))])
+    failure(
+        StatusCode::NOT_FOUND,
+        &[Error::new(
+            Phase::Execution,
+            Path::root(),
+            Rule::UnknownRef,
+            format!("there is no run `{id}` (it never existed, or it ended long ago)"),
+        )],
+    )
 }
 
 async fn state(State(app): State<Arc<App>>, UrlPath(id): UrlPath<String>) -> Response {
@@ -273,7 +362,9 @@ async fn state(State(app): State<Arc<App>>, UrlPath(id): UrlPath<String>) -> Res
 
 /// The events already happened, then the new ones as they come, and at the end `result` or `error`.
 async fn events(State(app): State<Arc<App>>, UrlPath(id): UrlPath<String>) -> Response {
-    let Some(run) = app.runs.get(&id) else { return not_found(&id) };
+    let Some(run) = app.runs.get(&id) else {
+        return not_found(&id);
+    };
     let stream = futures_util::stream::unfold((run, 0usize, false), |(run, index, finished)| async move {
         if finished {
             return None;
@@ -295,16 +386,20 @@ async fn events(State(app): State<Arc<App>>, UrlPath(id): UrlPath<String>) -> Re
             };
             match step {
                 Some(Next::Event(name, data)) => {
-                    let event: Result<SseEvent, Infallible> = Ok(SseEvent::default().event(name).data(data.to_string()));
+                    let event: Result<SseEvent, Infallible> =
+                        Ok(SseEvent::default().event(name).data(data.to_string()));
                     return Some((event, (run, index + 1, false)));
                 }
                 Some(Next::Dropped(count)) => {
                     // the watcher came after these were dropped: it is told how many, and goes on from the first kept
-                    let event: Result<SseEvent, Infallible> = Ok(SseEvent::default().event("dropped").data(json!({ "count": count }).to_string()));
+                    let event: Result<SseEvent, Infallible> = Ok(SseEvent::default()
+                        .event("dropped")
+                        .data(json!({ "count": count }).to_string()));
                     return Some((event, (run, index + count, false)));
                 }
                 Some(Next::Last(name, data)) => {
-                    let event: Result<SseEvent, Infallible> = Ok(SseEvent::default().event(name).data(data.to_string()));
+                    let event: Result<SseEvent, Infallible> =
+                        Ok(SseEvent::default().event(name).data(data.to_string()));
                     return Some((event, (run, index, true)));
                 }
                 _ => {}

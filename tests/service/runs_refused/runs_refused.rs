@@ -17,7 +17,9 @@ fn config_path() -> String {
 #[tokio::test]
 async fn runs_refused() {
     let s = start(&config_path()).await;
-    let (status, body) = s.start_run(json!({ "yml": read("graph.yml", &[]), "message": "how long?" })).await;
+    let (status, body) = s
+        .start_run(json!({ "yml": read("graph.yml", &[]), "message": "how long?" }))
+        .await;
     assert_eq!(status, 422);
     assert_eq!(body["errors"][0]["rule"], "unknown_ref");
     assert!(body.get("run").is_none());

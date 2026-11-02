@@ -15,7 +15,9 @@ use super::http;
 use super::identity::Identity;
 use super::spec::LocalModel;
 use super::timing::timed;
-use super::{BatchEvents, BatchRequest, BatchReturn, Llm, ModelError, ModelInvocation, ModelRequirements, ModelResponse};
+use super::{
+    BatchEvents, BatchRequest, BatchReturn, Llm, ModelError, ModelInvocation, ModelRequirements, ModelResponse,
+};
 use crate::error::{Error, Path, Phase, Rule};
 use crate::resources::MediaKind;
 
@@ -40,8 +42,20 @@ impl Ollama {
     }
 
     fn assemble(m: &LocalModel, provider: &'static str, at: &Path) -> Result<Self, Error> {
-        let client = http::client().map_err(|e| Error::new(Phase::Interpretation, at.clone(), Rule::Io, format!("cannot build the HTTP client: {e}")))?;
-        Ok(Ollama { who: Identity::new(&m.common.id, provider), model: m.common.model.clone(), base_url: m.host.trim_end_matches('/').to_string(), client })
+        let client = http::client().map_err(|e| {
+            Error::new(
+                Phase::Interpretation,
+                at.clone(),
+                Rule::Io,
+                format!("cannot build the HTTP client: {e}"),
+            )
+        })?;
+        Ok(Ollama {
+            who: Identity::new(&m.common.id, provider),
+            model: m.common.model.clone(),
+            base_url: m.host.trim_end_matches('/').to_string(),
+            client,
+        })
     }
 
     /// The server answers `{"error": "..."}`.
@@ -67,18 +81,27 @@ impl Llm for Ollama {
         for t in &req.input_media {
             match t {
                 MediaKind::Md | MediaKind::Img(_) => {}
-                MediaKind::File => problems.push("a file of any format cannot go to a model: a utility has to change it into text first".to_string()),
-                MediaKind::Audio(_) | MediaKind::Video(_) => problems.push("audio and video input are not supported yet (text and images only)".to_string()),
+                MediaKind::File => problems.push(
+                    "a file of any format cannot go to a model: a utility has to change it into text first".to_string(),
+                ),
+                MediaKind::Audio(_) | MediaKind::Video(_) => {
+                    problems.push("audio and video input are not supported yet (text and images only)".to_string())
+                }
             }
         }
-        if problems.is_empty() { Ok(()) } else { Err(self.who.unsupported(problems)) }
+        if problems.is_empty() {
+            Ok(())
+        } else {
+            Err(self.who.unsupported(problems))
+        }
     }
 
     async fn invoke(&self, call: &ModelInvocation) -> Result<ModelResponse, ModelError> {
         let body = self.request_body(call)?;
         let req = self.client.post(format!("{}/api/chat", self.base_url)).json(&body);
         let (text, secs) = timed(http::send(&self.who, req, |status, body| self.api_error(status, body))).await;
-        let value: Value = serde_json::from_str(&text?).map_err(|e| self.who.invalid(format!("the answer is not JSON: {e}")))?;
+        let value: Value =
+            serde_json::from_str(&text?).map_err(|e| self.who.invalid(format!("the answer is not JSON: {e}")))?;
         self.parse_chat(call.schema.is_some(), &value, secs)
     }
 

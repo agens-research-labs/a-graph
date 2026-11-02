@@ -32,11 +32,17 @@ pub struct Destination {
 
 impl Destination {
     pub fn url(path: Path, url: impl Into<String>) -> Self {
-        Destination { path, target: Target::Url(url.into()) }
+        Destination {
+            path,
+            target: Target::Url(url.into()),
+        }
     }
 
     pub fn host(path: Path, host: Result<String, String>) -> Self {
-        Destination { path, target: Target::Host(host) }
+        Destination {
+            path,
+            target: Target::Host(host),
+        }
     }
 }
 
@@ -46,8 +52,16 @@ pub fn allowed_hosts(passport: Option<Value>) -> Result<HashSet<String>, Errors>
     let read = |passport: Value, errs: &mut Errs| -> Option<HashSet<String>> {
         let mut p = Obj::new(passport, Path::root().key(key::PASSPORT), errs)?;
         let mut adl = p.req_sub(key::ADL, errs)?;
-        let hosts = adl.sub(key::PERMISSIONS, errs).and_then(|mut perm| perm.sub(key::NETWORK, errs)).and_then(|mut n| n.opt::<Vec<String>>(key::ALLOWED_HOSTS, errs));
-        let at = Path::root().key(key::PASSPORT).key(key::ADL).key(key::PERMISSIONS).key(key::NETWORK).key(key::ALLOWED_HOSTS);
+        let hosts = adl
+            .sub(key::PERMISSIONS, errs)
+            .and_then(|mut perm| perm.sub(key::NETWORK, errs))
+            .and_then(|mut n| n.opt::<Vec<String>>(key::ALLOWED_HOSTS, errs));
+        let at = Path::root()
+            .key(key::PASSPORT)
+            .key(key::ADL)
+            .key(key::PERMISSIONS)
+            .key(key::NETWORK)
+            .key(key::ALLOWED_HOSTS);
         let mut out = HashSet::new();
         for (i, entry) in hosts.unwrap_or_default().iter().enumerate() {
             match allowed_entry(entry) {
@@ -74,8 +88,15 @@ pub fn check(allowed: &HashSet<String>, destinations: impl IntoIterator<Item = D
         match host {
             Err(why) => errors.push(Error::new(Phase::Interpretation, d.path, Rule::BadValue, why)),
             // an entry without a port allows every port
-            Ok((h, port)) if !allowed.contains(&h) && !port.is_some_and(|p| allowed.contains(&entry_text(&h, Some(p)))) => {
-                errors.push(Error::new(Phase::Interpretation, d.path, Rule::NetworkNotAllowed, format!("host `{}` {not_allowed}", entry_text(&h, port))))
+            Ok((h, port))
+                if !allowed.contains(&h) && !port.is_some_and(|p| allowed.contains(&entry_text(&h, Some(p)))) =>
+            {
+                errors.push(Error::new(
+                    Phase::Interpretation,
+                    d.path,
+                    Rule::NetworkNotAllowed,
+                    format!("host `{}` {not_allowed}", entry_text(&h, port)),
+                ))
             }
             Ok(_) => {}
         }
@@ -101,7 +122,10 @@ pub fn logging_destinations(observability: Option<Value>, trace: Option<Value>) 
         && let Some(mut t) = Obj::new(t, Path::root().key(key::TRACE), &mut errs)
         && let Some(endpoint) = t.opt::<String>(key::ENDPOINT, &mut errs)
     {
-        out.push(Destination::url(Path::root().key(key::TRACE).key(key::ENDPOINT), endpoint));
+        out.push(Destination::url(
+            Path::root().key(key::TRACE).key(key::ENDPOINT),
+            endpoint,
+        ));
     }
     errs.finish(out)
 }

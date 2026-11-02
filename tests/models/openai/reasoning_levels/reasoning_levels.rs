@@ -3,7 +3,14 @@ use super::*;
 /// Reasoning levels map one to one.
 #[tokio::test]
 async fn reasoning_levels() {
-    for (level, effort) in [(Reasoning::Off, "none"), (Reasoning::Minimal, "minimal"), (Reasoning::Low, "low"), (Reasoning::Medium, "medium"), (Reasoning::High, "high"), (Reasoning::Max, "max")] {
+    for (level, effort) in [
+        (Reasoning::Off, "none"),
+        (Reasoning::Minimal, "minimal"),
+        (Reasoning::Low, "low"),
+        (Reasoning::Medium, "medium"),
+        (Reasoning::High, "high"),
+        (Reasoning::Max, "max"),
+    ] {
         let mut c = call("q");
         c.reasoning = Some(level);
         let (_, req) = one_call(c, Resp::ok(text_answer("x"))).await;

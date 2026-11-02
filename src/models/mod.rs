@@ -2,8 +2,8 @@
 
 mod anthropic;
 mod auth;
-mod bedrock;
 mod batch;
+mod bedrock;
 mod endpoint;
 mod error;
 mod gemini;
@@ -26,9 +26,9 @@ pub use auth::{AzureAmbient, GoogleAdc, StaticToken, TokenSource};
 pub use batch::*;
 pub use bedrock::Bedrock;
 pub use error::ModelError;
+pub use gemini::Gemini;
 pub(crate) use http::{client as http_client, send as http_send};
 pub(crate) use identity::Identity;
-pub use gemini::Gemini;
 pub use invocation::*;
 pub use llm::Llm;
 pub use manager::ModelManager;

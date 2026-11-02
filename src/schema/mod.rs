@@ -89,12 +89,21 @@ pub enum Shape {
     MapOf(&'static Shape),
     /// A map whose key `by` chooses which fields it has, besides the common ones. `by_doc`
     /// describes that key.
-    Tagged { by: &'static str, by_doc: &'static str, common: &'static [Field], variants: &'static [Variant] },
+    Tagged {
+        by: &'static str,
+        by_doc: &'static str,
+        common: &'static [Field],
+        variants: &'static [Variant],
+    },
     /// One of several forms.
     Either(&'static [Shape]),
     /// A named shape, reached through a function: one that contains itself (a group inside a
     /// group), or that is used in several places. The name is its definition in the JSON Schema.
-    Lazy { name: &'static str, doc: &'static str, get: fn() -> &'static Shape },
+    Lazy {
+        name: &'static str,
+        doc: &'static str,
+        get: fn() -> &'static Shape,
+    },
     /// Free content, accepted as written (a JSON Schema, for example).
     Any,
 }
@@ -110,10 +119,20 @@ pub struct Field {
 
 impl Field {
     pub const fn req(name: &'static str, shape: Shape) -> Self {
-        Field { name, shape, required: true, doc: "" }
+        Field {
+            name,
+            shape,
+            required: true,
+            doc: "",
+        }
     }
     pub const fn opt(name: &'static str, shape: Shape) -> Self {
-        Field { name, shape, required: false, doc: "" }
+        Field {
+            name,
+            shape,
+            required: false,
+            doc: "",
+        }
     }
     pub const fn doc(mut self, doc: &'static str) -> Self {
         self.doc = doc;
@@ -136,20 +155,29 @@ impl Variant {
 }
 
 /// `{ env: VAR_NAME }`: secrets are never written in the yml.
-pub const SECRET: Shape = Shape::Map(&[Field::req(ENV, Shape::Text).doc("The name of the environment variable that holds the value.")]);
+pub const SECRET: Shape =
+    Shape::Map(&[Field::req(ENV, Shape::Text).doc("The name of the environment variable that holds the value.")]);
 
 /// The whole document.
 pub const DOCUMENT: &[Field] = &[
     Field::req(GRAPH_SPEC, Shape::Words(&["1.0"])).doc("The version of the format of this file."),
-    Field::req(PASSPORT, passport::PASSPORT).doc("The identity of the graph, in the ADL 0.3.0 format (https://www.adl-spec.org/), with the hosts it may reach."),
-    Field::req(OBSERVABILITY, observability::OBSERVABILITY).doc("The log: structured records of what the program does, for machines."),
-    Field::opt(TRACE, observability::TRACE).doc("The timeline of the run, sent to a collector when the run ends. Without this block there is no trace."),
-    Field::req(VERBOSE, observability::VERBOSE).doc("The live display of the run, for a person, on the standard error."),
+    Field::req(PASSPORT, passport::PASSPORT).doc(
+        "The identity of the graph, in the ADL 0.3.0 format (https://www.adl-spec.org/), with the hosts it may reach.",
+    ),
+    Field::req(OBSERVABILITY, observability::OBSERVABILITY)
+        .doc("The log: structured records of what the program does, for machines."),
+    Field::opt(TRACE, observability::TRACE)
+        .doc("The timeline of the run, sent to a collector when the run ends. Without this block there is no trace."),
+    Field::req(VERBOSE, observability::VERBOSE)
+        .doc("The live display of the run, for a person, on the standard error."),
     Field::req(MODELS, models::MODELS).doc("The language models the nodes call."),
-    Field::opt(EMBEDDINGS, embeddings::EMBEDDINGS).doc("The models that turn a text into a vector, for the vector databases and the memories."),
-    Field::opt(UTILITIES, utilities::UTILITIES).doc("Programs and services that the program, never the model, calls to change the data of a node."),
+    Field::opt(EMBEDDINGS, embeddings::EMBEDDINGS)
+        .doc("The models that turn a text into a vector, for the vector databases and the memories."),
+    Field::opt(UTILITIES, utilities::UTILITIES)
+        .doc("Programs and services that the program, never the model, calls to change the data of a node."),
     Field::opt(RESOURCES, resources::RESOURCES).doc("What the nodes use: prompts, tools, MCP servers, media, skills."),
-    Field::opt(EXTERNAL, external::EXTERNAL).doc("The sources outside the program: vector databases, search engines, memories."),
+    Field::opt(EXTERNAL, external::EXTERNAL)
+        .doc("The sources outside the program: vector databases, search engines, memories."),
     Field::opt(BLACKBOARDS, blackboards::BLACKBOARDS).doc("Markdown texts shared by the nodes."),
     Field::req(GRAPH, graph::GRAPH).doc("The nodes and the edges that connect them."),
 ];

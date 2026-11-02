@@ -24,17 +24,29 @@ async fn shutdown_stops() {
     let _ = std::fs::remove_file(log);
     let (model, seen) = listen_slowly(std::time::Duration::from_secs(120), |_| Resp::ok(answer("too late"))).await;
     let mut s = start(&config_path()).await;
-    let (status, body) = s.start_run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "how long?" })).await;
+    let (status, body) = s
+        .start_run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "how long?" }))
+        .await;
     assert_eq!(status, 202, "{body}");
     let port = s.port;
     let id = body["run"].as_str().unwrap().to_string();
     // a caller waiting on POST /run and a watcher of the events of the other run, both still connected at the deadline
     let waiting = tokio::spawn(async move {
-        let r = reqwest::Client::new().post(format!("http://127.0.0.1:{port}/run")).json(&json!({ "yml": read("graph.yml", &[("model", model)]), "message": "how long?" })).send().await.unwrap();
+        let r = reqwest::Client::new()
+            .post(format!("http://127.0.0.1:{port}/run"))
+            .json(&json!({ "yml": read("graph.yml", &[("model", model)]), "message": "how long?" }))
+            .send()
+            .await
+            .unwrap();
         (r.status().as_u16(), r.json::<Value>().await.unwrap_or(Value::Null))
     });
     let watching = tokio::spawn(async move {
-        let text = reqwest::get(format!("http://127.0.0.1:{port}/runs/{id}/events")).await.unwrap().text().await.unwrap();
+        let text = reqwest::get(format!("http://127.0.0.1:{port}/runs/{id}/events"))
+            .await
+            .unwrap()
+            .text()
+            .await
+            .unwrap();
         parse_sse(&text)
     });
     // the runs are going on once the model is called: then the signal
@@ -48,7 +60,11 @@ async fn shutdown_stops() {
     let signalled = std::time::Instant::now();
     s.terminate();
     assert_eq!(s.exited(40).await, Some(0));
-    assert!(signalled.elapsed() >= std::time::Duration::from_secs(30), "the run was stopped before the deadline: {:?}", signalled.elapsed());
+    assert!(
+        signalled.elapsed() >= std::time::Duration::from_secs(30),
+        "the run was stopped before the deadline: {:?}",
+        signalled.elapsed()
+    );
     let lines = log_lines(log);
     let last = lines.last().unwrap_or_else(|| panic!("the log is empty"));
     assert_eq!(last["code"], "service_stopped", "{lines:?}");

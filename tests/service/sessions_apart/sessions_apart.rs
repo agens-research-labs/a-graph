@@ -33,12 +33,32 @@ async fn sessions_apart() {
     assert_eq!(ask(None, "nobody").await.0, 200);
 
     // the request that goes to node a of ann's second turn has ann's first exchange as history, and nothing of bob
-    let asked: Vec<Value> = seen.lock().unwrap().iter().map(|r| serde_json::from_str::<Value>(&r.body).unwrap()).collect();
-    let second_of_ann = asked.iter().find(|b| b["messages"].as_array().unwrap().last().unwrap()["content"] == "Q: second of ann").unwrap();
-    let history: Vec<&str> = second_of_ann["messages"].as_array().unwrap().iter().skip(1).map(|m| m["content"].as_str().unwrap()).collect();
+    let asked: Vec<Value> = seen
+        .lock()
+        .unwrap()
+        .iter()
+        .map(|r| serde_json::from_str::<Value>(&r.body).unwrap())
+        .collect();
+    let second_of_ann = asked
+        .iter()
+        .find(|b| b["messages"].as_array().unwrap().last().unwrap()["content"] == "Q: second of ann")
+        .unwrap();
+    let history: Vec<&str> = second_of_ann["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .skip(1)
+        .map(|m| m["content"].as_str().unwrap())
+        .collect();
     assert_eq!(history, ["first of ann", "ok", "Q: second of ann"]);
     // each session has its own file; the one without a name is `default`
     for folder in ["ann", "bob", "default"] {
-        assert!(std::path::Path::new("target/test-service/sessions_apart").join(folder).join("memory.json").exists(), "no memory in `{folder}`");
+        assert!(
+            std::path::Path::new("target/test-service/sessions_apart")
+                .join(folder)
+                .join("memory.json")
+                .exists(),
+            "no memory in `{folder}`"
+        );
     }
 }

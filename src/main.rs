@@ -26,7 +26,11 @@ const USAGE: u8 = 2;
 const FAILED: u8 = 3;
 
 #[derive(Parser)]
-#[command(name = "a-graph", version, about = "Checks and runs a graph of agents written in a yml file")]
+#[command(
+    name = "a-graph",
+    version,
+    about = "Checks and runs a graph of agents written in a yml file"
+)]
 struct Cli {
     /// The yml file of the graph (with `--serve`: the configuration of the service).
     #[arg(required_unless_present_any = ["print_schema", "print_docs", "print_service_schema", "print_service_docs", "print_service_api"])]
@@ -83,7 +87,9 @@ async fn main() -> ExitCode {
         return ExitCode::SUCCESS;
     }
     // clap requires the file without the two options above
-    let Some(file) = cli.file else { return ExitCode::from(USAGE) };
+    let Some(file) = cli.file else {
+        return ExitCode::from(USAGE);
+    };
 
     let source = match std::fs::read_to_string(&file) {
         Ok(s) => s,
