@@ -12,7 +12,9 @@ fn utility() -> Utility {
 #[tokio::test]
 async fn call_timeout() {
     let started = std::time::Instant::now();
-    let e = call_utility(&utility(), &UtilityInput::Text("x".into())).await.unwrap_err();
+    let e = call_utility(&utility(), &UtilityInput::Text("x".into()))
+        .await
+        .unwrap_err();
     assert!(e.contains("did not answer within 1 s"), "{e}");
     assert!(started.elapsed().as_secs() < 4);
 }

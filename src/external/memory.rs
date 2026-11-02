@@ -3,10 +3,10 @@
 use serde::Deserialize;
 use serde_norway::Value;
 
+use super::{Record, update_record};
 use crate::build::{Errs, Obj};
 use crate::error::{Error, Errors, Path, Phase, Rule};
 use crate::resources::{PromptBody, PromptsManager};
-use super::{Record, update_record};
 use crate::schema::key;
 
 /// The tokens a summary may use when the yml does not say `max_tokens`: a model that reasons
@@ -27,9 +27,13 @@ enum Provider {
 
 #[derive(Debug, Clone)]
 pub enum MemoryBackend {
-    JsonFile { path: String },
+    JsonFile {
+        path: String,
+    },
     /// Kept in a vectordb declared in `external.vectordb`.
-    Vectordb { id: String },
+    Vectordb {
+        id: String,
+    },
 }
 
 /// `synt`: how the memory is summarized.
@@ -81,22 +85,49 @@ impl MemoryManager {
             let provider = o.req::<Provider>(key::PROVIDER, &mut errs);
             let path = o.opt::<String>(key::PATH, &mut errs);
             let vectordb = o.opt::<String>(key::REF, &mut errs);
-            let synt = o.sub(key::SYNT, &mut errs).map(|mut s| (s.at().clone(), s.req::<u32>(key::LENGTH, &mut errs), s.req::<String>(key::MODEL, &mut errs), s.opt::<String>(key::PROMPT, &mut errs), s.opt::<u32>(key::MAX_TOKENS, &mut errs)));
-            let chat = o.sub(key::CHAT, &mut errs).map(|mut c| (c.at().clone(), c.req::<u32>(key::LENGTH, &mut errs), c.opt::<String>(key::EMBEDDING, &mut errs)));
+            let synt = o.sub(key::SYNT, &mut errs).map(|mut s| {
+                (
+                    s.at().clone(),
+                    s.req::<u32>(key::LENGTH, &mut errs),
+                    s.req::<String>(key::MODEL, &mut errs),
+                    s.opt::<String>(key::PROMPT, &mut errs),
+                    s.opt::<u32>(key::MAX_TOKENS, &mut errs),
+                )
+            });
+            let chat = o.sub(key::CHAT, &mut errs).map(|mut c| {
+                (
+                    c.at().clone(),
+                    c.req::<u32>(key::LENGTH, &mut errs),
+                    c.opt::<String>(key::EMBEDDING, &mut errs),
+                )
+            });
             let synt = synt.and_then(|(sat, length, model, prompt, max_tokens)| {
                 errs.at_least_one(&sat.key(key::LENGTH), length);
                 errs.at_least_one(&sat.key(key::MAX_TOKENS), max_tokens);
-                Some(SyntConfig { length: length?, model: model?, prompt, max_tokens: max_tokens.unwrap_or(DEFAULT_SYNT_MAX_TOKENS) })
+                Some(SyntConfig {
+                    length: length?,
+                    model: model?,
+                    prompt,
+                    max_tokens: max_tokens.unwrap_or(DEFAULT_SYNT_MAX_TOKENS),
+                })
             });
             let chat = chat.and_then(|(cat, length, embedding)| {
                 errs.at_least_one(&cat.key(key::LENGTH), length);
-                Some(ChatConfig { length: length?, embedding })
+                Some(ChatConfig {
+                    length: length?,
+                    embedding,
+                })
             });
             let backend = match provider {
                 Some(Provider::JsonFile) => {
                     errs.require(&at, key::PATH, path.is_some(), "provider json_file needs `path`");
                     errs.forbid(&at, key::REF, vectordb.is_some(), "`ref` is for provider vectordb");
-                    errs.require(&at, key::CHAT, chat.is_some(), "provider json_file needs `chat`: the node must know how many exchanges to get");
+                    errs.require(
+                        &at,
+                        key::CHAT,
+                        chat.is_some(),
+                        "provider json_file needs `chat`: the node must know how many exchanges to get",
+                    );
                     path.map(|path| MemoryBackend::JsonFile { path })
                 }
                 Some(Provider::Vectordb) => {
@@ -109,24 +140,53 @@ impl MemoryManager {
                 None => None,
             };
             if let (Some(id), Some(backend), true) = (id, backend, errs.0.len() == before) {
-                memories.push(Memory { id, backend, synt, chat });
+                memories.push(Memory {
+                    id,
+                    backend,
+                    synt,
+                    chat,
+                });
             }
         }
-        errs.finish(MemoryManager { memories, lock: Default::default() })
+        errs.finish(MemoryManager {
+            memories,
+            lock: Default::default(),
+        })
     }
 
     /// A prompt used for the summary must contain `{{synt}}` and `{{chat}}`.
     pub fn check_prompts(&self, prompts: &PromptsManager) -> Vec<Error> {
         let mut errors = Vec::new();
         for (i, m) in self.memories.iter().enumerate() {
-            let Some(pid) = m.synt.as_ref().and_then(|s| s.prompt.as_deref()) else { continue };
-            let at = Path::root().key(key::EXTERNAL).key(key::MEMORY).idx(i).key(key::SYNT).key(key::PROMPT);
+            let Some(pid) = m.synt.as_ref().and_then(|s| s.prompt.as_deref()) else {
+                continue;
+            };
+            let at = Path::root()
+                .key(key::EXTERNAL)
+                .key(key::MEMORY)
+                .idx(i)
+                .key(key::SYNT)
+                .key(key::PROMPT);
             // a prompt not read yet (url) is checked when it is
-            let Some(PromptBody::Content(c)) = prompts.get(pid).map(|p| &p.body) else { continue };
-            let used: Vec<String> = [&c.system, &c.user].into_iter().filter_map(|t| crate::graph::scan(t).ok()).flatten().collect();
+            let Some(PromptBody::Content(c)) = prompts.get(pid).map(|p| &p.body) else {
+                continue;
+            };
+            let used: Vec<String> = [&c.system, &c.user]
+                .into_iter()
+                .filter_map(|t| crate::graph::scan(t).ok())
+                .flatten()
+                .collect();
             for name in [SYNT_PLACEHOLDER, CHAT_PLACEHOLDER] {
                 if !used.iter().any(|u| u == name) {
-                    errors.push(Error::new(Phase::Interpretation, at.clone(), Rule::PlaceholderUnused, format!("prompt `{pid}` is the prompt of the summary of memory `{}` and must use {{{{{name}}}}}", m.id)));
+                    errors.push(Error::new(
+                        Phase::Interpretation,
+                        at.clone(),
+                        Rule::PlaceholderUnused,
+                        format!(
+                            "prompt `{pid}` is the prompt of the summary of memory `{}` and must use {{{{{name}}}}}",
+                            m.id
+                        ),
+                    ));
                 }
             }
         }

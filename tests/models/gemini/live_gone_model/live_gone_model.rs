@@ -7,5 +7,8 @@ async fn live_gone_model() {
     let mut c = call("hi");
     c.max_tokens = Some(20);
     let err = live("gemini-2.5-flash").invoke(&c).await.unwrap_err().to_string();
-    assert!(err.contains("`flash`") && err.contains("(gemini)") && err.contains("404"), "{err}");
+    assert!(
+        err.contains("`flash`") && err.contains("(gemini)") && err.contains("404"),
+        "{err}"
+    );
 }

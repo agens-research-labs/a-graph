@@ -49,7 +49,16 @@ struct Inner {
 
 impl RunState {
     fn new(max_events: usize) -> Arc<Self> {
-        Arc::new(RunState { inner: Mutex::new(Inner { events: VecDeque::new(), dropped: 0, max_events, outcome: None, finished: None }), notify: Notify::new() })
+        Arc::new(RunState {
+            inner: Mutex::new(Inner {
+                events: VecDeque::new(),
+                dropped: 0,
+                max_events,
+                outcome: None,
+                finished: None,
+            }),
+            notify: Notify::new(),
+        })
     }
 
     fn push(&self, name: String, data: Value) {
@@ -110,7 +119,11 @@ const DELETING: &str = "~deleting";
 fn aside(data_dir: &std::path::Path, session: &str) -> PathBuf {
     let mut n = 0u32;
     loop {
-        let name = if n == 0 { format!("{session}{DELETING}") } else { format!("{session}~{n}{DELETING}") };
+        let name = if n == 0 {
+            format!("{session}{DELETING}")
+        } else {
+            format!("{session}~{n}{DELETING}")
+        };
         let path = data_dir.join(name);
         if std::fs::symlink_metadata(&path).is_err() {
             return path;
@@ -217,21 +230,44 @@ impl Drop for SessionInUse {
 /// is emptied, not given a time, because that needs only the right to write it, not to own it. A failure is written
 /// on the standard error: the session may then be deleted too early.
 fn stamp(folder: &std::path::Path, session: &str) {
-    if let Err(e) = std::fs::OpenOptions::new().write(true).create(true).truncate(true).open(folder.join(SESSION_MARKER)) {
+    if let Err(e) = std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(folder.join(SESSION_MARKER))
+    {
         eprintln!("a-graph: cannot stamp session {session}: {e}");
     }
 }
 
 impl Runs {
-    pub(super) fn new(retention: Duration, run_timeout: Duration, data_dir: PathBuf, session_retention: Option<Duration>) -> Arc<Self> {
-        Arc::new(Runs { map: Mutex::new(HashMap::new()), retention, run_timeout, data_dir, session_retention, sessions: Mutex::new(HashMap::new()), last_scan: Mutex::new(Instant::now()) })
+    pub(super) fn new(
+        retention: Duration,
+        run_timeout: Duration,
+        data_dir: PathBuf,
+        session_retention: Option<Duration>,
+    ) -> Arc<Self> {
+        Arc::new(Runs {
+            map: Mutex::new(HashMap::new()),
+            retention,
+            run_timeout,
+            data_dir,
+            session_retention,
+            sessions: Mutex::new(HashMap::new()),
+            last_scan: Mutex::new(Instant::now()),
+        })
     }
 
     /// Marks the session as in use until the result is dropped.
     pub(super) fn enter(self: &Arc<Self>, session: &str) -> SessionInUse {
         let key = in_use_key(session);
         *self.sessions.lock().unwrap().entry(key.clone()).or_insert(0) += 1;
-        SessionInUse { runs: self.clone(), session: session.to_string(), key, accepted: false }
+        SessionInUse {
+            runs: self.clone(),
+            session: session.to_string(),
+            key,
+            accepted: false,
+        }
     }
 
     pub(super) fn get(&self, id: &str) -> Option<Arc<RunState>> {
@@ -241,7 +277,10 @@ impl Runs {
     /// Forgets the runs that ended more than `retention` ago, and deletes the sessions nobody uses.
     pub(super) async fn sweep(self: &Arc<Self>) {
         let retention = self.retention;
-        self.map.lock().unwrap().retain(|_, s| s.inner.lock().unwrap().finished.is_none_or(|t| t.elapsed() < retention));
+        self.map
+            .lock()
+            .unwrap()
+            .retain(|_, s| s.inner.lock().unwrap().finished.is_none_or(|t| t.elapsed() < retention));
         if let Some(keep) = self.session_retention {
             let due = {
                 let mut last = self.last_scan.lock().unwrap();
@@ -302,7 +341,9 @@ impl Runs {
             // a request for its name makes a new one, and a deletion cut short leaves no half folder behind it
             let doomed = {
                 let sessions = self.sessions.lock().unwrap();
-                let old = std::fs::symlink_metadata(entry.path().join(SESSION_MARKER)).and_then(|m| m.modified()).is_ok_and(|t| t.elapsed().is_ok_and(|age| age > keep));
+                let old = std::fs::symlink_metadata(entry.path().join(SESSION_MARKER))
+                    .and_then(|m| m.modified())
+                    .is_ok_and(|t| t.elapsed().is_ok_and(|age| age > keep));
                 if !old || sessions.contains_key(&in_use_key(&name)) {
                     continue;
                 }
@@ -320,7 +361,14 @@ impl Runs {
     /// Starts the run and gives back its id at once. The events the graph asks to show (its `verbose`)
     /// are kept as the run goes; the outcome is kept when it ends. The permit is given back, and the session
     /// let go, at the end. The run is stopped at the deadline of the shutdown, once `deadline` tells it.
-    pub(super) fn start(self: &Arc<Self>, mut program: Program, message: String, permit: OwnedSemaphorePermit, deadline: watch::Receiver<Option<tokio::time::Instant>>, using: SessionInUse) -> String {
+    pub(super) fn start(
+        self: &Arc<Self>,
+        mut program: Program,
+        message: String,
+        permit: OwnedSemaphorePermit,
+        deadline: watch::Receiver<Option<tokio::time::Instant>>,
+        using: SessionInUse,
+    ) -> String {
         let id = format!("r-{}", &uuid::Uuid::new_v4().simple().to_string()[..16]);
         let state = RunState::new(MAX_EVENTS);
         self.map.lock().unwrap().insert(id.clone(), state.clone());
@@ -348,7 +396,12 @@ impl Runs {
 
 /// Runs the program to its end, or until `timeout` has passed (`run_timeout`), or until the deadline of the shutdown
 /// of the service, once there is one (`service_stopped`); then closes its log.
-pub(super) async fn run_within(program: Program, message: &str, timeout: Duration, mut deadline: watch::Receiver<Option<tokio::time::Instant>>) -> Result<RunOutput, Error> {
+pub(super) async fn run_within(
+    program: Program,
+    message: &str,
+    timeout: Duration,
+    mut deadline: watch::Receiver<Option<tokio::time::Instant>>,
+) -> Result<RunOutput, Error> {
     let program = Arc::new(program);
     // when the time is up the nodes are stopped, and the run still ends as always (its last event, its trace)
     let late = async move {
@@ -422,9 +475,17 @@ mod tests {
         assert_eq!(names(&state, 0), ["e0", "e1", "e2"], "up to the cap nothing is dropped");
         state.push("e3".into(), json!({}));
         state.push("e4".into(), json!({}));
-        assert_eq!(names(&state, 0), ["dropped 2", "e2", "e3", "e4"], "a watcher from the start is told what it missed");
+        assert_eq!(
+            names(&state, 0),
+            ["dropped 2", "e2", "e3", "e4"],
+            "a watcher from the start is told what it missed"
+        );
         assert_eq!(names(&state, 1), ["dropped 1", "e2", "e3", "e4"]);
-        assert_eq!(names(&state, 3), ["e3", "e4"], "a watcher after the dropped ones misses nothing");
+        assert_eq!(
+            names(&state, 3),
+            ["e3", "e4"],
+            "a watcher after the dropped ones misses nothing"
+        );
         state.finish(Outcome::Done(json!({ "items": [] })));
         assert_eq!(names(&state, 0), ["dropped 2", "e2", "e3", "e4", "result"]);
     }

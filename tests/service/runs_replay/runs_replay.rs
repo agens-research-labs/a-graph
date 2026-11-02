@@ -18,7 +18,9 @@ fn config_path() -> String {
 async fn runs_replay() {
     let (model, _) = listen(|_| Resp::ok(answer("ok"))).await;
     let s = start(&config_path()).await;
-    let (_, body) = s.start_run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "how long?" })).await;
+    let (_, body) = s
+        .start_run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "how long?" }))
+        .await;
     let id = body["run"].as_str().unwrap().to_string();
     let live = s.events(&id).await;
     s.finished(&id).await;

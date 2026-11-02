@@ -72,7 +72,11 @@ impl ModelManager {
     /// The hosts each model is reached at, for the network permission.
     pub fn destinations(&self) -> Vec<Destination> {
         let base = Path::root().key(key::MODELS);
-        self.order.iter().enumerate().flat_map(|(i, id)| self.specs[id].destinations(&base.idx(i))).collect()
+        self.order
+            .iter()
+            .enumerate()
+            .flat_map(|(i, id)| self.specs[id].destinations(&base.idx(i)))
+            .collect()
     }
 
     pub fn len(&self) -> usize {

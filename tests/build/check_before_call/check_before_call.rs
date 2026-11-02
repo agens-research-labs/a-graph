@@ -8,5 +8,10 @@ fn here() -> &'static std::path::Path {
 #[test]
 fn check_before_call() {
     // Ollama has no media output
-    assert!(has(here(), "check_before_call", "not_supported", "graph.nodes[2].model"));
+    assert!(has(
+        here(),
+        "check_before_call",
+        "not_supported",
+        "graph.nodes[2].model"
+    ));
 }

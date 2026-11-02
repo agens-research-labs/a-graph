@@ -9,6 +9,13 @@ fn here() -> &'static std::path::Path {
 async fn board_write_utility() {
     let (p, _) = program(here(), "board_write_utility", Resp::ok(chat("note", None))).await;
     let out = p.run_node(entity(&p), user("q")).await.unwrap();
-    assert_eq!(out.assistant.message, Some(Content::Text("NOTE".into())), "the output has only the first change");
-    assert!(p.blackboards.read("bb").unwrap().contains("[NOTE]"), "the board has both");
+    assert_eq!(
+        out.assistant.message,
+        Some(Content::Text("NOTE".into())),
+        "the output has only the first change"
+    );
+    assert!(
+        p.blackboards.read("bb").unwrap().contains("[NOTE]"),
+        "the board has both"
+    );
 }

@@ -8,8 +8,22 @@ fn here() -> &'static std::path::Path {
 #[test]
 fn batch_hosts() {
     assert_eq!(errors(here(), "allowed"), Vec::<(String, String)>::new());
-    let refused: Vec<String> = errors(here(), "refused").into_iter().filter(|(r, _)| r == "network_not_allowed").map(|(_, p)| p).collect();
-    assert_eq!(refused, ["models[1].batch", "models[1].batch.input_s3_uri", "models[1].batch.output_s3_uri"]);
+    let refused: Vec<String> = errors(here(), "refused")
+        .into_iter()
+        .filter(|(r, _)| r == "network_not_allowed")
+        .map(|(_, p)| p)
+        .collect();
+    assert_eq!(
+        refused,
+        [
+            "models[1].batch",
+            "models[1].batch.input_s3_uri",
+            "models[1].batch.output_s3_uri"
+        ]
+    );
     // an input that is not an s3:// URI has no host to check
-    assert_eq!(errors(here(), "bad_uri"), [("bad_value".to_string(), "models[1].batch.input_s3_uri".to_string())]);
+    assert_eq!(
+        errors(here(), "bad_uri"),
+        [("bad_value".to_string(), "models[1].batch.input_s3_uri".to_string())]
+    );
 }

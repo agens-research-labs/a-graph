@@ -22,8 +22,17 @@ enum Provider {
 
 #[derive(Debug, Clone)]
 pub enum VectorBackend {
-    Qdrant { url: String, collection: String, text_field: String },
-    Chromadb { url: String, collection: String, tenant: String, database: String },
+    Qdrant {
+        url: String,
+        collection: String,
+        text_field: String,
+    },
+    Chromadb {
+        url: String,
+        collection: String,
+        tenant: String,
+        database: String,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -68,24 +77,50 @@ impl VectordbManager {
 
             let text_field = o.opt::<String>(key::TEXT_FIELD, &mut errs);
             match provider {
-                Some(Provider::Qdrant) => errs.require(&at, key::TEXT_FIELD, text_field.is_some(), "provider qdrant needs `text_field`"),
-                Some(Provider::Chromadb) => errs.forbid(&at, key::TEXT_FIELD, text_field.is_some(), "chromadb keeps the text in its own documents"),
+                Some(Provider::Qdrant) => errs.require(
+                    &at,
+                    key::TEXT_FIELD,
+                    text_field.is_some(),
+                    "provider qdrant needs `text_field`",
+                ),
+                Some(Provider::Chromadb) => errs.forbid(
+                    &at,
+                    key::TEXT_FIELD,
+                    text_field.is_some(),
+                    "chromadb keeps the text in its own documents",
+                ),
                 None => {}
             }
             let tenant = o.opt::<String>(key::TENANT, &mut errs);
             let database = o.opt::<String>(key::DATABASE, &mut errs);
             if provider == Some(Provider::Qdrant) {
                 errs.forbid(&at, key::TENANT, tenant.is_some(), "tenant is for provider chromadb");
-                errs.forbid(&at, key::DATABASE, database.is_some(), "database is for provider chromadb");
+                errs.forbid(
+                    &at,
+                    key::DATABASE,
+                    database.is_some(),
+                    "database is for provider chromadb",
+                );
             }
             let name = match provider {
                 Some(Provider::Qdrant) => "qdrant",
                 _ => "chromadb",
             };
             errs.require(&at, key::URL, url.is_some(), &format!("provider {name} needs `url`"));
-            errs.require(&at, key::COLLECTION, collection.is_some(), &format!("provider {name} needs `collection`"));
+            errs.require(
+                &at,
+                key::COLLECTION,
+                collection.is_some(),
+                &format!("provider {name} needs `collection`"),
+            );
             let backend = match (provider, url, collection.clone()) {
-                (Some(Provider::Qdrant), Some(url), Some(collection)) => text_field.map(|text_field| VectorBackend::Qdrant { url, collection, text_field }),
+                (Some(Provider::Qdrant), Some(url), Some(collection)) => {
+                    text_field.map(|text_field| VectorBackend::Qdrant {
+                        url,
+                        collection,
+                        text_field,
+                    })
+                }
                 (Some(Provider::Chromadb), Some(url), Some(collection)) => Some(VectorBackend::Chromadb {
                     url,
                     collection,
@@ -95,13 +130,25 @@ impl VectordbManager {
                 _ => None,
             };
             if let (Some(id), Some(backend), Some(embedding), true) = (id, backend, embedding, errs.0.len() == before) {
-                databases.push(Vectordb { id, backend, api_key, collection, top_k, timeout, embedding });
+                databases.push(Vectordb {
+                    id,
+                    backend,
+                    api_key,
+                    collection,
+                    top_k,
+                    timeout,
+                    embedding,
+                });
             }
         }
         match crate::net::client().build() {
             Ok(client) => errs.finish(VectordbManager { databases, client }),
             Err(e) => {
-                errs.add(&Path::root().key(key::EXTERNAL).key(key::VECTORDB), Rule::Io, format!("cannot build the HTTP client: {e}"));
+                errs.add(
+                    &Path::root().key(key::EXTERNAL).key(key::VECTORDB),
+                    Rule::Io,
+                    format!("cannot build the HTTP client: {e}"),
+                );
                 Err(Errors(errs.0))
             }
         }
@@ -114,7 +161,9 @@ impl VectordbManager {
             .iter()
             .enumerate()
             .map(|(i, d)| match &d.backend {
-                VectorBackend::Qdrant { url, .. } | VectorBackend::Chromadb { url, .. } => Destination::url(base.idx(i).key(key::URL), url),
+                VectorBackend::Qdrant { url, .. } | VectorBackend::Chromadb { url, .. } => {
+                    Destination::url(base.idx(i).key(key::URL), url)
+                }
             })
             .collect()
     }

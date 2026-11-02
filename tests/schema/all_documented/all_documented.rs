@@ -13,7 +13,11 @@ fn all_documented() {
 
 fn fields(path: &str, list: &[Field], missing: &mut Vec<String>, named: &mut Vec<&'static str>) {
     for f in list {
-        let p = if path.is_empty() { f.name.to_string() } else { format!("{path}.{}", f.name) };
+        let p = if path.is_empty() {
+            f.name.to_string()
+        } else {
+            format!("{path}.{}", f.name)
+        };
         if f.doc.is_empty() {
             missing.push(p.clone());
         }
@@ -26,7 +30,12 @@ fn shape(path: &str, s: &Shape, missing: &mut Vec<String>, named: &mut Vec<&'sta
         Shape::List(inner) | Shape::MapOf(inner) => shape(path, inner, missing, named),
         Shape::Map(list) => fields(path, list, missing, named),
         Shape::Either(alternatives) => alternatives.iter().for_each(|a| shape(path, a, missing, named)),
-        Shape::Tagged { by, by_doc, common, variants } => {
+        Shape::Tagged {
+            by,
+            by_doc,
+            common,
+            variants,
+        } => {
             if by_doc.is_empty() {
                 missing.push(format!("{path}.{by}"));
             }

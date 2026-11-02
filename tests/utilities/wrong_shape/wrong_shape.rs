@@ -11,6 +11,8 @@ fn utility() -> Utility {
 /// JSON that has neither `text` nor `mime_type` and `data` is an error that says what was expected.
 #[tokio::test]
 async fn wrong_shape() {
-    let e = call_utility(&utility(), &UtilityInput::Text("x".into())).await.unwrap_err();
+    let e = call_utility(&utility(), &UtilityInput::Text("x".into()))
+        .await
+        .unwrap_err();
     assert!(e.contains("`text`") && e.contains("`mime_type`"), "{e}");
 }

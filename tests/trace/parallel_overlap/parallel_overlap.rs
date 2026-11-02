@@ -15,5 +15,8 @@ async fn parallel_overlap() {
     let (i, d) = (named(&spans, "node i"), named(&spans, "node d"));
     assert!(start(d) < end(i) || start(i) < end(d), "the two branches ran together");
     let group = named(&spans, "parallel");
-    assert!(end(group) - start(group) >= 300_000_000, "the group lasted at least as long as its slowest branch");
+    assert!(
+        end(group) - start(group) >= 300_000_000,
+        "the group lasted at least as long as its slowest branch"
+    );
 }

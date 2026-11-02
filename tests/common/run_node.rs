@@ -2,11 +2,11 @@
 //! mock server of `tests/common/http.rs` (an Ollama-style `/api/chat`), on a free port.
 //! Nothing leaves the machine. The boards the tests change are copies in `target/test-boards/`.
 
-pub use std::sync::{Arc, Mutex};
-pub use serde_json::{Value, json};
-pub use a_graph::run::{Content, NodeInput, Program, build};
 pub use super::http::{Req, Resp, listen};
 pub use super::run::{yml_in, yml_with};
+pub use a_graph::run::{Content, NodeInput, Program, build};
+pub use serde_json::{Value, json};
+pub use std::sync::{Arc, Mutex};
 
 /// The answer of the mock: the text, and optionally a thinking text.
 pub fn chat(text: &str, thinking: Option<&str>) -> String {
@@ -24,7 +24,12 @@ pub async fn program(dir: &std::path::Path, name: &str, answer: Resp) -> (Progra
 }
 
 /// Like `program`, with the ports of the other mock servers the test started (embedding, vectordb...).
-pub async fn program_with(dir: &std::path::Path, name: &str, ports: &[(&str, u16)], answer: Resp) -> (Program, Arc<Mutex<Vec<Req>>>) {
+pub async fn program_with(
+    dir: &std::path::Path,
+    name: &str,
+    ports: &[(&str, u16)],
+    answer: Resp,
+) -> (Program, Arc<Mutex<Vec<Req>>>) {
     let answer = Arc::new(Mutex::new(answer));
     let (port, seen) = listen(move |_| {
         let a = answer.lock().unwrap();
@@ -44,21 +49,10 @@ pub fn entity(p: &Program) -> a_graph::graph::Entity {
 }
 
 pub fn user(text: &str) -> NodeInput {
-    NodeInput { user_message: Some(text.into()), ..Default::default() }
+    NodeInput {
+        user_message: Some(text.into()),
+        ..Default::default()
+    }
 }
 
 pub const HEADER: &str = "---\n<description>\nWhat it is.\n<purpose>\nWhat it is for.\n---\n";
-
-
-
-
-
-
-
-
-
-
-
-
-
-

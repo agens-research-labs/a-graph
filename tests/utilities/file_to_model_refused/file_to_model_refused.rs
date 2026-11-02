@@ -1,4 +1,3 @@
-
 fn here() -> &'static std::path::Path {
     std::path::Path::new(file!()).parent().unwrap()
 }
@@ -8,5 +7,10 @@ fn here() -> &'static std::path::Path {
 fn file_to_model_refused() {
     crate::common::run::set_env();
     let found = crate::common::run::errors(here(), "file_to_model_refused");
-    assert!(found.iter().any(|(rule, path)| (rule.as_str(), path.as_str()) == ("not_supported", "graph.nodes[1].model")), "{found:?}");
+    assert!(
+        found
+            .iter()
+            .any(|(rule, path)| (rule.as_str(), path.as_str()) == ("not_supported", "graph.nodes[1].model")),
+        "{found:?}"
+    );
 }

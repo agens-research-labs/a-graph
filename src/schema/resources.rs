@@ -90,7 +90,8 @@ const MEDIA_PROVIDER: Shape = Shape::Map(&[
         Shape::Map(&[
             Field::opt(MODERATION, Shape::Words(&["low", "auto"])).doc("How strict the moderation of the image is."),
             Field::opt(OUTPUT_COMPRESSION, Shape::Int).doc("From 0 to 100, for an image of type `jpeg` or `webp`."),
-            Field::opt(STYLE, Shape::Words(&["vivid", "natural"])).doc("The style of the image. Not together with the other two (`media_provider_conflict`)."),
+            Field::opt(STYLE, Shape::Words(&["vivid", "natural"]))
+                .doc("The style of the image. Not together with the other two (`media_provider_conflict`)."),
         ]),
     )
     .doc("For a model of OpenAI, also through `azure_foundry` with publisher `openai`."),

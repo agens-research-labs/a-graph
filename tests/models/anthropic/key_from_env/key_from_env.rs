@@ -12,5 +12,8 @@ fn key_from_env() {
     unsafe { std::env::set_var("A_GRAPH_TEST_SECRET_KEY", "super-secret-value") };
     let model = Anthropic::new(&api_model("A_GRAPH_TEST_SECRET_KEY"), &at).unwrap();
     let shown = format!("{model:?}");
-    assert!(!shown.contains("super-secret-value") && shown.contains("redacted"), "{shown}");
+    assert!(
+        !shown.contains("super-secret-value") && shown.contains("redacted"),
+        "{shown}"
+    );
 }

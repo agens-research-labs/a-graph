@@ -35,7 +35,12 @@ pub struct Verbose {
 
 impl Verbose {
     pub fn new(level: VerboseLevel, redaction: Redaction, color: bool, out: Box<dyn Write + Send>) -> Self {
-        Verbose { level, redaction, color, out: Mutex::new(out) }
+        Verbose {
+            level,
+            redaction,
+            color,
+            out: Mutex::new(out),
+        }
     }
 
     /// To the standard error, in color when it is a terminal and `NO_COLOR` is not set.
@@ -47,7 +52,9 @@ impl Verbose {
     /// Builds from the value of the `verbose` block.
     pub fn build(block: Option<Yml>, redaction: Redaction) -> Result<Self, Errors> {
         let mut errs = Errs::default();
-        let level = block.and_then(|b| Obj::new(b, Path::root().key(key::VERBOSE), &mut errs)).and_then(|mut o| o.req::<VerboseLevel>(key::LEVEL, &mut errs));
+        let level = block
+            .and_then(|b| Obj::new(b, Path::root().key(key::VERBOSE), &mut errs))
+            .and_then(|mut o| o.req::<VerboseLevel>(key::LEVEL, &mut errs));
         errs.finish(Verbose::to_stderr(level.unwrap_or(VerboseLevel::Off), redaction))
     }
 
@@ -72,7 +79,11 @@ impl Verbose {
     }
 
     fn paint(&self, code: &str, text: &str) -> String {
-        if self.color { format!("\x1b[{code}m{text}\x1b[0m") } else { text.to_string() }
+        if self.color {
+            format!("\x1b[{code}m{text}\x1b[0m")
+        } else {
+            text.to_string()
+        }
     }
 
     fn render(&self, ev: &Event) -> Option<String> {
@@ -88,31 +99,112 @@ impl Verbose {
         match ev.code.as_str() {
             "run.start" => Some(self.paint("1", "run started")),
             "run.end" => Some(self.paint("1", &format!("run finished · {}", seconds("duration")))),
-            "node.start" => Some(format!("{bar}{}{}", self.paint("1;36", &format!("▶ {node}")), self.paint("90", &format!(" · {}", text("model"))))),
+            "node.start" => Some(format!(
+                "{bar}{}{}",
+                self.paint("1;36", &format!("▶ {node}")),
+                self.paint("90", &format!(" · {}", text("model")))
+            )),
             "node.end" => {
-                let verdict = f("verdict").and_then(Value::as_str).map(|v| format!(" · {v}")).unwrap_or_default();
-                let tokens = format!(" · {} in / {} out tokens", number("input_tokens"), number("output_tokens"));
-                Some(format!("{bar}{}{}", self.paint("1;36", &format!("✓ {node}")), self.paint("90", &format!(" · {}{tokens}{verdict}", seconds("duration")))))
+                let verdict = f("verdict")
+                    .and_then(Value::as_str)
+                    .map(|v| format!(" · {v}"))
+                    .unwrap_or_default();
+                let tokens = format!(
+                    " · {} in / {} out tokens",
+                    number("input_tokens"),
+                    number("output_tokens")
+                );
+                Some(format!(
+                    "{bar}{}{}",
+                    self.paint("1;36", &format!("✓ {node}")),
+                    self.paint("90", &format!(" · {}{tokens}{verdict}", seconds("duration")))
+                ))
             }
-            "group.start" => Some(format!("{bar}{}", self.paint("1;38;5;208", &format!("┌─ {} · {} branches", text("pattern"), number("branches"))))),
-            "group.end" => Some(format!("{bar}{}", self.paint("1;38;5;208", &format!("└─ {} done · {}", text("pattern"), seconds("duration"))))),
+            "group.start" => Some(format!(
+                "{bar}{}",
+                self.paint(
+                    "1;38;5;208",
+                    &format!("┌─ {} · {} branches", text("pattern"), number("branches"))
+                )
+            )),
+            "group.end" => Some(format!(
+                "{bar}{}",
+                self.paint(
+                    "1;38;5;208",
+                    &format!("└─ {} done · {}", text("pattern"), seconds("duration"))
+                )
+            )),
             "model.call" if detail => {
-                let mut lines = vec![format!("{inner}{}", self.paint("90", &format!("model {} · {} in / {} out tokens · {}", text("model"), number("input_tokens"), number("output_tokens"), seconds("duration"))))];
+                let mut lines = vec![format!(
+                    "{inner}{}",
+                    self.paint(
+                        "90",
+                        &format!(
+                            "model {} · {} in / {} out tokens · {}",
+                            text("model"),
+                            number("input_tokens"),
+                            number("output_tokens"),
+                            seconds("duration")
+                        )
+                    )
+                )];
                 lines.extend(self.contents(ev, &inner));
                 Some(lines.join("\n"))
             }
             "tool.call" if detail => {
                 let failed = f("is_error").and_then(Value::as_bool).unwrap_or(false);
-                let head = format!("⟶ {} {} · {}{}", text("kind"), text("name"), seconds("duration"), if failed { " · error" } else { "" });
-                let mut lines = vec![format!("{inner}{}", self.paint(if failed { "31" } else { "34" }, &head))];
+                let head = format!(
+                    "⟶ {} {} · {}{}",
+                    text("kind"),
+                    text("name"),
+                    seconds("duration"),
+                    if failed { " · error" } else { "" }
+                );
+                let mut lines = vec![format!(
+                    "{inner}{}",
+                    self.paint(if failed { "31" } else { "34" }, &head)
+                )];
                 lines.extend(self.contents(ev, &inner));
                 Some(lines.join("\n"))
             }
-            "utility.call" if detail => Some(format!("{inner}{}", self.paint("90", &format!("utility {} · {} · {}", text("id"), text("place"), seconds("duration"))))),
-            "read.vectordb" if detail => Some(format!("{inner}{}", self.paint("90", &format!("read vectordb {} · {} chunks", text("id"), number("chunks"))))),
-            "read.memory" if detail => Some(format!("{inner}{}", self.paint("90", &format!("read memory {} · {} messages{}", text("id"), number("messages"), if f("summary").and_then(Value::as_bool).unwrap_or(false) { " · with summary" } else { "" })))),
-            _ if ev.level == LogLevel::Error => Some(format!("{bar}{}", self.paint("31", &format!("✗ {}: {}", ev.code, text("message"))))),
-            _ if ev.level == LogLevel::Warn => Some(format!("{bar}{}", self.paint("33", &format!("! {}: {}", ev.code, text("message"))))),
+            "utility.call" if detail => Some(format!(
+                "{inner}{}",
+                self.paint(
+                    "90",
+                    &format!("utility {} · {} · {}", text("id"), text("place"), seconds("duration"))
+                )
+            )),
+            "read.vectordb" if detail => Some(format!(
+                "{inner}{}",
+                self.paint(
+                    "90",
+                    &format!("read vectordb {} · {} chunks", text("id"), number("chunks"))
+                )
+            )),
+            "read.memory" if detail => Some(format!(
+                "{inner}{}",
+                self.paint(
+                    "90",
+                    &format!(
+                        "read memory {} · {} messages{}",
+                        text("id"),
+                        number("messages"),
+                        if f("summary").and_then(Value::as_bool).unwrap_or(false) {
+                            " · with summary"
+                        } else {
+                            ""
+                        }
+                    )
+                )
+            )),
+            _ if ev.level == LogLevel::Error => Some(format!(
+                "{bar}{}",
+                self.paint("31", &format!("✗ {}: {}", ev.code, text("message")))
+            )),
+            _ if ev.level == LogLevel::Warn => Some(format!(
+                "{bar}{}",
+                self.paint("33", &format!("! {}: {}", ev.code, text("message")))
+            )),
             _ => None,
         }
     }
@@ -124,15 +216,32 @@ impl Verbose {
             return Vec::new();
         }
         if !self.redaction.allow_content {
-            return vec![format!("{inner}{}", self.paint("90", "(contents hidden: the data classification of the passport does not allow them)"))];
+            return vec![format!(
+                "{inner}{}",
+                self.paint(
+                    "90",
+                    "(contents hidden: the data classification of the passport does not allow them)"
+                )
+            )];
         }
         ev.content
             .iter()
             .map(|(k, v)| {
                 let flat: String = v.split_whitespace().collect::<Vec<_>>().join(" ");
-                let short = if flat.chars().count() > SHOWN { format!("{}…", flat.chars().take(SHOWN).collect::<String>()) } else { flat };
+                let short = if flat.chars().count() > SHOWN {
+                    format!("{}…", flat.chars().take(SHOWN).collect::<String>())
+                } else {
+                    flat
+                };
                 let line = format!("{k}: {short}");
-                format!("{inner}{}", if k == "reasoning" || k == "result" { self.paint("90", &line) } else { line })
+                format!(
+                    "{inner}{}",
+                    if k == "reasoning" || k == "result" {
+                        self.paint("90", &line)
+                    } else {
+                        line
+                    }
+                )
             })
             .collect()
     }

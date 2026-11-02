@@ -10,12 +10,12 @@ pub mod graph;
 pub mod loader;
 pub mod logging;
 pub mod models;
-pub mod resources;
-pub mod run;
-pub mod service;
-pub mod utilities;
-pub mod schema;
 mod net;
 pub mod network;
+pub mod resources;
+pub mod run;
+pub mod schema;
+pub mod service;
+pub mod utilities;
 
 pub use error::{Error, Errors, Path, Phase, Rule, Warning};

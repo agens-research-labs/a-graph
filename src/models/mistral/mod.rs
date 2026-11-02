@@ -19,7 +19,9 @@ use super::http;
 use super::identity::Identity;
 use super::spec::ApiModel;
 use super::timing::timed;
-use super::{BatchEvents, BatchRequest, BatchReturn, Llm, ModelError, ModelInvocation, ModelRequirements, ModelResponse};
+use super::{
+    BatchEvents, BatchRequest, BatchReturn, Llm, ModelError, ModelInvocation, ModelRequirements, ModelResponse,
+};
 use crate::error::{Error, Path, Phase, Rule};
 use crate::resources::MediaKind;
 use crate::schema::key;
@@ -40,7 +42,10 @@ pub struct Mistral {
 
 impl fmt::Debug for Mistral {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Mistral").field("model", &self.model).field("api_key", &"<redacted>").finish()
+        f.debug_struct("Mistral")
+            .field("model", &self.model)
+            .field("api_key", &"<redacted>")
+            .finish()
     }
 }
 
@@ -48,10 +53,30 @@ impl Mistral {
     /// Reads the key from the environment variable the yml names; `at` is where the model is in
     /// the yml. A variable that is not set is an error now, not at the first call.
     pub fn new(m: &ApiModel, at: &Path) -> Result<Self, Error> {
-        let api_key = std::env::var(&m.api_key)
-            .map_err(|_| Error::new(Phase::Interpretation, at.key(key::API_KEY), Rule::EnvMissing, format!("environment variable `{}` is not set", m.api_key)))?;
-        let client = http::client().map_err(|e| Error::new(Phase::Interpretation, at.clone(), Rule::Io, format!("cannot build the HTTP client: {e}")))?;
-        Ok(Mistral { who: Identity::new(&m.common.id, PROVIDER), model: m.common.model.clone(), api_key, base_url: BASE_URL.into(), poll_interval: POLL_INTERVAL, client })
+        let api_key = std::env::var(&m.api_key).map_err(|_| {
+            Error::new(
+                Phase::Interpretation,
+                at.key(key::API_KEY),
+                Rule::EnvMissing,
+                format!("environment variable `{}` is not set", m.api_key),
+            )
+        })?;
+        let client = http::client().map_err(|e| {
+            Error::new(
+                Phase::Interpretation,
+                at.clone(),
+                Rule::Io,
+                format!("cannot build the HTTP client: {e}"),
+            )
+        })?;
+        Ok(Mistral {
+            who: Identity::new(&m.common.id, PROVIDER),
+            model: m.common.model.clone(),
+            api_key,
+            base_url: BASE_URL.into(),
+            poll_interval: POLL_INTERVAL,
+            client,
+        })
     }
 
     /// For tests: another server. Not reachable from the yml, whose host the allow-list checks.
@@ -66,7 +91,10 @@ impl Mistral {
     }
 
     fn headers(&self) -> Result<HeaderMap, ModelError> {
-        let mut v = HeaderValue::from_str(&format!("Bearer {}", self.api_key)).map_err(|_| self.who.credentials("the API key has characters not allowed in a header"))?;
+        let mut v = HeaderValue::from_str(&format!("Bearer {}", self.api_key)).map_err(|_| {
+            self.who
+                .credentials("the API key has characters not allowed in a header")
+        })?;
         v.set_sensitive(true);
         let mut h = HeaderMap::new();
         h.insert(AUTHORIZATION, v);
@@ -78,18 +106,34 @@ impl Mistral {
         let parsed = serde_json::from_str::<Value>(body).ok();
         let message = parsed
             .as_ref()
-            .and_then(|v| v.get("message").and_then(Value::as_str).map(str::to_string).or_else(|| v.get("detail").map(|d| d.to_string())))
+            .and_then(|v| {
+                v.get("message")
+                    .and_then(Value::as_str)
+                    .map(str::to_string)
+                    .or_else(|| v.get("detail").map(|d| d.to_string()))
+            })
             .unwrap_or_else(|| body.chars().take(500).collect());
-        if status == 401 || status == 403 { self.who.credentials(message) } else { self.who.provider_error(Some(status), message) }
+        if status == 401 || status == 403 {
+            self.who.credentials(message)
+        } else {
+            self.who.provider_error(Some(status), message)
+        }
     }
 
     async fn post_text(&self, path: &str, body: &Value) -> Result<String, ModelError> {
-        let req = self.client.post(format!("{}{path}", self.base_url)).headers(self.headers()?).json(body);
+        let req = self
+            .client
+            .post(format!("{}{path}", self.base_url))
+            .headers(self.headers()?)
+            .json(body);
         http::send(&self.who, req, |status, body| self.api_error(status, body)).await
     }
 
     async fn get_text(&self, path: &str) -> Result<String, ModelError> {
-        let req = self.client.get(format!("{}{path}", self.base_url)).headers(self.headers()?);
+        let req = self
+            .client
+            .get(format!("{}{path}", self.base_url))
+            .headers(self.headers()?);
         http::send(&self.who, req, |status, body| self.api_error(status, body)).await
     }
 }
@@ -101,23 +145,35 @@ impl Llm for Mistral {
         for t in &req.input_media {
             match t {
                 MediaKind::Md | MediaKind::Img(_) => {}
-                MediaKind::File => problems.push("a file of any format cannot go to a model: a utility has to change it into text first".to_string()),
-                MediaKind::Audio(_) | MediaKind::Video(_) => problems.push("audio and video input are not supported yet (text and images only)".to_string()),
+                MediaKind::File => problems.push(
+                    "a file of any format cannot go to a model: a utility has to change it into text first".to_string(),
+                ),
+                MediaKind::Audio(_) | MediaKind::Video(_) => {
+                    problems.push("audio and video input are not supported yet (text and images only)".to_string())
+                }
             }
         }
         if let Err(mut p) = self.speech_format(&req.output_media) {
             problems.append(&mut p);
         }
-        if problems.is_empty() { Ok(()) } else { Err(self.who.unsupported(problems)) }
+        if problems.is_empty() {
+            Ok(())
+        } else {
+            Err(self.who.unsupported(problems))
+        }
     }
 
     async fn invoke(&self, call: &ModelInvocation) -> Result<ModelResponse, ModelError> {
-        if let Some(format) = self.speech_format(&call.output_media).map_err(|p| self.who.unsupported(p))? {
+        if let Some(format) = self
+            .speech_format(&call.output_media)
+            .map_err(|p| self.who.unsupported(p))?
+        {
             return self.invoke_speech(call, &format).await;
         }
         let body = self.request_body(call)?;
         let (text, secs) = timed(self.post_text("/v1/chat/completions", &body)).await;
-        let value: Value = serde_json::from_str(&text?).map_err(|e| self.who.invalid(format!("the answer is not JSON: {e}")))?;
+        let value: Value =
+            serde_json::from_str(&text?).map_err(|e| self.who.invalid(format!("the answer is not JSON: {e}")))?;
         self.parse_completion(call.schema.is_some(), &value, secs)
     }
 

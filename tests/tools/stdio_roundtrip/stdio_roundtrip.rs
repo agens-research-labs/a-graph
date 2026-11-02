@@ -14,6 +14,13 @@ async fn stdio_roundtrip() {
     assert_eq!(first["tools"][0]["function"]["name"], "t");
     assert_eq!(first["tools"][0]["function"]["parameters"]["required"], json!(["city"]));
     // the tool received the arguments and answered them back; the graph sees only the final answer
-    assert_eq!(items(&out)[0], ("n".to_string(), r#"R({"got":{"city":"Roma"}})"#.to_string()));
-    assert_eq!(seen.lock().unwrap().len(), 3, "two calls of the node and one of the end node");
+    assert_eq!(
+        items(&out)[0],
+        ("n".to_string(), r#"R({"got":{"city":"Roma"}})"#.to_string())
+    );
+    assert_eq!(
+        seen.lock().unwrap().len(),
+        3,
+        "two calls of the node and one of the end node"
+    );
 }

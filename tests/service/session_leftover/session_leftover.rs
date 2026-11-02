@@ -25,7 +25,9 @@ async fn session_leftover() {
     std::fs::create_dir_all(data.join("y~deleting")).unwrap();
     let (model, _) = listen(|_| Resp::ok(answer("ok"))).await;
     let s = start(&config_path()).await;
-    let (status, body) = s.run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "hi", "session": "x~deleting" })).await;
+    let (status, body) = s
+        .run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "hi", "session": "x~deleting" }))
+        .await;
     assert_eq!(status, 400, "a session name with `~` is refused: {body}");
     let gone = wait_until(std::time::Duration::from_secs(10), || !data.join("x~deleting").exists()).await;
     assert!(gone, "the folder left halfway is deleted");

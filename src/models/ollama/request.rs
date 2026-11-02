@@ -94,18 +94,31 @@ impl Ollama {
 /// The assistant turn that asked for the tools, echoed as it came, then one `tool` message per result.
 fn tool_round(round: &ToolRound) -> Vec<Value> {
     let mut assistant = json!({ "role": "assistant", "content": round.message.clone().unwrap_or_default() });
-    let thinking: Vec<&str> = round.reasoning.iter().filter_map(|b| b.get("thinking").and_then(Value::as_str)).collect();
+    let thinking: Vec<&str> = round
+        .reasoning
+        .iter()
+        .filter_map(|b| b.get("thinking").and_then(Value::as_str))
+        .collect();
     if !thinking.is_empty() {
         assistant["thinking"] = json!(thinking.join("\n"));
     }
-    let calls: Vec<Value> = round.calls.iter().map(|c| json!({ "id": c.call_id, "function": { "name": c.function_name, "arguments": c.arguments } })).collect();
+    let calls: Vec<Value> = round
+        .calls
+        .iter()
+        .map(|c| json!({ "id": c.call_id, "function": { "name": c.function_name, "arguments": c.arguments } }))
+        .collect();
     if !calls.is_empty() {
         assistant["tool_calls"] = Value::Array(calls);
     }
 
     let mut messages = vec![assistant];
     for r in &round.results {
-        let name = round.calls.iter().find(|c| c.call_id == r.call_id).map(|c| c.function_name.clone()).unwrap_or_default();
+        let name = round
+            .calls
+            .iter()
+            .find(|c| c.call_id == r.call_id)
+            .map(|c| c.function_name.clone())
+            .unwrap_or_default();
         let text = match &r.result {
             Value::String(s) => s.clone(),
             other => other.to_string(),

@@ -24,7 +24,10 @@ pub async fn call_tool(tool: &Tool, arguments: &Value) -> Result<ToolOutcome, St
     // when the time is up the call is dropped: a program is killed, a request is abandoned
     match tokio::time::timeout(Duration::from_secs(tool.timeout.into()), call).await {
         Ok(outcome) => outcome,
-        Err(_) => Ok(ToolOutcome::failed(format!("the tool did not answer within {} s", tool.timeout))),
+        Err(_) => Ok(ToolOutcome::failed(format!(
+            "the tool did not answer within {} s",
+            tool.timeout
+        ))),
     }
 }
 
@@ -50,14 +53,24 @@ pub(crate) async fn stdio(command: &str, args: &[String], arguments: &Value) -> 
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        let why = if stderr.trim().is_empty() { format!("the program exited with {}", output.status) } else { stderr.trim().to_string() };
+        let why = if stderr.trim().is_empty() {
+            format!("the program exited with {}", output.status)
+        } else {
+            stderr.trim().to_string()
+        };
         return Ok(ToolOutcome::failed(why));
     }
     Ok(answer(&String::from_utf8_lossy(&output.stdout)))
 }
 
-pub(crate) async fn http(url: &str, headers: &std::collections::BTreeMap<String, String>, arguments: &Value) -> Result<ToolOutcome, String> {
-    let client = crate::net::client().build().map_err(|e| format!("cannot build the HTTP client: {e}"))?;
+pub(crate) async fn http(
+    url: &str,
+    headers: &std::collections::BTreeMap<String, String>,
+    arguments: &Value,
+) -> Result<ToolOutcome, String> {
+    let client = crate::net::client()
+        .build()
+        .map_err(|e| format!("cannot build the HTTP client: {e}"))?;
     let mut request = client.post(url).json(arguments);
     for (name, var) in headers {
         let value = std::env::var(var).map_err(|_| format!("environment variable `{var}` is not set"))?;
@@ -70,10 +83,17 @@ pub(crate) async fn http(url: &str, headers: &std::collections::BTreeMap<String,
     let status = response.status();
     let body = match response.text().await {
         Ok(b) => b,
-        Err(e) => return Ok(ToolOutcome::failed(format!("the answer of the service could not be read: {e}"))),
+        Err(e) => {
+            return Ok(ToolOutcome::failed(format!(
+                "the answer of the service could not be read: {e}"
+            )));
+        }
     };
     if !status.is_success() {
-        return Ok(ToolOutcome::failed(format!("the service answered {status}: {}", body.trim())));
+        return Ok(ToolOutcome::failed(format!(
+            "the service answered {status}: {}",
+            body.trim()
+        )));
     }
     Ok(answer(&body))
 }
@@ -82,6 +102,9 @@ pub(crate) async fn http(url: &str, headers: &std::collections::BTreeMap<String,
 fn answer(text: &str) -> ToolOutcome {
     match serde_json::from_str::<Value>(text) {
         Ok(v) => ToolOutcome::ok(v),
-        Err(e) => ToolOutcome::failed(format!("the tool did not answer with JSON ({e}); it wrote: {}", text.chars().take(200).collect::<String>())),
+        Err(e) => ToolOutcome::failed(format!(
+            "the tool did not answer with JSON ({e}); it wrote: {}",
+            text.chars().take(200).collect::<String>()
+        )),
     }
 }

@@ -6,7 +6,12 @@ async fn batch_flow() {
     let (handler, polls) = batch_server(2);
     let (base, seen) = serve(handler).await;
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
-    let requests = ["one", "two", "three", "four"].map(|id| BatchRequest { id: id.into(), invocation: call(id) }).to_vec();
+    let requests = ["one", "two", "three", "four"]
+        .map(|id| BatchRequest {
+            id: id.into(),
+            invocation: call(id),
+        })
+        .to_vec();
 
     let results = client(&base).invoke_batch(requests, tx).await.unwrap();
 
@@ -22,11 +27,32 @@ async fn batch_flow() {
     while let Ok(e) = rx.try_recv() {
         events.push(e);
     }
-    let statuses: Vec<_> = events.iter().filter_map(|e| if let BatchEvent::Status { status, .. } = e { Some(status.as_str()) } else { None }).collect();
+    let statuses: Vec<_> = events
+        .iter()
+        .filter_map(|e| {
+            if let BatchEvent::Status { status, .. } = e {
+                Some(status.as_str())
+            } else {
+                None
+            }
+        })
+        .collect();
     assert_eq!(statuses, ["in_progress", "in_progress", "ended"]);
     assert_eq!(*polls.lock().unwrap(), 3);
-    assert_eq!(events.first(), Some(&BatchEvent::Submitted { batch_id: "msgbatch_1".into(), requests: 4 }));
-    assert_eq!(events.last(), Some(&BatchEvent::Finished { batch_id: "msgbatch_1".into(), outcome: BatchOutcome::Completed }));
+    assert_eq!(
+        events.first(),
+        Some(&BatchEvent::Submitted {
+            batch_id: "msgbatch_1".into(),
+            requests: 4
+        })
+    );
+    assert_eq!(
+        events.last(),
+        Some(&BatchEvent::Finished {
+            batch_id: "msgbatch_1".into(),
+            outcome: BatchOutcome::Completed
+        })
+    );
 
     // results are matched by id whatever the order
     let get = |id: &str| results.iter().find(|r| r.id == id).unwrap();

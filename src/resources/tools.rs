@@ -11,9 +11,15 @@ use crate::schema::key;
 
 #[derive(Debug, Clone)]
 pub enum ToolTransport {
-    Stdio { command: String, args: Vec<String> },
+    Stdio {
+        command: String,
+        args: Vec<String>,
+    },
     /// The headers are kept as the name of the environment variable that holds each value.
-    Http { url: String, headers: BTreeMap<String, String> },
+    Http {
+        url: String,
+        headers: BTreeMap<String, String>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -57,7 +63,12 @@ impl ToolsManager {
                 Some(RawTransport::Stdio) => {
                     errs.require(&at, key::COMMAND, command.is_some(), "transport stdio needs `command`");
                     errs.forbid(&at, key::URL, url.is_some(), "`url` is for transport http");
-                    errs.forbid(&at, key::HEADERS, !headers.is_empty(), "`headers` is for transport http");
+                    errs.forbid(
+                        &at,
+                        key::HEADERS,
+                        !headers.is_empty(),
+                        "`headers` is for transport http",
+                    );
                     command.map(|command| ToolTransport::Stdio { command, args })
                 }
                 Some(RawTransport::Http) => {
@@ -66,7 +77,11 @@ impl ToolsManager {
                     errs.forbid(&at, key::ARGS, !args.is_empty(), "`args` is for transport stdio");
                     for (name, var) in &headers {
                         if std::env::var(var).is_err() {
-                            errs.add(&at.key(key::HEADERS).key(name), Rule::EnvMissing, format!("environment variable `{var}` is not set"));
+                            errs.add(
+                                &at.key(key::HEADERS).key(name),
+                                Rule::EnvMissing,
+                                format!("environment variable `{var}` is not set"),
+                            );
                         }
                     }
                     url.map(|url| ToolTransport::Http { url, headers })
@@ -83,23 +98,56 @@ impl ToolsManager {
                 Some(p) if p.is_mapping() => match serde_json::to_value(&p).map(|j| jsonschema::validator_for(&j)) {
                     Ok(Ok(_)) => Some(p),
                     Ok(Err(e)) => {
-                        errs.add(&at.key(key::PARAMETERS), Rule::BadValue, format!("parameters is not a valid JSON Schema: {e}"));
+                        errs.add(
+                            &at.key(key::PARAMETERS),
+                            Rule::BadValue,
+                            format!("parameters is not a valid JSON Schema: {e}"),
+                        );
                         None
                     }
                     Err(e) => {
-                        errs.add(&at.key(key::PARAMETERS), Rule::BadValue, format!("parameters cannot be converted to JSON: {e}"));
+                        errs.add(
+                            &at.key(key::PARAMETERS),
+                            Rule::BadValue,
+                            format!("parameters cannot be converted to JSON: {e}"),
+                        );
                         None
                     }
                 },
                 _ => {
-                    errs.add(&at.key(key::PARAMETERS), Rule::BadValue, "parameters must be a JSON Schema object");
+                    errs.add(
+                        &at.key(key::PARAMETERS),
+                        Rule::BadValue,
+                        "parameters must be a JSON Schema object",
+                    );
                     None
                 }
             };
-            if let (Some(id), Some(description), Some(transport), Some(max_iter), Some(timeout), Some(parameters), true) =
-                (id, description, transport, max_iter, timeout, parameters, errs.0.len() == before)
-            {
-                tools.push(Tool { id, description, transport, max_iter, timeout, parameters });
+            if let (
+                Some(id),
+                Some(description),
+                Some(transport),
+                Some(max_iter),
+                Some(timeout),
+                Some(parameters),
+                true,
+            ) = (
+                id,
+                description,
+                transport,
+                max_iter,
+                timeout,
+                parameters,
+                errs.0.len() == before,
+            ) {
+                tools.push(Tool {
+                    id,
+                    description,
+                    transport,
+                    max_iter,
+                    timeout,
+                    parameters,
+                });
             }
         }
         errs.finish(ToolsManager { tools })

@@ -24,12 +24,23 @@ async fn session_foreign_kept() {
     std::fs::write(data.join("backup~deleting/notes.txt"), "mine").unwrap();
     let (model, _) = listen(|_| Resp::ok(answer("ok"))).await;
     let s = start(&config_path()).await;
-    let (status, body) = s.run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "hi", "session": "s5" })).await;
+    let (status, body) = s
+        .run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "hi", "session": "s5" }))
+        .await;
     assert_eq!(status, 200, "{body}");
     assert!(data.join("s5").is_dir());
-    assert!(wait_until(std::time::Duration::from_secs(10), || !data.join("s5").exists()).await, "the session of the service is deleted");
+    assert!(
+        wait_until(std::time::Duration::from_secs(10), || !data.join("s5").exists()).await,
+        "the session of the service is deleted"
+    );
     // the scan that deleted the session may not have reached the other folders yet: one more scan (every second)
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-    assert!(data.join("other/notes.txt").is_file(), "the folder that is not a session stays");
-    assert!(data.join("backup~deleting/notes.txt").is_file(), "the folder `~deleting` without the mark stays");
+    assert!(
+        data.join("other/notes.txt").is_file(),
+        "the folder that is not a session stays"
+    );
+    assert!(
+        data.join("backup~deleting/notes.txt").is_file(),
+        "the folder `~deleting` without the mark stays"
+    );
 }

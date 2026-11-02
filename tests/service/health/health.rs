@@ -17,7 +17,9 @@ fn config_path() -> String {
 #[tokio::test]
 async fn health() {
     let s = start(&config_path()).await;
-    let r = reqwest::get(format!("http://127.0.0.1:{}/health", s.port)).await.unwrap();
+    let r = reqwest::get(format!("http://127.0.0.1:{}/health", s.port))
+        .await
+        .unwrap();
     assert_eq!(r.status().as_u16(), 200);
     assert_eq!(r.json::<Value>().await.unwrap(), json!({ "status": "ok" }));
 }

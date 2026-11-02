@@ -10,5 +10,8 @@ async fn media_file_utility() {
     let (p, seen) = program(here(), "media_file_utility", Resp::ok(chat("ok", None))).await;
     p.run_node(entity(&p), user("what is it")).await.unwrap();
     let content = sent(&seen)["messages"][1]["content"].as_str().unwrap().to_string();
-    assert_eq!(content, "converted contract.pdf application/pdf 9 bytes\n\nQ: what is it");
+    assert_eq!(
+        content,
+        "converted contract.pdf application/pdf 9 bytes\n\nQ: what is it"
+    );
 }

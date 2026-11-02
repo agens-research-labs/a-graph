@@ -17,7 +17,11 @@ pub(super) fn split_s3(uri: &str) -> Option<(String, String)> {
     if bucket.is_empty() {
         return None;
     }
-    let prefix = if prefix.is_empty() || prefix.ends_with('/') { prefix.to_string() } else { format!("{prefix}/") };
+    let prefix = if prefix.is_empty() || prefix.ends_with('/') {
+        prefix.to_string()
+    } else {
+        format!("{prefix}/")
+    };
     Some((bucket.to_string(), prefix))
 }
 
@@ -45,28 +49,55 @@ impl LoadServiceConfig for NoServiceConfig {
 
 /// The host of an endpoint the SDK resolved. Its default resolvers are synchronous.
 fn host<E: std::fmt::Display>(resolved: Option<Result<Endpoint, E>>, what: &str) -> Result<String, String> {
-    let endpoint = resolved.ok_or_else(|| format!("the endpoint of {what} cannot be resolved now"))?.map_err(|e| format!("no endpoint for {what}: {e}"))?;
+    let endpoint = resolved
+        .ok_or_else(|| format!("the endpoint of {what} cannot be resolved now"))?
+        .map_err(|e| format!("no endpoint for {what}: {e}"))?;
     host_of(endpoint.url()).ok_or_else(|| format!("the endpoint of {what} has no host"))
 }
 
 /// The Converse API, the calls of every node.
 pub(crate) fn runtime_host(region: &str) -> Result<String, String> {
     use aws_sdk_bedrockruntime::config::endpoint::{DefaultResolver, Params, ResolveEndpoint};
-    let params = Params::builder().region(region).use_fips(false).use_dual_stack(false).build().map_err(|e| e.to_string())?;
-    host(DefaultResolver::new().resolve_endpoint(&params).now_or_never(), &format!("Bedrock in region `{region}`"))
+    let params = Params::builder()
+        .region(region)
+        .use_fips(false)
+        .use_dual_stack(false)
+        .build()
+        .map_err(|e| e.to_string())?;
+    host(
+        DefaultResolver::new().resolve_endpoint(&params).now_or_never(),
+        &format!("Bedrock in region `{region}`"),
+    )
 }
 
 /// The control API, where a batch job is created and followed.
 pub(crate) fn control_host(region: &str) -> Result<String, String> {
     use aws_sdk_bedrock::config::endpoint::{DefaultResolver, Params, ResolveEndpoint};
-    let params = Params::builder().region(region).use_fips(false).use_dual_stack(false).build().map_err(|e| e.to_string())?;
-    host(DefaultResolver::new().resolve_endpoint(&params).now_or_never(), &format!("the Bedrock control API in region `{region}`"))
+    let params = Params::builder()
+        .region(region)
+        .use_fips(false)
+        .use_dual_stack(false)
+        .build()
+        .map_err(|e| e.to_string())?;
+    host(
+        DefaultResolver::new().resolve_endpoint(&params).now_or_never(),
+        &format!("the Bedrock control API in region `{region}`"),
+    )
 }
 
 /// The S3 bucket of an `s3://` URI of a batch, reached from `region`.
 pub(crate) fn s3_host(uri: &str, region: &str) -> Result<String, String> {
     use aws_sdk_s3::config::endpoint::{DefaultResolver, Params, ResolveEndpoint};
     let (bucket, _) = split_s3(uri).ok_or_else(|| format!("`{uri}` is not an s3:// URI"))?;
-    let params = Params::builder().bucket(&bucket).region(region).use_fips(false).use_dual_stack(false).build().map_err(|e| e.to_string())?;
-    host(DefaultResolver::new().resolve_endpoint(&params).now_or_never(), &format!("the S3 bucket `{bucket}` in region `{region}`"))
+    let params = Params::builder()
+        .bucket(&bucket)
+        .region(region)
+        .use_fips(false)
+        .use_dual_stack(false)
+        .build()
+        .map_err(|e| e.to_string())?;
+    host(
+        DefaultResolver::new().resolve_endpoint(&params).now_or_never(),
+        &format!("the S3 bucket `{bucket}` in region `{region}`"),
+    )
 }

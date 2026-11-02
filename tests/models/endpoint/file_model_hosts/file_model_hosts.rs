@@ -1,5 +1,5 @@
 use super::*;
-use crate::common::{own_yml};
+use crate::common::own_yml;
 
 fn here() -> &'static std::path::Path {
     std::path::Path::new(file!()).parent().unwrap()
@@ -9,7 +9,10 @@ fn here() -> &'static std::path::Path {
 #[test]
 fn file_model_hosts() {
     let m = models_of(&own_yml(here()));
-    let hosts: Vec<String> = ["fast", "strong", "smart", "claude_gcp", "claude_azure", "local"].iter().map(|id| host(&m, id).unwrap()).collect();
+    let hosts: Vec<String> = ["fast", "strong", "smart", "claude_gcp", "claude_azure", "local"]
+        .iter()
+        .map(|id| host(&m, id).unwrap())
+        .collect();
     assert_eq!(
         hosts,
         [

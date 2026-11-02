@@ -50,21 +50,37 @@ impl Tracer {
         let Some(trace) = trace else { return Ok(None) };
         let mut errs = Errs::default();
         let base = Path::root().key(key::TRACE);
-        let Some(mut t) = Obj::new(trace, base.clone(), &mut errs) else { return Err(Errors(errs.0)) };
+        let Some(mut t) = Obj::new(trace, base.clone(), &mut errs) else {
+            return Err(Errors(errs.0));
+        };
         let url = t.req::<String>(key::ENDPOINT, &mut errs);
         let mut map = reqwest::header::HeaderMap::new();
         for (name, var) in t.secrets(key::HEADERS, &mut errs) {
             match std::env::var(&var) {
-                Ok(value) => match (reqwest::header::HeaderName::from_bytes(name.as_bytes()), reqwest::header::HeaderValue::from_str(&value)) {
+                Ok(value) => match (
+                    reqwest::header::HeaderName::from_bytes(name.as_bytes()),
+                    reqwest::header::HeaderValue::from_str(&value),
+                ) {
                     (Ok(n), Ok(v)) => {
                         map.insert(n, v);
                     }
-                    _ => errs.add(&base.key(key::HEADERS).key(&name), Rule::BadValue, format!("`{name}` is not a valid header")),
+                    _ => errs.add(
+                        &base.key(key::HEADERS).key(&name),
+                        Rule::BadValue,
+                        format!("`{name}` is not a valid header"),
+                    ),
                 },
-                Err(_) => errs.add(&base.key(key::HEADERS).key(&name), Rule::EnvMissing, format!("environment variable `{var}` is not set")),
+                Err(_) => errs.add(
+                    &base.key(key::HEADERS).key(&name),
+                    Rule::EnvMissing,
+                    format!("environment variable `{var}` is not set"),
+                ),
             }
         }
-        map.insert(reqwest::header::CONTENT_TYPE, reqwest::header::HeaderValue::from_static("application/json"));
+        map.insert(
+            reqwest::header::CONTENT_TYPE,
+            reqwest::header::HeaderValue::from_static("application/json"),
+        );
         let delivery = Delivery::default();
         let client = match crate::net::client().timeout(delivery.timeout).build() {
             Ok(c) => Some(c),
@@ -75,7 +91,15 @@ impl Tracer {
         };
         let service = passport_name(passport).unwrap_or_else(|| "a-graph".to_string());
         match (url, client, errs.0.is_empty()) {
-            (Some(url), Some(client), true) => Ok(Some(Tracer { client, url, headers: map, delivery, redaction, service, state: Mutex::new(State::default()) })),
+            (Some(url), Some(client), true) => Ok(Some(Tracer {
+                client,
+                url,
+                headers: map,
+                delivery,
+                redaction,
+                service,
+                state: Mutex::new(State::default()),
+            })),
             _ => Err(Errors(errs.0)),
         }
     }
@@ -88,7 +112,11 @@ impl Tracer {
         }
         let mut st = self.state.lock().unwrap();
         let number = |k: &str| ev.fields.iter().find(|(n, _)| n == k).and_then(|(_, v)| v.as_f64());
-        let mut attributes: Vec<(String, Value)> = ev.fields.iter().map(|(k, v)| (format!("a_graph.{k}"), v.clone())).collect();
+        let mut attributes: Vec<(String, Value)> = ev
+            .fields
+            .iter()
+            .map(|(k, v)| (format!("a_graph.{k}"), v.clone()))
+            .collect();
         if let Some(n) = &ev.node {
             attributes.push(("a_graph.node".into(), json!(n)));
         }
@@ -99,11 +127,23 @@ impl Tracer {
                 attributes.push(("a_graph.content_redacted".into(), json!(true)));
             }
         }
-        let text = |k: &str| ev.fields.iter().find(|(n, _)| n == k).and_then(|(_, v)| v.as_str()).unwrap_or_default().to_string();
+        let text = |k: &str| {
+            ev.fields
+                .iter()
+                .find(|(n, _)| n == k)
+                .and_then(|(_, v)| v.as_str())
+                .unwrap_or_default()
+                .to_string()
+        };
         match ev.code.as_str() {
             "run.start" => open(&mut st, ev, "run".into(), attributes),
             "group.start" => open(&mut st, ev, text("pattern"), attributes),
-            "node.start" => open(&mut st, ev, format!("node {}", ev.node.clone().unwrap_or_default()), attributes),
+            "node.start" => open(
+                &mut st,
+                ev,
+                format!("node {}", ev.node.clone().unwrap_or_default()),
+                attributes,
+            ),
             "run.end" | "group.end" | "node.end" => {
                 if let Some(mut s) = st.open.remove(&ev.span) {
                     s.end = ev.at;
@@ -111,16 +151,44 @@ impl Tracer {
                     st.done.push(s);
                 }
             }
-            "model.call" => point(&mut st, ev, format!("model {}", text("model")), attributes, number("duration")),
+            "model.call" => point(
+                &mut st,
+                ev,
+                format!("model {}", text("model")),
+                attributes,
+                number("duration"),
+            ),
             "tool.call" => {
-                let error = ev.fields.iter().any(|(k, v)| k == "is_error" && v == &Value::Bool(true)).then(|| "the tool answered with an error".to_string());
-                point(&mut st, ev, format!("{} {}", text("kind"), text("name")), attributes, number("duration"));
+                let error = ev
+                    .fields
+                    .iter()
+                    .any(|(k, v)| k == "is_error" && v == &Value::Bool(true))
+                    .then(|| "the tool answered with an error".to_string());
+                point(
+                    &mut st,
+                    ev,
+                    format!("{} {}", text("kind"), text("name")),
+                    attributes,
+                    number("duration"),
+                );
                 if let (Some(e), Some(last)) = (error, st.done.last_mut()) {
                     last.error = Some(e);
                 }
             }
-            "read.vectordb" => point(&mut st, ev, format!("read vectordb {}", text("id")), attributes, number("duration")),
-            "read.memory" => point(&mut st, ev, format!("read memory {}", text("id")), attributes, number("duration")),
+            "read.vectordb" => point(
+                &mut st,
+                ev,
+                format!("read vectordb {}", text("id")),
+                attributes,
+                number("duration"),
+            ),
+            "read.memory" => point(
+                &mut st,
+                ev,
+                format!("read memory {}", text("id")),
+                attributes,
+                number("duration"),
+            ),
             // an error of the run ends its interval, marked as failed
             _ if ev.level == LogLevel::Error => {
                 if let Some(mut s) = st.open.remove(&ev.span) {
@@ -139,11 +207,15 @@ impl Tracer {
         let now = now_nanos();
         let mut spans = {
             let mut st = self.state.lock().unwrap();
-            let open: Vec<Span> = st.open.drain().map(|(_, mut s)| {
-                s.end = now;
-                s.error.get_or_insert_with(|| "interrupted".to_string());
-                s
-            }).collect();
+            let open: Vec<Span> = st
+                .open
+                .drain()
+                .map(|(_, mut s)| {
+                    s.end = now;
+                    s.error.get_or_insert_with(|| "interrupted".to_string());
+                    s
+                })
+                .collect();
             st.done.extend(open);
             std::mem::take(&mut st.done)
         };
@@ -187,12 +259,31 @@ impl Tracer {
 }
 
 fn open(st: &mut State, ev: &Event, name: String, attributes: Vec<(String, Value)>) {
-    st.open.insert(ev.span, Span { id: ev.span, parent: ev.parent, name, start: ev.at, end: ev.at, attributes, error: None });
+    st.open.insert(
+        ev.span,
+        Span {
+            id: ev.span,
+            parent: ev.parent,
+            name,
+            start: ev.at,
+            end: ev.at,
+            attributes,
+            error: None,
+        },
+    );
 }
 
 fn point(st: &mut State, ev: &Event, name: String, attributes: Vec<(String, Value)>, duration: Option<f64>) {
     let took = (duration.unwrap_or(0.0).max(0.0) * 1e9) as u64;
-    st.done.push(Span { id: ev.span, parent: ev.parent, name, start: ev.at.saturating_sub(took), end: ev.at, attributes, error: None });
+    st.done.push(Span {
+        id: ev.span,
+        parent: ev.parent,
+        name,
+        start: ev.at.saturating_sub(took),
+        end: ev.at,
+        attributes,
+        error: None,
+    });
 }
 
 /// An OTLP attribute value.
@@ -208,7 +299,10 @@ fn any_value(v: &Value) -> Value {
 
 /// Nanoseconds since 1970.
 pub fn now_nanos() -> u64 {
-    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos() as u64).unwrap_or(0)
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos() as u64)
+        .unwrap_or(0)
 }
 
 /// `passport.adl.name`.

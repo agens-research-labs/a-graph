@@ -8,7 +8,12 @@ fn here() -> &'static std::path::Path {
 #[tokio::test]
 async fn script_clean_env() {
     unsafe { std::env::set_var("ANTHROPIC_API_KEY", "a-secret-key") };
-    let (p, _) = program(here(), "script_clean_env", model(run("pdf", "scripts/env.sh", &[]), false)).await;
+    let (p, _) = program(
+        here(),
+        "script_clean_env",
+        model(run("pdf", "scripts/env.sh", &[]), false),
+    )
+    .await;
     let out = p.run("go").await.unwrap();
     assert_eq!(items(&out)[0].1, "R(key: none\n)");
 }

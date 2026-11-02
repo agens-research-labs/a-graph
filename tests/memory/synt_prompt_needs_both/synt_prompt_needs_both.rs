@@ -8,5 +8,10 @@ fn here() -> &'static std::path::Path {
 #[test]
 fn synt_prompt_needs_both() {
     set_env();
-    assert!(has(here(), "synt_prompt_needs_both", "placeholder_unused", "external.memory[0].synt.prompt"));
+    assert!(has(
+        here(),
+        "synt_prompt_needs_both",
+        "placeholder_unused",
+        "external.memory[0].synt.prompt"
+    ));
 }

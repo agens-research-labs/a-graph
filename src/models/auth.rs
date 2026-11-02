@@ -51,7 +51,10 @@ impl TokenSource for GoogleAdc {
                     .map_err(|e| format!("no Google credentials found: {e}"))
             })
             .await?;
-        let token = credentials.access_token().await.map_err(|e| format!("cannot get a Google access token: {e}"))?;
+        let token = credentials
+            .access_token()
+            .await
+            .map_err(|e| format!("cannot get a Google access token: {e}"))?;
         Ok(token.token)
     }
 }

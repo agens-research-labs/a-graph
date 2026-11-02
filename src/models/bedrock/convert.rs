@@ -29,7 +29,9 @@ pub(super) fn from_document(d: &Document) -> Value {
         Document::Bool(b) => Value::Bool(*b),
         Document::Number(Number::PosInt(u)) => Value::from(*u),
         Document::Number(Number::NegInt(i)) => Value::from(*i),
-        Document::Number(Number::Float(f)) => serde_json::Number::from_f64(*f).map(Value::Number).unwrap_or(Value::Null),
+        Document::Number(Number::Float(f)) => serde_json::Number::from_f64(*f)
+            .map(Value::Number)
+            .unwrap_or(Value::Null),
         Document::String(s) => Value::String(s.clone()),
         Document::Array(a) => Value::Array(a.iter().map(from_document).collect()),
         Document::Object(o) => Value::Object(o.iter().map(|(k, v)| (k.clone(), from_document(v))).collect()),

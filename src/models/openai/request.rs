@@ -34,7 +34,10 @@ impl OpenAi {
             body.insert("tools".into(), Value::Array(tools));
         }
         if let Some(schema) = &call.schema {
-            body.insert("text".into(), json!({ "format": { "type": "json_schema", "name": "output", "schema": schema, "strict": false } }));
+            body.insert(
+                "text".into(),
+                json!({ "format": { "type": "json_schema", "name": "output", "schema": schema, "strict": false } }),
+            );
         }
         if let Some(level) = call.reasoning {
             let effort = match level {

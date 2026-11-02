@@ -16,17 +16,31 @@ impl Program {
     pub(super) async fn connect_mcp(&self) -> Result<(), Error> {
         let used: Vec<String> = {
             let mut seen = HashSet::new();
-            self.nodes.entities().filter_map(|e| self.nodes.resources().get(e)).flat_map(|r| r.mcp_servers.iter()).filter(|id| seen.insert(id.as_str().to_string())).cloned().collect()
+            self.nodes
+                .entities()
+                .filter_map(|e| self.nodes.resources().get(e))
+                .flat_map(|r| r.mcp_servers.iter())
+                .filter(|id| seen.insert(id.as_str().to_string()))
+                .cloned()
+                .collect()
         };
         if used.is_empty() {
             return Ok(());
         }
         let at = Path::root().key(key::RESOURCES).key(key::MCP_SERVERS);
-        let servers: Vec<_> = used.iter().filter_map(|id| self.resources.mcp.get(id)).cloned().collect();
-        let pool = McpPool::connect(&servers).await.map_err(|e| Error::new(Phase::Execution, at.clone(), Rule::Io, e))?;
+        let servers: Vec<_> = used
+            .iter()
+            .filter_map(|id| self.resources.mcp.get(id))
+            .cloned()
+            .collect();
+        let pool = McpPool::connect(&servers)
+            .await
+            .map_err(|e| Error::new(Phase::Execution, at.clone(), Rule::Io, e))?;
 
         for e in self.nodes.entities() {
-            let Some(r) = self.nodes.resources().get(e) else { continue };
+            let Some(r) = self.nodes.resources().get(e) else {
+                continue;
+            };
             let id = self.nodes.id(e).unwrap_or_default();
             let mut names: HashSet<String> = r.tools.iter().cloned().collect();
             if !r.skills.is_empty() {
@@ -37,7 +51,10 @@ impl Program {
             for server in &r.mcp_servers {
                 for t in pool.tools(server) {
                     if !names.insert(t.name.clone()) {
-                        let msg = format!("node `{id}` would have two tools called `{}` (server `{server}` is one of the sources): the model could not tell them apart", t.name);
+                        let msg = format!(
+                            "node `{id}` would have two tools called `{}` (server `{server}` is one of the sources): the model could not tell them apart",
+                            t.name
+                        );
                         pool.close().await;
                         return Err(Error::new(Phase::Execution, Path::node(id), Rule::DuplicateId, msg));
                     }

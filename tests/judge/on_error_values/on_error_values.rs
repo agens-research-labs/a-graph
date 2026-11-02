@@ -7,5 +7,10 @@ fn here() -> &'static std::path::Path {
 /// On error accepts the words stop and node only.
 #[test]
 fn on_error_values() {
-    assert!(has(here(), "on_error_values", "bad_value", "graph.nodes[3].validation-node.on_error"));
+    assert!(has(
+        here(),
+        "on_error_values",
+        "bad_value",
+        "graph.nodes[3].validation-node.on_error"
+    ));
 }

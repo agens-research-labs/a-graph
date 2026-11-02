@@ -14,5 +14,8 @@ async fn approved_passes() {
     assert_eq!(asked(&seen, 'J'), "J(S(hi))");
     assert_eq!(asked(&seen, 'Z'), "Z(S(hi))");
     // the judge produces nothing for the final output
-    assert_eq!(items(&out), [pair("s", "S(hi)"), pair("z", "Z(S(hi))"), pair("e", "E(Z(S(hi)))")]);
+    assert_eq!(
+        items(&out),
+        [pair("s", "S(hi)"), pair("z", "Z(S(hi))"), pair("e", "E(Z(S(hi)))")]
+    );
 }

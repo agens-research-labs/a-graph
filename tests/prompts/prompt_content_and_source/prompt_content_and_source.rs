@@ -7,5 +7,10 @@ fn here() -> &'static std::path::Path {
 /// Prompt with both content and source is refused.
 #[test]
 fn prompt_content_and_source() {
-    assert!(has(here(), "prompt_content_and_source", "exactly_one", "resources.prompts[1]"));
+    assert!(has(
+        here(),
+        "prompt_content_and_source",
+        "exactly_one",
+        "resources.prompts[1]"
+    ));
 }

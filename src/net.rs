@@ -30,18 +30,33 @@ pub(crate) fn host_port_of(url: &str) -> Option<(String, Option<u16>)> {
 /// lowercase. `Err` says what is wrong.
 pub(crate) fn allowed_entry(entry: &str) -> Result<(String, Option<u16>), String> {
     if entry.contains("://") {
-        return Err(format!("`{entry}` is a URL: the list takes host names, as `api.example.com` or `localhost:11434`"));
+        return Err(format!(
+            "`{entry}` is a URL: the list takes host names, as `api.example.com` or `localhost:11434`"
+        ));
     }
     let entry = entry.to_lowercase();
     let (host, port) = if entry.starts_with('[') {
-        let (h, after) = entry.split_once(']').ok_or_else(|| format!("`{entry}` opens a `[` it does not close"))?;
+        let (h, after) = entry
+            .split_once(']')
+            .ok_or_else(|| format!("`{entry}` opens a `[` it does not close"))?;
         match after {
             "" => (format!("{h}]"), None),
-            _ => (format!("{h}]"), Some(after.strip_prefix(':').ok_or_else(|| format!("`{entry}`: after `]` only `:<port>` may follow"))?)),
+            _ => (
+                format!("{h}]"),
+                Some(
+                    after
+                        .strip_prefix(':')
+                        .ok_or_else(|| format!("`{entry}`: after `]` only `:<port>` may follow"))?,
+                ),
+            ),
         }
     } else {
         match entry.split_once(':') {
-            Some(_) if entry.matches(':').count() > 1 => return Err(format!("`{entry}`: an IPv6 address is written in brackets, as `[::1]` or `[::1]:8080`")),
+            Some(_) if entry.matches(':').count() > 1 => {
+                return Err(format!(
+                    "`{entry}`: an IPv6 address is written in brackets, as `[::1]` or `[::1]:8080`"
+                ));
+            }
             Some((h, p)) => (h.to_string(), Some(p)),
             None => (entry.clone(), None),
         }
@@ -49,7 +64,9 @@ pub(crate) fn allowed_entry(entry: &str) -> Result<(String, Option<u16>), String
     if host.is_empty() || host == "[]" {
         return Err(format!("`{entry}` has no host"));
     }
-    let host = url::Host::parse(&host).map_err(|e| format!("`{entry}`: `{host}` is not a host name ({e})"))?.to_string();
+    let host = url::Host::parse(&host)
+        .map_err(|e| format!("`{entry}`: `{host}` is not a host name ({e})"))?
+        .to_string();
     let port = match port {
         None => None,
         Some(p) => match p.parse::<u16>() {

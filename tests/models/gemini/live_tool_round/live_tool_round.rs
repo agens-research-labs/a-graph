@@ -21,7 +21,11 @@ async fn live_tool_round() {
         message: first.message.clone(),
         reasoning: first.reasoning.clone(),
         calls: first.tools_call.clone(),
-        results: vec![ToolResult { call_id: asked.call_id, result: json!("sunny, 22 C"), is_error: false }],
+        results: vec![ToolResult {
+            call_id: asked.call_id,
+            result: json!("sunny, 22 C"),
+            is_error: false,
+        }],
     }];
     let second = model.invoke(&c).await.unwrap();
     assert_eq!(second.stop_reason, StopReason::End);

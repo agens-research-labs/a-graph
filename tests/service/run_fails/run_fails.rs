@@ -18,7 +18,9 @@ fn config_path() -> String {
 async fn run_fails() {
     let (model, _) = listen(|_| Resp::status(500, "broken")).await;
     let s = start(&config_path()).await;
-    let (status, body) = s.run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "x" })).await;
+    let (status, body) = s
+        .run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "x" }))
+        .await;
     assert_eq!(status, 502);
     assert_eq!(body["errors"][0]["rule"], "model_failed");
     assert!(body["errors"][0]["message"].as_str().unwrap().contains("500"), "{body}");

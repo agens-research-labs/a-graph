@@ -11,6 +11,11 @@ fn utility() -> Utility {
 /// A utility that fails stops with its own message and its id.
 #[tokio::test]
 async fn exit_error() {
-    let e = call_utility(&utility(), &UtilityInput::Text("x".into())).await.unwrap_err();
-    assert!(e.contains("utility `u`") && e.contains("boom: cannot read the file"), "{e}");
+    let e = call_utility(&utility(), &UtilityInput::Text("x".into()))
+        .await
+        .unwrap_err();
+    assert!(
+        e.contains("utility `u`") && e.contains("boom: cannot read the file"),
+        "{e}"
+    );
 }

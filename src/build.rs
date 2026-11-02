@@ -39,7 +39,11 @@ impl Errs {
     }
 
     pub(crate) fn finish<T>(self, built: T) -> Result<T, Errors> {
-        if self.0.is_empty() { Ok(built) } else { Err(Errors(self.0)) }
+        if self.0.is_empty() {
+            Ok(built)
+        } else {
+            Err(Errors(self.0))
+        }
     }
 }
 
@@ -59,7 +63,10 @@ impl Obj {
             errs.add(base, Rule::BadValue, "expected a list");
             return Vec::new();
         };
-        seq.into_iter().enumerate().filter_map(|(i, v)| Obj::new(v, base.idx(i), errs)).collect()
+        seq.into_iter()
+            .enumerate()
+            .filter_map(|(i, v)| Obj::new(v, base.idx(i), errs))
+            .collect()
     }
 
     pub(crate) fn new(v: Value, at: Path, errs: &mut Errs) -> Option<Obj> {
@@ -164,7 +171,9 @@ impl Obj {
         let mut out = BTreeMap::new();
         let Some(map) = self.sub(key, errs) else { return out };
         for (name, v) in map.map {
-            let Some(name) = name.as_str().map(str::to_string) else { continue };
+            let Some(name) = name.as_str().map(str::to_string) else {
+                continue;
+            };
             if let Some(mut s) = Obj::new(v, map.at.key(&name), errs)
                 && let Some(var) = s.req::<String>(key::ENV, errs)
             {

@@ -6,7 +6,8 @@ use super::{Field, Kind, SECRET, Shape, Variant};
 const MODALITIES: Shape = Shape::List(&Shape::Words(&["text", "image", "audio", "video"]));
 const AMBIENT: Shape = Shape::Words(&["ambient"]);
 
-const API_KEY_FIELD: Field = Field::req(API_KEY, SECRET).doc("The key of the API, read from an environment variable when the file is checked.");
+const API_KEY_FIELD: Field =
+    Field::req(API_KEY, SECRET).doc("The key of the API, read from an environment variable when the file is checked.");
 
 const COMMON: &[Field] = &[
     Field::req(ID, Shape::Id(Kind::Model)).doc("The id of the model, cited by the nodes."),
@@ -87,18 +88,31 @@ const AZURE_FOUNDRY: &[Field] = &[
         .doc("Accepted only with publisher `openai` (`batch_not_allowed`)."),
 ];
 
-const LOCAL: &[Field] = &[Field::req(HOST, Shape::Text).doc("The URL of the server, for example `http://localhost:11434`. Its host must be in `allowed_hosts`.")];
+const LOCAL: &[Field] = &[Field::req(HOST, Shape::Text)
+    .doc("The URL of the server, for example `http://localhost:11434`. Its host must be in `allowed_hosts`.")];
 
 pub(super) const MODELS: Shape = Shape::List(&Shape::Tagged {
     by: PROVIDER,
     by_doc: "The service the model is reached through. It decides the other keys.",
     common: COMMON,
     variants: &[
-        Variant::new("anthropic", ANTHROPIC, "The Anthropic Messages API (`api.anthropic.com`). A node that uses it must set `max_tokens`."),
+        Variant::new(
+            "anthropic",
+            ANTHROPIC,
+            "The Anthropic Messages API (`api.anthropic.com`). A node that uses it must set `max_tokens`.",
+        ),
         Variant::new("openai", API_KEY_ONLY, "The OpenAI Responses API (`api.openai.com`)."),
-        Variant::new("gemini", API_KEY_ONLY, "The Gemini API with an API key, not Vertex AI (`generativelanguage.googleapis.com`). It has no batch, and reasoning cannot be switched off."),
+        Variant::new(
+            "gemini",
+            API_KEY_ONLY,
+            "The Gemini API with an API key, not Vertex AI (`generativelanguage.googleapis.com`). It has no batch, and reasoning cannot be switched off.",
+        ),
         Variant::new("mistral", API_KEY_ONLY, "The Mistral API (`api.mistral.ai`)."),
-        Variant::new("bedrock", BEDROCK, "Amazon Bedrock, through the Converse API (`bedrock-runtime.<region>.amazonaws.com`). It produces text only."),
+        Variant::new(
+            "bedrock",
+            BEDROCK,
+            "Amazon Bedrock, through the Converse API (`bedrock-runtime.<region>.amazonaws.com`). It produces text only.",
+        ),
         Variant::new(
             "vertex_ai",
             VERTEX_AI,
@@ -110,6 +124,10 @@ pub(super) const MODELS: Shape = Shape::List(&Shape::Tagged {
             "Microsoft Foundry. With publisher `anthropic` it works as `anthropic`, produces text only and has no batch; with `openai` as `openai`.",
         ),
         Variant::new("ollama", LOCAL, "An Ollama server."),
-        Variant::new("custom", LOCAL, "A model server of your own, called with `POST <host>/api/chat` in the format of the Ollama API."),
+        Variant::new(
+            "custom",
+            LOCAL,
+            "A model server of your own, called with `POST <host>/api/chat` in the format of the Ollama API.",
+        ),
     ],
 });

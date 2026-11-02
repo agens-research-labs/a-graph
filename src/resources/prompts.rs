@@ -49,7 +49,9 @@ impl PromptsManager {
                 (false, true) => {
                     let at = at.key(key::SOURCE);
                     match src.and_then(|s| source::build(s, false, &mut errs)) {
-                        Some(Source::Path(path)) => read_file(&at.key(key::PATH), &path, &mut errs).map(PromptBody::Content),
+                        Some(Source::Path(path)) => {
+                            read_file(&at.key(key::PATH), &path, &mut errs).map(PromptBody::Content)
+                        }
                         other => other.map(PromptBody::Source),
                     }
                 }
@@ -72,7 +74,9 @@ impl PromptsManager {
             .iter()
             .enumerate()
             .filter_map(|(i, p)| match &p.body {
-                PromptBody::Source(Source::Url { url, .. }) => Some(Destination::url(base.idx(i).key(key::SOURCE).key(key::URL), url)),
+                PromptBody::Source(Source::Url { url, .. }) => {
+                    Some(Destination::url(base.idx(i).key(key::SOURCE).key(key::URL), url))
+                }
                 _ => None,
             })
             .collect()
@@ -91,7 +95,10 @@ impl PromptsManager {
 fn content(mut c: Obj, errs: &mut Errs) -> Option<PromptContent> {
     let system = c.req::<String>(key::SYSTEM, errs);
     let user = c.req::<String>(key::USER, errs);
-    Some(PromptContent { system: system?, user: user? })
+    Some(PromptContent {
+        system: system?,
+        user: user?,
+    })
 }
 
 /// Opens the file as written in the yml and reads the `content` of the prompt from it.
@@ -108,16 +115,27 @@ fn read_file(at: &Path, path: &str, errs: &mut Errs) -> Option<PromptContent> {
     let parsed = serde_norway::from_str::<Value>(&text)
         .map_err(|e| e.to_string())
         .and_then(|v| Obj::new(v, at.clone(), &mut inner).ok_or_else(|| "the file must be a map".to_string()))
-        .map(|mut file| file.req_sub(key::CONTENT, &mut inner).and_then(|c| content(c, &mut inner)));
+        .map(|mut file| {
+            file.req_sub(key::CONTENT, &mut inner)
+                .and_then(|c| content(c, &mut inner))
+        });
     match (parsed, inner.0.is_empty()) {
         (Ok(Some(c)), true) => Some(c),
         (Err(why), _) => {
-            errs.add(at, Rule::BadValue, format!("`{path}` must hold `content: {{ system, user }}`: {why}"));
+            errs.add(
+                at,
+                Rule::BadValue,
+                format!("`{path}` must hold `content: {{ system, user }}`: {why}"),
+            );
             None
         }
         (_, _) => {
             let why = inner.0.iter().map(|e| e.message.clone()).collect::<Vec<_>>().join("; ");
-            errs.add(at, Rule::BadValue, format!("`{path}` must hold `content: {{ system, user }}`: {why}"));
+            errs.add(
+                at,
+                Rule::BadValue,
+                format!("`{path}` must hold `content: {{ system, user }}`: {why}"),
+            );
             None
         }
     }

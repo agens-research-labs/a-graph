@@ -26,7 +26,9 @@ async fn runs_capped() {
     assert_eq!(refused["errors"][0]["rule"], "too_many_runs");
     assert_eq!(refused["errors"][0]["path"], "<root>", "{refused}");
     // the refusal comes before the request is checked: a graph that is not valid is refused the same way
-    let (status, refused) = s.start_run(json!({ "yml": "not a graph", "message": "how long?" })).await;
+    let (status, refused) = s
+        .start_run(json!({ "yml": "not a graph", "message": "how long?" }))
+        .await;
     assert_eq!(status, 503, "{refused}");
     assert_eq!(refused["errors"][0]["rule"], "too_many_runs");
     let id = started["run"].as_str().unwrap();

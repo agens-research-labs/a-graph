@@ -52,7 +52,10 @@ const MEMORY_ITEM: Shape = Shape::Map(&[
 ]);
 
 pub(super) const EXTERNAL: Shape = Shape::Map(&[
-    Field::opt(VECTORDB, Shape::List(&VECTORDB_ITEM)).doc("Vector databases the nodes search: what they find becomes `{{chunks}}` in the prompt."),
-    Field::opt(SEARCH, Shape::List(&SEARCH_ITEM)).doc("Search engines that are not vector databases. They cannot run yet: a node that uses one fails when it runs."),
+    Field::opt(VECTORDB, Shape::List(&VECTORDB_ITEM))
+        .doc("Vector databases the nodes search: what they find becomes `{{chunks}}` in the prompt."),
+    Field::opt(SEARCH, Shape::List(&SEARCH_ITEM)).doc(
+        "Search engines that are not vector databases. They cannot run yet: a node that uses one fails when it runs.",
+    ),
     Field::opt(MEMORY, Shape::List(&MEMORY_ITEM)).doc("Memories that keep the conversation of a node between runs."),
 ]);

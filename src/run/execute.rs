@@ -18,11 +18,11 @@ use serde_json::{Value, json};
 use tokio::sync::Semaphore;
 use tokio::task::JoinHandle;
 
+use super::events::{CTX, Where, here};
 use super::judge::Verdict;
 use super::{Content, Delivery, NodeInput, NodeOutput, Program};
 use crate::error::{Error, Path, Phase, Rule};
 use crate::graph::Entity;
-use super::events::{CTX, Where, here};
 use crate::graph::edges::{Group, Pattern, React, Step};
 use crate::graph::nodes::component::OnError;
 use crate::models::{BatchRequest, ChatEntry, MediaOutput, Role};
@@ -52,7 +52,10 @@ struct Carry {
 
 impl Carry {
     fn of(d: &Delivery) -> Carry {
-        Carry { message: d.message.as_ref().map(text_of), media: d.media.clone() }
+        Carry {
+            message: d.message.as_ref().map(text_of),
+            media: d.media.clone(),
+        }
     }
 }
 
@@ -88,7 +91,12 @@ struct Branch {
 }
 
 fn fail(rule: Rule, msg: impl Into<String>) -> Error {
-    Error::new(Phase::Execution, Path::root().key(key::GRAPH).key(key::EDGES), rule, msg)
+    Error::new(
+        Phase::Execution,
+        Path::root().key(key::GRAPH).key(key::EDGES),
+        rule,
+        msg,
+    )
 }
 
 impl Program {
@@ -102,7 +110,11 @@ impl Program {
     /// Runs the graph as `run` does, but the nodes are stopped when `stop` is ready before they end, and its error
     /// is the outcome. Either way the run ends as always: its MCP servers are closed, its last event is logged and
     /// its trace is sent. The service stops so a run that lasts too long, or that is going on when it shuts down.
-    pub async fn run_until(self: &Arc<Self>, user_message: &str, stop: impl Future<Output = Error>) -> Result<RunOutput, Error> {
+    pub async fn run_until(
+        self: &Arc<Self>,
+        user_message: &str,
+        stop: impl Future<Output = Error>,
+    ) -> Result<RunOutput, Error> {
         refuse_what_is_not_run_yet(self.edges.steps())?;
         self.run_started();
         let started = std::time::Instant::now();
@@ -134,7 +146,10 @@ impl Program {
         if first.halted {
             return Ok(RunOutput { items });
         }
-        let stepped = self.clone().run_steps(self.edges.steps().to_vec(), Carry::of(&first.delivery), user.clone()).await?;
+        let stepped = self
+            .clone()
+            .run_steps(self.edges.steps().to_vec(), Carry::of(&first.delivery), user.clone())
+            .await?;
         items.extend(stepped.items);
         // a judge that stops the run sends it straight to the output, `end` is not reached
         if stepped.halted {
@@ -150,42 +165,85 @@ impl Program {
 
     /// Runs one node: what it sends on, and what it sends to the final output.
     async fn step_node(&self, node: Entity, carry: &Carry, user: &str) -> Result<Ran, Error> {
-        let input = NodeInput { user_message: Some(user.to_string()), agent_message: carry.message.clone(), agent_media: carry.media.clone() };
+        let input = NodeInput {
+            user_message: Some(user.to_string()),
+            agent_message: carry.message.clone(),
+            agent_media: carry.media.clone(),
+        };
         if let Some(v) = self.nodes.validation().get(node) {
             return self.step_judge(node, v.on_error, carry, &input).await;
         }
         let out = self.run_node(node, input).await?;
         let (delivery, item) = self.parts(node, out);
-        Ok(Ran { delivery, item, halted: false })
+        Ok(Ran {
+            delivery,
+            item,
+            halted: false,
+        })
     }
 
     /// A validation node: approved, the message it examined goes on unchanged (only the message);
     /// refused, the run ends and the final output carries the reasons (`stop`) or the problem is the message of the next node (`node`).
-    async fn step_judge(&self, node: Entity, on_error: OnError, carry: &Carry, input: &NodeInput) -> Result<Ran, Error> {
+    async fn step_judge(
+        &self,
+        node: Entity,
+        on_error: OnError,
+        carry: &Carry,
+        input: &NodeInput,
+    ) -> Result<Ran, Error> {
         let id = self.nodes.id(node).unwrap_or_default();
-        let message = |text: Option<String>| Delivery { message: text.map(Content::Text), ..Delivery::default() };
+        let message = |text: Option<String>| Delivery {
+            message: text.map(Content::Text),
+            ..Delivery::default()
+        };
         Ok(match (self.judge(node, input).await?, on_error) {
-            (Verdict::Approved, _) => Ran { delivery: message(carry.message.clone()), item: None, halted: false },
+            (Verdict::Approved, _) => Ran {
+                delivery: message(carry.message.clone()),
+                item: None,
+                halted: false,
+            },
             (Verdict::Refused { reasons, log }, OnError::Stop) => {
                 // the final output says why the run ended
-                let why = OutputItem { agent_id: id.to_string(), message: Some(Content::Text(format!("reasons: {reasons}\nlog: {log}"))), media: Vec::new(), reasoning: Vec::new() };
-                Ran { delivery: Delivery::default(), item: Some(why), halted: true }
+                let why = OutputItem {
+                    agent_id: id.to_string(),
+                    message: Some(Content::Text(format!("reasons: {reasons}\nlog: {log}"))),
+                    media: Vec::new(),
+                    reasoning: Vec::new(),
+                };
+                Ran {
+                    delivery: Delivery::default(),
+                    item: Some(why),
+                    halted: true,
+                }
             }
-            (Verdict::Refused { reasons, log }, OnError::Node) => {
-                Ran { delivery: message(Some(format!("---\nfrom agent {id}\n---\nreasons: {reasons}\nlog: {log}"))), item: None, halted: false }
-            }
+            (Verdict::Refused { reasons, log }, OnError::Node) => Ran {
+                delivery: message(Some(format!(
+                    "---\nfrom agent {id}\n---\nreasons: {reasons}\nlog: {log}"
+                ))),
+                item: None,
+                halted: false,
+            },
         })
     }
 
     /// What a node sent on, and what it sent to the final output.
     fn parts(&self, node: Entity, out: NodeOutput) -> (Delivery, Option<OutputItem>) {
         let a = out.assistant;
-        let item = (a.message.is_some() || !a.media.is_empty() || !a.reasoning.is_empty())
-            .then(|| OutputItem { agent_id: self.nodes.id(node).unwrap_or_default().to_string(), message: a.message, media: a.media, reasoning: a.reasoning });
+        let item = (a.message.is_some() || !a.media.is_empty() || !a.reasoning.is_empty()).then(|| OutputItem {
+            agent_id: self.nodes.id(node).unwrap_or_default().to_string(),
+            message: a.message,
+            media: a.media,
+            reasoning: a.reasoning,
+        });
         (out.node, item)
     }
 
-    fn run_steps(self: Arc<Self>, steps: Vec<Step>, carry: Carry, user: String) -> BoxFuture<'static, Result<Stepped, Error>> {
+    fn run_steps(
+        self: Arc<Self>,
+        steps: Vec<Step>,
+        carry: Carry,
+        user: String,
+    ) -> BoxFuture<'static, Result<Stepped, Error>> {
         async move {
             let (mut carry, mut items) = (carry, Vec::new());
             for step in steps {
@@ -194,7 +252,11 @@ impl Program {
                         let ran = self.step_node(x, &carry, &user).await?;
                         items.extend(ran.item);
                         if ran.halted {
-                            return Ok(Stepped { carry, items, halted: true });
+                            return Ok(Stepped {
+                                carry,
+                                items,
+                                halted: true,
+                            });
                         }
                         carry = Carry::of(&ran.delivery);
                     }
@@ -210,7 +272,11 @@ impl Program {
                     }
                 }
             }
-            Ok(Stepped { carry, items, halted: false })
+            Ok(Stepped {
+                carry,
+                items,
+                halted: false,
+            })
         }
         .boxed()
     }
@@ -220,7 +286,10 @@ impl Program {
         async move {
             let pattern = format!("{:?}", g.pattern).to_lowercase();
             let (started, span) = self.group_started(&pattern, g.fan.len());
-            let inside = Where { depth: here().depth + 1, span };
+            let inside = Where {
+                depth: here().depth + 1,
+                span,
+            };
             let branch = CTX.scope(inside, self.clone().group_body(g, carry, user)).await?;
             self.group_finished(&pattern, started, span);
             Ok(branch)
@@ -256,10 +325,18 @@ impl Program {
                 Some(out) => {
                     let ran = self.step_node(out, &packed, &user).await?;
                     items.extend(ran.item);
-                    Ok(Branch { origin: self.nodes.id(out).unwrap_or_default().to_string(), delivery: ran.delivery, items })
+                    Ok(Branch {
+                        origin: self.nodes.id(out).unwrap_or_default().to_string(),
+                        delivery: ran.delivery,
+                        items,
+                    })
                 }
                 // without `out` nothing is passed on; what follows starts when the branches are done
-                None => Ok(Branch { origin: origin_in, delivery: Delivery::default(), items }),
+                None => Ok(Branch {
+                    origin: origin_in,
+                    delivery: Delivery::default(),
+                    items,
+                }),
             }
         }
         .boxed()
@@ -274,36 +351,73 @@ impl Program {
             .iter()
             .map(|s| match s {
                 Step::Node(x) => Ok(*x),
-                _ => Err(fail(Rule::NotSupported, "the branches of a `batch` group are plain nodes")),
+                _ => Err(fail(
+                    Rule::NotSupported,
+                    "the branches of a `batch` group are plain nodes",
+                )),
             })
             .collect::<Result<_, _>>()?;
-        let node_input = NodeInput { user_message: Some(user.to_string()), agent_message: input.message.clone(), agent_media: input.media.clone() };
+        let node_input = NodeInput {
+            user_message: Some(user.to_string()),
+            agent_message: input.message.clone(),
+            agent_media: input.media.clone(),
+        };
         let mut prepared = Vec::new();
         for n in &nodes {
             prepared.push(self.prepare_node(*n, &node_input).await?);
         }
-        let node_error = |i: usize, msg: String| Error::new(Phase::Execution, Path::node(self.nodes.id(nodes[i]).unwrap_or_default()), Rule::ModelFailed, msg);
+        let node_error = |i: usize, msg: String| {
+            Error::new(
+                Phase::Execution,
+                Path::node(self.nodes.id(nodes[i]).unwrap_or_default()),
+                Rule::ModelFailed,
+                msg,
+            )
+        };
 
-        let Some(first) = prepared.first() else { return Ok(Vec::new()) };
-        let llm = self.models.get(&first.model).ok_or_else(|| node_error(0, format!("model `{}` is not built", first.model)))?;
+        let Some(first) = prepared.first() else {
+            return Ok(Vec::new());
+        };
+        let llm = self
+            .models
+            .get(&first.model)
+            .ok_or_else(|| node_error(0, format!("model `{}` is not built", first.model)))?;
         let size = g.limit.map_or(nodes.len(), |l| (l as usize).max(1));
         let mut answers: Vec<Option<crate::models::ModelResponse>> = (0..nodes.len()).map(|_| None).collect();
         let positions: Vec<usize> = (0..nodes.len()).collect();
         for chunk in positions.chunks(size) {
-            let requests = chunk.iter().map(|&i| BatchRequest { id: i.to_string(), invocation: prepared[i].call.clone() }).collect();
+            let requests = chunk
+                .iter()
+                .map(|&i| BatchRequest {
+                    id: i.to_string(),
+                    invocation: prepared[i].call.clone(),
+                })
+                .collect();
             // the state of the job is told through this channel; nobody listens to it yet
             let (events, _unheard) = tokio::sync::mpsc::unbounded_channel();
-            let results = llm.invoke_batch(requests, events).await.map_err(|e| node_error(chunk[0], e.to_string()))?;
+            let results = llm
+                .invoke_batch(requests, events)
+                .await
+                .map_err(|e| node_error(chunk[0], e.to_string()))?;
             for r in results {
-                let i: usize = r.id.parse().map_err(|_| node_error(chunk[0], format!("the batch answered an unknown request `{}`", r.id)))?;
+                let i: usize = r
+                    .id
+                    .parse()
+                    .map_err(|_| node_error(chunk[0], format!("the batch answered an unknown request `{}`", r.id)))?;
                 answers[i] = Some(r.result.map_err(|e| node_error(i, e.to_string()))?);
             }
         }
         let mut done = Vec::with_capacity(nodes.len());
         for (i, node) in nodes.iter().enumerate() {
-            let response = answers[i].take().ok_or_else(|| node_error(i, "the batch gave no answer for this node".to_string()))?;
+            let response = answers[i]
+                .take()
+                .ok_or_else(|| node_error(i, "the batch gave no answer for this node".to_string()))?;
             let (delivery, item) = self.parts(*node, self.finish_node(*node, &prepared[i].input, response).await?);
-            done.push(Branch { origin: self.nodes.id(*node).unwrap_or_default().to_string(), delivery, items: item.into_iter().collect() });
+            done.push(Branch {
+                origin: self.nodes.id(*node).unwrap_or_default().to_string(),
+                delivery,
+                items: item.into_iter().collect(),
+            });
         }
         Ok(done)
     }
@@ -323,7 +437,10 @@ impl Program {
         }
         let mut done = Vec::with_capacity(handles.0.len());
         for i in 0..handles.0.len() {
-            let result = (&mut handles.0[i]).await.map_err(|e| fail(Rule::Io, format!("a branch stopped: {e}"))).and_then(|r| r);
+            let result = (&mut handles.0[i])
+                .await
+                .map_err(|e| fail(Rule::Io, format!("a branch stopped: {e}")))
+                .and_then(|r| r);
             match result {
                 Ok(b) => done.push(b),
                 // the first error ends the run: the branches still going are stopped when `handles` is dropped
@@ -333,12 +450,21 @@ impl Program {
         Ok(done)
     }
 
-    fn run_branch(self: Arc<Self>, step: Step, input: Carry, user: String) -> BoxFuture<'static, Result<Branch, Error>> {
+    fn run_branch(
+        self: Arc<Self>,
+        step: Step,
+        input: Carry,
+        user: String,
+    ) -> BoxFuture<'static, Result<Branch, Error>> {
         async move {
             match step {
                 Step::Node(x) => {
                     let ran = self.step_node(x, &input, &user).await?;
-                    Ok(Branch { origin: self.nodes.id(x).unwrap_or_default().to_string(), delivery: ran.delivery, items: ran.item.into_iter().collect() })
+                    Ok(Branch {
+                        origin: self.nodes.id(x).unwrap_or_default().to_string(),
+                        delivery: ran.delivery,
+                        items: ran.item.into_iter().collect(),
+                    })
                 }
                 Step::Group(g) => self.run_group(g, input, user).await,
                 Step::React(r) => self.run_react(r, input, user).await,
@@ -353,7 +479,10 @@ impl Program {
     fn run_react(self: Arc<Self>, r: React, carry: Carry, user: String) -> BoxFuture<'static, Result<Branch, Error>> {
         async move {
             let (started, span) = self.group_started("react", r.workers.len());
-            let inside = Where { depth: here().depth + 1, span };
+            let inside = Where {
+                depth: here().depth + 1,
+                span,
+            };
             let branch = CTX.scope(inside, self.clone().react_body(r, carry, user)).await?;
             self.group_finished("react", started, span);
             Ok(branch)
@@ -368,9 +497,16 @@ impl Program {
             let error = |rule: Rule, msg: String| Error::new(Phase::Execution, Path::node(&cid), rule, msg);
 
             let ids = r.worker_ids(&self.nodes);
-            let node_input = NodeInput { user_message: Some(user.clone()), agent_message: carry.message.clone(), agent_media: carry.media.clone() };
+            let node_input = NodeInput {
+                user_message: Some(user.clone()),
+                agent_message: carry.message.clone(),
+                agent_media: carry.media.clone(),
+            };
             let prepared = self.prepare_node(controller, &node_input).await?;
-            let llm = self.models.get(&prepared.model).ok_or_else(|| error(Rule::UnknownRef, format!("model `{}` is not built", prepared.model)))?;
+            let llm = self
+                .models
+                .get(&prepared.model)
+                .ok_or_else(|| error(Rule::UnknownRef, format!("model `{}` is not built", prepared.model)))?;
             let mut call = prepared.call;
             call.schema = Some(React::routing_schema(&ids));
             // what the controller reads from its memory stays in every turn, before the steps of the react
@@ -378,42 +514,100 @@ impl Program {
 
             let (mut turns, mut items, mut dispatched) = (Vec::new(), Vec::new(), 0u32);
             loop {
-                let response = llm.invoke(&call).await.map_err(|e| error(Rule::ModelFailed, e.to_string()))?;
+                let response = llm
+                    .invoke(&call)
+                    .await
+                    .map_err(|e| error(Rule::ModelFailed, e.to_string()))?;
                 self.model_called(&cid, &prepared.model, &call, &response);
-                let routing = response.structured.clone().filter(Value::is_object).ok_or_else(|| error(Rule::BadValue, "the controller did not answer with the routing output".into()))?;
-                let done = routing["done"].as_bool().ok_or_else(|| error(Rule::BadValue, "the routing output has no `done`".into()))?;
+                let routing = response.structured.clone().filter(Value::is_object).ok_or_else(|| {
+                    error(
+                        Rule::BadValue,
+                        "the controller did not answer with the routing output".into(),
+                    )
+                })?;
+                let done = routing["done"]
+                    .as_bool()
+                    .ok_or_else(|| error(Rule::BadValue, "the routing output has no `done`".into()))?;
 
                 if done {
-                    let answer = routing["answer"].as_str().filter(|a| !a.is_empty()).ok_or_else(|| error(Rule::MissingField, format!("the controller is done and gave no `answer`: {routing}")))?;
+                    let answer = routing["answer"].as_str().filter(|a| !a.is_empty()).ok_or_else(|| {
+                        error(
+                            Rule::MissingField,
+                            format!("the controller is done and gave no `answer`: {routing}"),
+                        )
+                    })?;
                     let mut last = response;
                     (last.message, last.structured) = (Some(answer.to_string()), None);
-                    let (delivery, item) = self.parts(controller, self.finish_node(controller, &prepared.input, last).await?);
+                    let (delivery, item) =
+                        self.parts(controller, self.finish_node(controller, &prepared.input, last).await?);
                     items.extend(item);
-                    return Ok(Branch { origin: cid.clone(), delivery, items });
+                    return Ok(Branch {
+                        origin: cid.clone(),
+                        delivery,
+                        items,
+                    });
                 }
 
                 if dispatched >= r.max_iterations {
-                    return Err(error(Rule::ReactLimit, format!("the controller asked for a worker after {} calls, the limit of `max_iterations`", r.max_iterations)));
+                    return Err(error(
+                        Rule::ReactLimit,
+                        format!(
+                            "the controller asked for a worker after {} calls, the limit of `max_iterations`",
+                            r.max_iterations
+                        ),
+                    ));
                 }
-                let name = routing["next_worker"].as_str().filter(|n| !n.is_empty()).ok_or_else(|| error(Rule::MissingField, format!("the controller is not done and named no `next_worker`: {routing}")))?.to_string();
-                let position = ids.iter().position(|i| *i == name).ok_or_else(|| error(Rule::UnknownRef, format!("`{name}` is not a worker of this react")))?;
+                let name = routing["next_worker"]
+                    .as_str()
+                    .filter(|n| !n.is_empty())
+                    .ok_or_else(|| {
+                        error(
+                            Rule::MissingField,
+                            format!("the controller is not done and named no `next_worker`: {routing}"),
+                        )
+                    })?
+                    .to_string();
+                let position = ids
+                    .iter()
+                    .position(|i| *i == name)
+                    .ok_or_else(|| error(Rule::UnknownRef, format!("`{name}` is not a worker of this react")))?;
                 dispatched += 1;
 
-                let handed = Carry { message: Some(routing["input"].as_str().unwrap_or_default().to_string()), media: Vec::new() };
+                let handed = Carry {
+                    message: Some(routing["input"].as_str().unwrap_or_default().to_string()),
+                    media: Vec::new(),
+                };
                 let worked = match r.workers[position].clone() {
                     Step::Node(x) => {
                         let ran = self.step_node(x, &handed, &user).await?;
-                        Branch { origin: name.clone(), delivery: ran.delivery, items: ran.item.into_iter().collect() }
+                        Branch {
+                            origin: name.clone(),
+                            delivery: ran.delivery,
+                            items: ran.item.into_iter().collect(),
+                        }
                     }
                     Step::Group(g) => self.clone().run_group(g, handed, user.clone()).await?,
-                    Step::React(_) => return Err(error(Rule::NotSupported, "a `react` inside a `react` cannot be run yet".into())),
+                    Step::React(_) => {
+                        return Err(error(
+                            Rule::NotSupported,
+                            "a `react` inside a `react` cannot be run yet".into(),
+                        ));
+                    }
                 };
                 items.extend(worked.items);
 
                 // the next turn: what was said so far, and the observation
-                let observed = Carry::of(&worked.delivery).message.unwrap_or_else(|| "(no output)".to_string());
-                turns.push(ChatEntry { role: Role::User, content: call.user.clone() });
-                turns.push(ChatEntry { role: Role::Assistant, content: routing.to_string() });
+                let observed = Carry::of(&worked.delivery)
+                    .message
+                    .unwrap_or_else(|| "(no output)".to_string());
+                turns.push(ChatEntry {
+                    role: Role::User,
+                    content: call.user.clone(),
+                });
+                turns.push(ChatEntry {
+                    role: Role::Assistant,
+                    content: routing.to_string(),
+                });
                 call.history = remembered.iter().cloned().chain(turns.iter().cloned()).collect();
                 call.user = format!("Observation from {name}: {observed}");
                 call.media.clear();
@@ -438,7 +632,12 @@ fn pack(branches: &[Branch]) -> Result<Carry, Error> {
         media.extend(b.delivery.media.iter().cloned());
     }
     let message = match (texts.is_empty(), jsons.is_empty()) {
-        (false, false) => return Err(fail(Rule::NotSupported, "the branches of a group give both text and structured output")),
+        (false, false) => {
+            return Err(fail(
+                Rule::NotSupported,
+                "the branches of a group give both text and structured output",
+            ));
+        }
         (false, true) => Some(texts.join("\n\n")),
         (true, false) => Some(serde_json::to_string_pretty(&Value::Array(jsons)).unwrap_or_default()),
         (true, true) => None,
@@ -464,7 +663,10 @@ fn refuse(steps: &[Step], inside_react: bool) -> Result<(), Error> {
             }
             Step::Group(g) => {
                 if g.pattern == Pattern::Batch && g.fan.iter().any(|s| !matches!(s, Step::Node(_))) {
-                    return Err(fail(Rule::NotSupported, "the branches of a `batch` group are plain nodes"));
+                    return Err(fail(
+                        Rule::NotSupported,
+                        "the branches of a `batch` group are plain nodes",
+                    ));
                 }
                 refuse(&g.fan, inside_react)?;
             }

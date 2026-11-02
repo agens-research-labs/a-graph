@@ -23,4 +23,3 @@ mod live_embeddinggemma;
 
 #[path = "server_error/server_error.rs"]
 mod server_error;
-

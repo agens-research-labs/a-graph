@@ -24,7 +24,16 @@ fn host_ports() {
 fn host_ports_bad() {
     let mut doc = load(&yml_in(here(), "bad_port")).unwrap_or_else(|e| panic!("{e}"));
     let errs = allowed_hosts(doc.take(key::PASSPORT)).unwrap_err();
-    let got: Vec<(String, String)> = errs.0.iter().map(|e| (e.rule.code().to_string(), e.path.to_string())).collect();
-    let at = |i: usize| ("bad_value".to_string(), format!("passport.adl.permissions.network.allowed_hosts[{i}]"));
+    let got: Vec<(String, String)> = errs
+        .0
+        .iter()
+        .map(|e| (e.rule.code().to_string(), e.path.to_string()))
+        .collect();
+    let at = |i: usize| {
+        (
+            "bad_value".to_string(),
+            format!("passport.adl.permissions.network.allowed_hosts[{i}]"),
+        )
+    };
     assert_eq!(got, vec![at(0), at(1), at(2), at(3), at(4), at(5)]);
 }

@@ -1,14 +1,24 @@
-use std::sync::{Arc, Mutex};
-use base64::Engine;
-use base64::engine::general_purpose::STANDARD;
-use serde_json::{Value, json};
+use crate::common::http::{Req, Resp, serve};
 use a_graph::models::*;
 use a_graph::resources::{Generate, MediaKind};
 use a_graph::{Path, Rule};
-use crate::common::http::{Req, Resp, serve};
+use base64::Engine;
+use base64::engine::general_purpose::STANDARD;
+use serde_json::{Value, json};
+use std::sync::{Arc, Mutex};
 
 fn model(creds: BedrockCredentials) -> BedrockModel {
-    BedrockModel { common: Common { id: "strong".into(), model: "anthropic.claude-sonnet-4-5".into(), input: vec![Modality::Text], output: vec![Modality::Text] }, region: "eu-west-1".into(), credentials: creds, batch: None }
+    BedrockModel {
+        common: Common {
+            id: "strong".into(),
+            model: "anthropic.claude-sonnet-4-5".into(),
+            input: vec![Modality::Text],
+            output: vec![Modality::Text],
+        },
+        region: "eu-west-1".into(),
+        credentials: creds,
+        batch: None,
+    }
 }
 
 fn keys() -> BedrockCredentials {
@@ -17,11 +27,17 @@ fn keys() -> BedrockCredentials {
         std::env::set_var("A_GRAPH_TEST_AWS_AK", "AKIATEST");
         std::env::set_var("A_GRAPH_TEST_AWS_SK", "secret-test-key");
     }
-    BedrockCredentials::Keys { access_key: "A_GRAPH_TEST_AWS_AK".into(), secret_key: "A_GRAPH_TEST_AWS_SK".into(), session_token: None }
+    BedrockCredentials::Keys {
+        access_key: "A_GRAPH_TEST_AWS_AK".into(),
+        secret_key: "A_GRAPH_TEST_AWS_SK".into(),
+        session_token: None,
+    }
 }
 
 fn client(base: &str) -> Bedrock {
-    Bedrock::new(&model(keys()), &Path::root().key("models").idx(0)).unwrap().with_endpoint_url(base)
+    Bedrock::new(&model(keys()), &Path::root().key("models").idx(0))
+        .unwrap()
+        .with_endpoint_url(base)
 }
 
 fn call(user: &str) -> ModelInvocation {
@@ -70,7 +86,11 @@ trait WithErrorType {
 impl WithErrorType for Resp {
     // the AWS SDK reads the error type from this header
     fn with_error_type(self, kind: &str) -> Self {
-        Resp::status(self.status, json!({ "__type": kind, "message": serde_json::from_str::<Value>(&self.body).unwrap()["message"] }).to_string())
+        Resp::status(
+            self.status,
+            json!({ "__type": kind, "message": serde_json::from_str::<Value>(&self.body).unwrap()["message"] })
+                .to_string(),
+        )
     }
 }
 
@@ -78,13 +98,20 @@ impl WithErrorType for Resp {
 
 fn batch_model() -> BedrockModel {
     BedrockModel {
-        batch: Some(BedrockBatch { input_s3_uri: "s3://my-in/jobs".into(), output_s3_uri: "s3://my-out/results/".into(), role_arn: "arn:aws:iam::123456789012:role/batch".into() }),
+        batch: Some(BedrockBatch {
+            input_s3_uri: "s3://my-in/jobs".into(),
+            output_s3_uri: "s3://my-out/results/".into(),
+            role_arn: "arn:aws:iam::123456789012:role/batch".into(),
+        }),
         ..model(keys())
     }
 }
 
 fn batch_client(base: &str) -> Bedrock {
-    Bedrock::new(&batch_model(), &Path::root()).unwrap().with_endpoint_url(base).with_poll_interval(std::time::Duration::from_millis(10))
+    Bedrock::new(&batch_model(), &Path::root())
+        .unwrap()
+        .with_endpoint_url(base)
+        .with_poll_interval(std::time::Duration::from_millis(10))
 }
 
 const JOB_ARN: &str = "arn:aws:bedrock:eu-west-1:123456789012:model-invocation-job/job42";
@@ -97,7 +124,11 @@ fn job(status: &str) -> String {
     .to_string()
 }
 
-fn batch_server(polls_before_done: usize, final_status: &'static str, with_output: bool) -> (impl Fn(&Req) -> Resp + Send + Sync + 'static, Arc<Mutex<usize>>) {
+fn batch_server(
+    polls_before_done: usize,
+    final_status: &'static str,
+    with_output: bool,
+) -> (impl Fn(&Req) -> Resp + Send + Sync + 'static, Arc<Mutex<usize>>) {
     let polls = Arc::new(Mutex::new(0usize));
     let seen = polls.clone();
     let record = |rec: &str, out: Value| json!({ "recordId": rec, "modelInput": {}, "modelOutput": out }).to_string();
@@ -117,10 +148,16 @@ fn batch_server(polls_before_done: usize, final_status: &'static str, with_outpu
             ("GET", p) if p.starts_with("/model-invocation-job/") => {
                 let mut n = polls.lock().unwrap();
                 *n += 1;
-                Resp::ok(job(if *n > polls_before_done { final_status } else { "InProgress" }))
+                Resp::ok(job(if *n > polls_before_done {
+                    final_status
+                } else {
+                    "InProgress"
+                }))
             }
             ("GET", "/my-out") if with_output => Resp::ok(listing),
-            ("GET", "/my-out") => Resp::ok(r#"<?xml version="1.0"?><ListBucketResult><Name>my-out</Name><KeyCount>0</KeyCount><IsTruncated>false</IsTruncated></ListBucketResult>"#),
+            ("GET", "/my-out") => Resp::ok(
+                r#"<?xml version="1.0"?><ListBucketResult><Name>my-out</Name><KeyCount>0</KeyCount><IsTruncated>false</IsTruncated></ListBucketResult>"#,
+            ),
             ("GET", "/my-out/results/job42/x.jsonl.out") => Resp::ok(output.clone()),
             _ => Resp::status(404, "{}"),
         }

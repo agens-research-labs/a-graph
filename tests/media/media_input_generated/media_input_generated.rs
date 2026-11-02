@@ -7,5 +7,10 @@ fn here() -> &'static std::path::Path {
 /// A media with `generate` is produced by a node: listing it in `media.input.ids` is refused when loading.
 #[test]
 fn media_input_generated() {
-    assert!(has(here(), "media_input_generated", "media_input_generated", "graph.nodes[0].media.input[1]"));
+    assert!(has(
+        here(),
+        "media_input_generated",
+        "media_input_generated",
+        "graph.nodes[0].media.input[1]"
+    ));
 }

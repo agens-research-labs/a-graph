@@ -1,21 +1,32 @@
+use crate::common::http::{Req, Resp, serve};
+use a_graph::models::*;
+use a_graph::resources::{Generate, MediaKind, MediaProvider, OpenaiMedia, Size};
+use a_graph::{Path, Rule};
+use serde_json::{Value, json};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use serde_json::{Value, json};
-use a_graph::resources::{Generate, MediaKind, MediaProvider, OpenaiMedia, Size};
-use a_graph::models::*;
-use a_graph::{Path, Rule};
-use crate::common::http::{Req, Resp, serve};
 
 const KEY_VAR: &str = "A_GRAPH_TEST_MISTRAL_KEY";
 
 fn api_model(var: &str) -> ApiModel {
-    ApiModel { common: Common { id: "mistral_small".into(), model: "mistral-small-latest".into(), input: vec![Modality::Text], output: vec![Modality::Text] }, api_key: var.into() }
+    ApiModel {
+        common: Common {
+            id: "mistral_small".into(),
+            model: "mistral-small-latest".into(),
+            input: vec![Modality::Text],
+            output: vec![Modality::Text],
+        },
+        api_key: var.into(),
+    }
 }
 
 fn client(base: &str) -> Mistral {
     // SAFETY: a variable only these tests use, set to the same value every time.
     unsafe { std::env::set_var(KEY_VAR, "test-key") };
-    Mistral::new(&api_model(KEY_VAR), &Path::root().key("models").idx(0)).unwrap().with_base_url(base).with_poll_interval(Duration::from_millis(10))
+    Mistral::new(&api_model(KEY_VAR), &Path::root().key("models").idx(0))
+        .unwrap()
+        .with_base_url(base)
+        .with_poll_interval(Duration::from_millis(10))
 }
 
 fn call(user: &str) -> ModelInvocation {
@@ -36,7 +47,13 @@ fn call(user: &str) -> ModelInvocation {
 }
 
 fn generate() -> Generate {
-    Generate { voice: None, language_code: None, size: None, quality: None, background: None }
+    Generate {
+        voice: None,
+        language_code: None,
+        size: None,
+        quality: None,
+        background: None,
+    }
 }
 
 fn completion(message: Value, finish: &str) -> String {
@@ -64,10 +81,15 @@ fn body(req: &Req) -> Value {
 
 // --- batch ---------------------------------------------------------------------------------
 
-fn batch_server(polls_before_done: usize, final_status: &'static str) -> (impl Fn(&Req) -> Resp + Send + Sync + 'static, Arc<Mutex<usize>>) {
+fn batch_server(
+    polls_before_done: usize,
+    final_status: &'static str,
+) -> (impl Fn(&Req) -> Resp + Send + Sync + 'static, Arc<Mutex<usize>>) {
     let polls = Arc::new(Mutex::new(0usize));
     let seen = polls.clone();
-    let ok_line = |id: &str, text: &str| json!({ "id": "x", "custom_id": id, "response": { "status_code": 200, "body": serde_json::from_str::<Value>(&text_answer(text)).unwrap() }, "error": null }).to_string();
+    let ok_line = |id: &str, text: &str| {
+        json!({ "id": "x", "custom_id": id, "response": { "status_code": 200, "body": serde_json::from_str::<Value>(&text_answer(text)).unwrap() }, "error": null }).to_string()
+    };
     let out = [
         ok_line("two", "second"),
         ok_line("one", "first"),
@@ -80,8 +102,16 @@ fn batch_server(polls_before_done: usize, final_status: &'static str) -> (impl F
         ("GET", "/v1/batch/jobs/job_1") => {
             let mut n = polls.lock().unwrap();
             *n += 1;
-            let status = if *n > polls_before_done { final_status } else { "RUNNING" };
-            let file = if final_status == "SUCCESS" { json!("file-out") } else { Value::Null };
+            let status = if *n > polls_before_done {
+                final_status
+            } else {
+                "RUNNING"
+            };
+            let file = if final_status == "SUCCESS" {
+                json!("file-out")
+            } else {
+                Value::Null
+            };
             Resp::ok(json!({ "id": "job_1", "status": status, "output_file": file, "error_file": null, "errors": [{ "message": "the job was invalid", "count": 1 }] }).to_string())
         }
         ("GET", "/v1/files/file-out/content") => Resp::ok(out.clone()),

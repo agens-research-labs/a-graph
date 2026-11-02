@@ -9,8 +9,18 @@ fn all_valid() {
         if !graph.exists() {
             continue;
         }
-        let out = std::process::Command::new(env!("CARGO_BIN_EXE_a-graph")).arg("--check").arg("graph.yml").current_dir(&folder).output().unwrap();
-        assert!(out.status.success(), "{} is not valid:\n{}", graph.display(), String::from_utf8_lossy(&out.stderr));
+        let out = std::process::Command::new(env!("CARGO_BIN_EXE_a-graph"))
+            .arg("--check")
+            .arg("graph.yml")
+            .current_dir(&folder)
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "{} is not valid:\n{}",
+            graph.display(),
+            String::from_utf8_lossy(&out.stderr)
+        );
         checked += 1;
     }
     assert!(checked >= 2, "only {checked} examples found");

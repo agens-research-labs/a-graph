@@ -9,6 +9,9 @@ fn here() -> &'static std::path::Path {
 async fn board_gets_changed() {
     let (p, _) = program(here(), "board_gets_changed", Resp::ok(chat("note", None))).await;
     let out = p.run_node(entity(&p), user("q")).await.unwrap();
-    assert!(out.assistant.message.is_none() && out.node.message.is_none(), "nothing goes on");
+    assert!(
+        out.assistant.message.is_none() && out.node.message.is_none(),
+        "nothing goes on"
+    );
     assert!(p.blackboards.read("bb").unwrap().contains("[note]"));
 }

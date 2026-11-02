@@ -7,6 +7,16 @@ fn here() -> &'static std::path::Path {
 /// Json file memory needs a path and refuses a ref.
 #[test]
 fn memory_file_rules() {
-    assert!(has(here(), "memory_file_rules", "missing_field", "external.memory[0].path"));
-    assert!(has(here(), "memory_file_rules", "unexpected_field", "external.memory[0].ref"));
+    assert!(has(
+        here(),
+        "memory_file_rules",
+        "missing_field",
+        "external.memory[0].path"
+    ));
+    assert!(has(
+        here(),
+        "memory_file_rules",
+        "unexpected_field",
+        "external.memory[0].ref"
+    ));
 }

@@ -9,5 +9,8 @@ fn here() -> &'static std::path::Path {
 async fn bad_verdict() {
     let (p, _) = program(here(), "bad_verdict", json!({ "reasons": "?", "log": "" })).await;
     let e = p.run("hi").await.unwrap_err();
-    assert_eq!((e.rule.code(), e.path.to_string()), ("bad_value", "node(judge)".to_string()));
+    assert_eq!(
+        (e.rule.code(), e.path.to_string()),
+        ("bad_value", "node(judge)".to_string())
+    );
 }

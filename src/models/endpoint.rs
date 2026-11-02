@@ -25,7 +25,9 @@ impl Model {
                 AzurePublisher::Anthropic => format!("{}.services.ai.azure.com", a.resource.to_lowercase()),
                 AzurePublisher::Openai => format!("{}.openai.azure.com", a.resource.to_lowercase()),
             },
-            Model::Ollama(l) | Model::Custom(l) => host_of(&l.host).ok_or_else(|| format!("`{}` is not a URL with a host", l.host))?,
+            Model::Ollama(l) | Model::Custom(l) => {
+                host_of(&l.host).ok_or_else(|| format!("`{}` is not a URL with a host", l.host))?
+            }
         })
     }
 
@@ -37,11 +39,20 @@ impl Model {
             Model::Ollama(l) | Model::Custom(l) => Destination::url(at.clone(), &l.host),
             _ => Destination::host(at.clone(), self.host()),
         }];
-        if let Model::Bedrock(BedrockModel { region, batch: Some(b), .. }) = self {
+        if let Model::Bedrock(BedrockModel {
+            region, batch: Some(b), ..
+        }) = self
+        {
             let at = at.key(key::BATCH);
             out.push(Destination::host(at.clone(), bedrock::control_host(region)));
-            out.push(Destination::host(at.key(key::INPUT_S3_URI), bedrock::s3_host(&b.input_s3_uri, region)));
-            out.push(Destination::host(at.key(key::OUTPUT_S3_URI), bedrock::s3_host(&b.output_s3_uri, region)));
+            out.push(Destination::host(
+                at.key(key::INPUT_S3_URI),
+                bedrock::s3_host(&b.input_s3_uri, region),
+            ));
+            out.push(Destination::host(
+                at.key(key::OUTPUT_S3_URI),
+                bedrock::s3_host(&b.output_s3_uri, region),
+            ));
         }
         out
     }

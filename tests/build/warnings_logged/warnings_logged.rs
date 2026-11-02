@@ -1,5 +1,5 @@
+use crate::common::clean_output;
 use crate::common::run::*;
-use crate::common::{clean_output};
 
 fn here() -> &'static std::path::Path {
     std::path::Path::new(file!()).parent().unwrap()
@@ -14,5 +14,8 @@ fn warnings_logged() {
     // the skill has two fields the standard does not define: one warning each
     assert_eq!(p.warnings.len(), 2);
     let lines = log_lines("skill_warning");
-    assert_eq!((lines.len(), lines[0]["level"].as_str(), lines[0]["code"].as_str()), (2, Some("warn"), Some("unknown_field")));
+    assert_eq!(
+        (lines.len(), lines[0]["level"].as_str(), lines[0]["code"].as_str()),
+        (2, Some("warn"), Some("unknown_field"))
+    );
 }

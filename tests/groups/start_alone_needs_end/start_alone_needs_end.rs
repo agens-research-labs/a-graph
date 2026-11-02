@@ -1,4 +1,3 @@
-
 fn here() -> &'static std::path::Path {
     std::path::Path::new(file!()).parent().unwrap()
 }
@@ -7,5 +6,8 @@ fn here() -> &'static std::path::Path {
 #[test]
 fn start_alone_needs_end() {
     let found = crate::common::run::errors(here(), "start_alone_needs_end");
-    assert!(found.contains(&("edge_end".to_string(), "graph.edges".to_string())), "{found:?}");
+    assert!(
+        found.contains(&("edge_end".to_string(), "graph.edges".to_string())),
+        "{found:?}"
+    );
 }

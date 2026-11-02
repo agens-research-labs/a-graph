@@ -13,9 +13,13 @@ fn text_item(text: &str) -> Value {
 
 impl Gemini {
     pub(crate) fn request_body(&self, call: &ModelInvocation) -> Result<Value, ModelError> {
-        let media = self.media_format(&call.output_media).map_err(|p| self.who.unsupported(p))?;
+        let media = self
+            .media_format(&call.output_media)
+            .map_err(|p| self.who.unsupported(p))?;
         if media.is_some() && call.schema.is_some() {
-            return Err(self.who.unsupported(vec!["an output schema and a produced media cannot be asked together".into()]));
+            return Err(self.who.unsupported(vec![
+                "an output schema and a produced media cannot be asked together".into(),
+            ]));
         }
 
         let mut body = Map::new();
@@ -42,7 +46,11 @@ impl Gemini {
         }
         if let Some(level) = call.reasoning {
             let level = match level {
-                Reasoning::Off => return Err(self.who.unsupported(vec!["Gemini cannot switch thinking off: its levels are minimal, low, medium, high".into()])),
+                Reasoning::Off => {
+                    return Err(self.who.unsupported(vec![
+                        "Gemini cannot switch thinking off: its levels are minimal, low, medium, high".into(),
+                    ]));
+                }
                 Reasoning::Minimal => "minimal",
                 Reasoning::Low => "low",
                 Reasoning::Medium => "medium",
@@ -60,7 +68,10 @@ impl Gemini {
                 config.insert("speech_config".into(), s);
             }
         } else if let Some(schema) = &call.schema {
-            body.insert("response_format".into(), json!({ "type": "text", "mime_type": "application/json", "schema": schema }));
+            body.insert(
+                "response_format".into(),
+                json!({ "type": "text", "mime_type": "application/json", "schema": schema }),
+            );
         }
         if !config.is_empty() {
             body.insert("generation_config".into(), Value::Object(config));
@@ -86,7 +97,9 @@ impl Gemini {
         for m in &call.media {
             match m {
                 MediaInput::Markdown(md) => content.push(text_item(md)),
-                MediaInput::Image { format, data } => content.push(json!({ "type": "image", "mime_type": image_mime(format), "data": data })),
+                MediaInput::Image { format, data } => {
+                    content.push(json!({ "type": "image", "mime_type": image_mime(format), "data": data }))
+                }
             }
         }
         if !call.user.is_empty() {
@@ -109,19 +122,26 @@ fn tool_round(round: &ToolRound) -> Vec<Value> {
         steps.push(json!({ "type": "model_output", "content": [text_item(m)] }));
     }
     for c in &round.calls {
-        let mut step = json!({ "type": "function_call", "id": c.call_id, "name": c.function_name, "arguments": c.arguments });
+        let mut step =
+            json!({ "type": "function_call", "id": c.call_id, "name": c.function_name, "arguments": c.arguments });
         if let Some(sig) = &c.opaque {
             step["signature"] = sig.clone();
         }
         steps.push(step);
     }
     for r in &round.results {
-        let name = round.calls.iter().find(|c| c.call_id == r.call_id).map(|c| c.function_name.clone()).unwrap_or_default();
+        let name = round
+            .calls
+            .iter()
+            .find(|c| c.call_id == r.call_id)
+            .map(|c| c.function_name.clone())
+            .unwrap_or_default();
         let text = match &r.result {
             Value::String(s) => s.clone(),
             other => other.to_string(),
         };
-        let mut step = json!({ "type": "function_result", "name": name, "call_id": r.call_id, "result": [text_item(&text)] });
+        let mut step =
+            json!({ "type": "function_result", "name": name, "call_id": r.call_id, "result": [text_item(&text)] });
         if r.is_error {
             step["is_error"] = json!(true);
         }

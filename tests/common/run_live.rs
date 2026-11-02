@@ -4,8 +4,8 @@
 //! file in the folder of the test. The answers of a model change from one call to
 //! another, so the tests check the shape of the answer and a few words that cannot be missed.
 
-pub use a_graph::run::{Content, NodeInput, Program, build};
 pub use super::run::{yml_in, yml_with};
+pub use a_graph::run::{Content, NodeInput, Program, build};
 
 pub fn program(dir: &std::path::Path, name: &str) -> Program {
     build(&yml_in(dir, name)).unwrap_or_else(|e| panic!("{e}"))
@@ -13,7 +13,15 @@ pub fn program(dir: &std::path::Path, name: &str) -> Program {
 
 pub async fn ask(p: &Program, question: &str) -> a_graph::run::NodeOutput {
     let node = p.nodes.entity("n").unwrap();
-    p.run_node(node, NodeInput { user_message: Some(question.into()), ..Default::default() }).await.unwrap_or_else(|e| panic!("{e}"))
+    p.run_node(
+        node,
+        NodeInput {
+            user_message: Some(question.into()),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap_or_else(|e| panic!("{e}"))
 }
 
 pub fn text(c: &Option<Content>) -> String {
@@ -26,7 +34,10 @@ pub fn text(c: &Option<Content>) -> String {
 // --- the whole graph -----------------------------------------------------------------------
 
 pub async fn run_graph(dir: &std::path::Path, name: &str, message: &str) -> a_graph::run::RunOutput {
-    std::sync::Arc::new(build(&yml_in(dir, name)).unwrap_or_else(|e| panic!("{e}"))).run(message).await.unwrap_or_else(|e| panic!("{e}"))
+    std::sync::Arc::new(build(&yml_in(dir, name)).unwrap_or_else(|e| panic!("{e}")))
+        .run(message)
+        .await
+        .unwrap_or_else(|e| panic!("{e}"))
 }
 
 pub fn said(item: &a_graph::run::OutputItem) -> String {
@@ -35,12 +46,3 @@ pub fn said(item: &a_graph::run::OutputItem) -> String {
         other => panic!("expected a text, got {other:?}"),
     }
 }
-
-
-
-
-
-
-
-
-

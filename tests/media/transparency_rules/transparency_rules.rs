@@ -7,5 +7,10 @@ fn here() -> &'static std::path::Path {
 /// Transparency needs png or webp.
 #[test]
 fn transparency_rules() {
-    assert!(has(here(), "transparency_rules", "media_type_unsupported", "resources.media[1].generate.background"));
+    assert!(has(
+        here(),
+        "transparency_rules",
+        "media_type_unsupported",
+        "resources.media[1].generate.background"
+    ));
 }

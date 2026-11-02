@@ -12,5 +12,9 @@ async fn stdio_timeout() {
     let out = p.run("hi").await.unwrap();
     assert_eq!(items(&out)[0].1, "R(error: the tool did not answer within 1 s)");
     // the program was given up after the timeout, not waited for (it sleeps 5 seconds)
-    assert!(started.elapsed() < std::time::Duration::from_secs(4), "{:?}", started.elapsed());
+    assert!(
+        started.elapsed() < std::time::Duration::from_secs(4),
+        "{:?}",
+        started.elapsed()
+    );
 }

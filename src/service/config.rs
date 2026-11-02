@@ -54,7 +54,9 @@ impl ServiceConfig {
         if !shape.is_empty() {
             return Err(Errors(shape));
         }
-        let Some(mut o) = Obj::new(root, Path::root(), &mut errs) else { return Err(Errors(errs.0)) };
+        let Some(mut o) = Obj::new(root, Path::root(), &mut errs) else {
+            return Err(Errors(errs.0));
+        };
         let port = o.req::<u16>(key::PORT, &mut errs);
         let data_dir = o.req::<String>(key::DATA_DIR, &mut errs);
         let hosts = o.req::<Vec<String>>(key::ALLOWED_HOSTS, &mut errs).map(|hosts| {
@@ -69,27 +71,56 @@ impl ServiceConfig {
         });
         let retention = o.opt::<u64>(key::RETENTION_SECONDS, &mut errs);
         if retention == Some(0) {
-            errs.add(&Path::root().key(key::RETENTION_SECONDS), Rule::BadValue, "`retention_seconds` is at least 1");
+            errs.add(
+                &Path::root().key(key::RETENTION_SECONDS),
+                Rule::BadValue,
+                "`retention_seconds` is at least 1",
+            );
         }
         // u32: a number the semaphore can hold
         let max_runs = o.opt::<u32>(key::MAX_RUNS, &mut errs);
         if max_runs == Some(0) {
-            errs.add(&Path::root().key(key::MAX_RUNS), Rule::BadValue, "`max_runs` is at least 1");
+            errs.add(
+                &Path::root().key(key::MAX_RUNS),
+                Rule::BadValue,
+                "`max_runs` is at least 1",
+            );
         }
         let run_timeout = o.opt::<u64>(key::RUN_TIMEOUT_SECONDS, &mut errs);
         if run_timeout == Some(0) {
-            errs.add(&Path::root().key(key::RUN_TIMEOUT_SECONDS), Rule::BadValue, "`run_timeout_seconds` is at least 1");
+            errs.add(
+                &Path::root().key(key::RUN_TIMEOUT_SECONDS),
+                Rule::BadValue,
+                "`run_timeout_seconds` is at least 1",
+            );
         }
         let session_retention = o.opt::<u64>(key::SESSION_RETENTION_SECONDS, &mut errs);
         if session_retention == Some(0) {
-            errs.add(&Path::root().key(key::SESSION_RETENTION_SECONDS), Rule::BadValue, "`session_retention_seconds` is at least 1");
+            errs.add(
+                &Path::root().key(key::SESSION_RETENTION_SECONDS),
+                Rule::BadValue,
+                "`session_retention_seconds` is at least 1",
+            );
         }
         let session_max_bytes = o.opt::<u64>(key::SESSION_MAX_BYTES, &mut errs);
         if session_max_bytes == Some(0) {
-            errs.add(&Path::root().key(key::SESSION_MAX_BYTES), Rule::BadValue, "`session_max_bytes` is at least 1");
+            errs.add(
+                &Path::root().key(key::SESSION_MAX_BYTES),
+                Rule::BadValue,
+                "`session_max_bytes` is at least 1",
+            );
         }
         match (port, data_dir, hosts, errs.0.is_empty()) {
-            (Some(port), Some(dir), Some(hosts), true) => Ok(ServiceConfig { port, data_dir: PathBuf::from(dir), allowed_hosts: hosts, retention_seconds: retention.unwrap_or(DEFAULT_RETENTION_SECONDS), max_runs: max_runs.map_or(DEFAULT_MAX_RUNS, |n| n as usize), run_timeout_seconds: run_timeout.unwrap_or(DEFAULT_RUN_TIMEOUT_SECONDS), session_retention_seconds: session_retention, session_max_bytes }),
+            (Some(port), Some(dir), Some(hosts), true) => Ok(ServiceConfig {
+                port,
+                data_dir: PathBuf::from(dir),
+                allowed_hosts: hosts,
+                retention_seconds: retention.unwrap_or(DEFAULT_RETENTION_SECONDS),
+                max_runs: max_runs.map_or(DEFAULT_MAX_RUNS, |n| n as usize),
+                run_timeout_seconds: run_timeout.unwrap_or(DEFAULT_RUN_TIMEOUT_SECONDS),
+                session_retention_seconds: session_retention,
+                session_max_bytes,
+            }),
             _ => Err(Errors(errs.0)),
         }
     }

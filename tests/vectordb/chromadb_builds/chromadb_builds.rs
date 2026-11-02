@@ -8,5 +8,8 @@ fn here() -> &'static std::path::Path {
 #[test]
 fn chromadb_builds() {
     let e = build(here(), "chromadb_builds").unwrap();
-    assert!(matches!(e.vectordb.get("kb").unwrap().backend, VectorBackend::Chromadb { .. }));
+    assert!(matches!(
+        e.vectordb.get("kb").unwrap().backend,
+        VectorBackend::Chromadb { .. }
+    ));
 }

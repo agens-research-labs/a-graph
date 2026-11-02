@@ -1,24 +1,35 @@
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use crate::common::http::{Req, Resp, serve};
+use a_graph::models::*;
+use a_graph::resources::{GeminiMedia, Generate, MediaKind, MediaProvider, Moderation, OpenaiMedia, Size};
+use a_graph::{Path, Rule};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use serde_json::{Value, json};
-use a_graph::resources::{GeminiMedia, Generate, MediaKind, MediaProvider, Moderation, OpenaiMedia, Size};
-use a_graph::models::*;
-use a_graph::{Path, Rule};
-use crate::common::http::{Req, Resp, serve};
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 const KEY_VAR: &str = "A_GRAPH_TEST_OPENAI_KEY";
 
 fn api_model(var: &str) -> ApiModel {
-    ApiModel { common: Common { id: "smart".into(), model: "gpt-5".into(), input: vec![Modality::Text], output: vec![Modality::Text] }, api_key: var.into() }
+    ApiModel {
+        common: Common {
+            id: "smart".into(),
+            model: "gpt-5".into(),
+            input: vec![Modality::Text],
+            output: vec![Modality::Text],
+        },
+        api_key: var.into(),
+    }
 }
 
 /// `base` is the server; the API lives under `/v1`.
 fn client(base: &str) -> OpenAi {
     // SAFETY: a variable only these tests use, set to the same value every time.
     unsafe { std::env::set_var(KEY_VAR, "test-key") };
-    OpenAi::new(&api_model(KEY_VAR), &Path::root().key("models").idx(0)).unwrap().with_base_url(format!("{base}/v1")).with_poll_interval(Duration::from_millis(10))
+    OpenAi::new(&api_model(KEY_VAR), &Path::root().key("models").idx(0))
+        .unwrap()
+        .with_base_url(format!("{base}/v1"))
+        .with_poll_interval(Duration::from_millis(10))
 }
 
 fn call(user: &str) -> ModelInvocation {
@@ -39,7 +50,13 @@ fn call(user: &str) -> ModelInvocation {
 }
 
 fn generate() -> Generate {
-    Generate { voice: None, language_code: None, size: None, quality: None, background: None }
+    Generate {
+        voice: None,
+        language_code: None,
+        size: None,
+        quality: None,
+        background: None,
+    }
 }
 
 fn response(status: &str, output: Value) -> String {
@@ -73,14 +90,23 @@ fn body(req: &Req) -> Value {
 // --- produced media ------------------------------------------------------------------
 
 fn image(kind: &str, g: Generate, p: Option<MediaProvider>) -> ProducedMedia {
-    ProducedMedia { kind: MediaKind::Img(kind.into()), generate: g, provider: p }
+    ProducedMedia {
+        kind: MediaKind::Img(kind.into()),
+        generate: g,
+        provider: p,
+    }
 }
 
 // --- Azure Foundry, publisher openai -----------------------------------------------------
 
 fn azure_model(credentials: AzureCredentials, batch: Option<&str>) -> AzureModel {
     AzureModel {
-        common: Common { id: "azure_gpt".into(), model: "my-gpt-deployment".into(), input: vec![Modality::Text], output: vec![Modality::Text] },
+        common: Common {
+            id: "azure_gpt".into(),
+            model: "my-gpt-deployment".into(),
+            input: vec![Modality::Text],
+            output: vec![Modality::Text],
+        },
         publisher: AzurePublisher::Openai,
         resource: "My-Res".into(),
         credentials,
@@ -96,10 +122,15 @@ fn azure_key() -> AzureCredentials {
 
 // --- batch ---------------------------------------------------------------------------------
 
-fn batch_server(polls_before_done: usize, final_status: &'static str) -> (impl Fn(&Req) -> Resp + Send + Sync + 'static, Arc<Mutex<usize>>) {
+fn batch_server(
+    polls_before_done: usize,
+    final_status: &'static str,
+) -> (impl Fn(&Req) -> Resp + Send + Sync + 'static, Arc<Mutex<usize>>) {
     let polls = Arc::new(Mutex::new(0usize));
     let seen = polls.clone();
-    let ok_line = |id: &str, text: &str| json!({ "id": "batch_req_1", "custom_id": id, "response": { "status_code": 200, "request_id": "r", "body": serde_json::from_str::<Value>(&text_answer(text)).unwrap() }, "error": null }).to_string();
+    let ok_line = |id: &str, text: &str| {
+        json!({ "id": "batch_req_1", "custom_id": id, "response": { "status_code": 200, "request_id": "r", "body": serde_json::from_str::<Value>(&text_answer(text)).unwrap() }, "error": null }).to_string()
+    };
     let out = [
         ok_line("two", "second"),
         ok_line("one", "first"),
@@ -113,8 +144,16 @@ fn batch_server(polls_before_done: usize, final_status: &'static str) -> (impl F
         ("GET", "/v1/batches/batch_1") => {
             let mut n = polls.lock().unwrap();
             *n += 1;
-            let status = if *n > polls_before_done { final_status } else { "in_progress" };
-            let output = if final_status == "completed" { json!("file-out") } else { Value::Null };
+            let status = if *n > polls_before_done {
+                final_status
+            } else {
+                "in_progress"
+            };
+            let output = if final_status == "completed" {
+                json!("file-out")
+            } else {
+                Value::Null
+            };
             Resp::ok(json!({ "id": "batch_1", "status": status, "output_file_id": output, "error_file_id": null, "errors": { "data": [{ "message": "the batch was invalid" }] } }).to_string())
         }
         ("GET", "/v1/files/file-out/content") => Resp::ok(out.clone()),

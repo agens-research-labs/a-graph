@@ -3,11 +3,20 @@ use super::*;
 /// Reasoning levels.
 #[tokio::test]
 async fn reasoning_levels() {
-    for (level, expected) in [(Reasoning::Minimal, "minimal"), (Reasoning::Low, "low"), (Reasoning::Medium, "medium"), (Reasoning::High, "high"), (Reasoning::Max, "high")] {
+    for (level, expected) in [
+        (Reasoning::Minimal, "minimal"),
+        (Reasoning::Low, "low"),
+        (Reasoning::Medium, "medium"),
+        (Reasoning::High, "high"),
+        (Reasoning::Max, "high"),
+    ] {
         let mut c = call("q");
         c.reasoning = Some(level);
         let (_, req) = one_call(c, Resp::ok(text_answer("x"))).await;
-        assert_eq!(body(&req)["generation_config"], json!({ "thinking_level": expected, "thinking_summaries": "auto" }));
+        assert_eq!(
+            body(&req)["generation_config"],
+            json!({ "thinking_level": expected, "thinking_summaries": "auto" })
+        );
     }
     // absent: nothing is sent
     let (_, req) = one_call(call("q"), Resp::ok(text_answer("x"))).await;

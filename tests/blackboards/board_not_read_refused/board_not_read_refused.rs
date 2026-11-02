@@ -8,7 +8,11 @@ fn here() -> &'static std::path::Path {
 #[test]
 fn board_not_read_refused() {
     std::fs::create_dir_all("target/test-boards").unwrap();
-    std::fs::write("target/test-boards/board_not_read_refused.md", "---\n<description>\nWhat it is.\n<purpose>\nWhat it is for.\n---\n").unwrap();
+    std::fs::write(
+        "target/test-boards/board_not_read_refused.md",
+        "---\n<description>\nWhat it is.\n<purpose>\nWhat it is for.\n---\n",
+    )
+    .unwrap();
     let e = build(&yml(here(), "board_not_read_refused")).err().unwrap();
     assert_eq!(e.rules(), ["placeholder_unbound"]);
 }

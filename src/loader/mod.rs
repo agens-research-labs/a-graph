@@ -27,8 +27,14 @@ impl Document {
 
 /// Parses `src` and validates it. On failure returns every error found, not only the first.
 pub fn load(src: &str) -> Result<Document, Errors> {
-    let root: Value = serde_norway::from_str(src)
-        .map_err(|e| Errors(vec![Error::new(Phase::Validation, Path::root(), Rule::Parse, e.to_string())]))?;
+    let root: Value = serde_norway::from_str(src).map_err(|e| {
+        Errors(vec![Error::new(
+            Phase::Validation,
+            Path::root(),
+            Rule::Parse,
+            e.to_string(),
+        )])
+    })?;
 
     let mut c = Collector::default();
     static DOCUMENT: Shape = Shape::Map(schema::DOCUMENT);

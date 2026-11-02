@@ -14,8 +14,19 @@ async fn tool_rounds() {
     let (r, _) = one_call(call("weather in Rome?"), Resp::ok(answer)).await;
     let r = r.unwrap();
     assert_eq!(r.stop_reason, StopReason::ToolCall);
-    assert_eq!(r.tools_call, vec![ToolCall { call_id: "toolu_1".into(), function_name: "get_weather".into(), arguments: json!({ "city": "Rome" }), opaque: None }]);
-    assert_eq!(r.reasoning, vec![json!({ "type": "thinking", "thinking": "let me look", "signature": "sig" })]);
+    assert_eq!(
+        r.tools_call,
+        vec![ToolCall {
+            call_id: "toolu_1".into(),
+            function_name: "get_weather".into(),
+            arguments: json!({ "city": "Rome" }),
+            opaque: None
+        }]
+    );
+    assert_eq!(
+        r.reasoning,
+        vec![json!({ "type": "thinking", "thinking": "let me look", "signature": "sig" })]
+    );
     assert_eq!(r.message.as_deref(), Some("I will check."));
 
     // the next call sends the round back: the opaque thinking block first, then text and tool_use
@@ -25,8 +36,16 @@ async fn tool_rounds() {
         reasoning: r.reasoning.clone(),
         calls: r.tools_call.clone(),
         results: vec![
-            ToolResult { call_id: "toolu_1".into(), result: json!("22 C"), is_error: false },
-            ToolResult { call_id: "toolu_2".into(), result: json!({ "reason": "boom" }), is_error: true },
+            ToolResult {
+                call_id: "toolu_1".into(),
+                result: json!("22 C"),
+                is_error: false,
+            },
+            ToolResult {
+                call_id: "toolu_2".into(),
+                result: json!({ "reason": "boom" }),
+                is_error: true,
+            },
         ],
     }];
     let (_, req) = one_call(c, Resp::ok(text_answer("done"))).await;

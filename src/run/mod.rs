@@ -25,8 +25,8 @@ use crate::logging::{Event, Logger, Redaction, Tracer, Verbose};
 use crate::models::ModelManager;
 use crate::network;
 use crate::resources::Resources;
-use crate::utilities::UtilityManager;
 use crate::schema::key;
+use crate::utilities::UtilityManager;
 
 /// Everything built from a yml that passed every check.
 pub struct Program {
@@ -80,8 +80,25 @@ pub fn build(src: &str) -> Result<Program, Errors> {
     let nodes = Nodes::build(nodes_value);
 
     let mut errors: Vec<Error> = Vec::new();
-    let (models, embeddings, utilities, resources, external, blackboards, nodes) = (keep(models, &mut errors), keep(embeddings, &mut errors), keep(utilities, &mut errors), keep(resources, &mut errors), keep(external, &mut errors), keep(blackboards, &mut errors), keep(nodes, &mut errors));
-    let (Some(models), Some(embeddings), Some(utilities), Some(resources), Some(external), Some(blackboards), Some(nodes)) = (models, embeddings, utilities, resources, external, blackboards, nodes) else {
+    let (models, embeddings, utilities, resources, external, blackboards, nodes) = (
+        keep(models, &mut errors),
+        keep(embeddings, &mut errors),
+        keep(utilities, &mut errors),
+        keep(resources, &mut errors),
+        keep(external, &mut errors),
+        keep(blackboards, &mut errors),
+        keep(nodes, &mut errors),
+    );
+    let (
+        Some(models),
+        Some(embeddings),
+        Some(utilities),
+        Some(resources),
+        Some(external),
+        Some(blackboards),
+        Some(nodes),
+    ) = (models, embeddings, utilities, resources, external, blackboards, nodes)
+    else {
         return Err(report(&logger, errors));
     };
     let Some(edges) = keep(Edges::build(edges_value, &nodes), &mut errors) else {
@@ -109,7 +126,23 @@ pub fn build(src: &str) -> Result<Program, Errors> {
     for w in &warnings {
         logger.log(&Event::from(w));
     }
-    Ok(Program { logger, verbose, tracer, observer: None, spans: Default::default(), models, embeddings, utilities, resources, external, blackboards, nodes, edges, warnings, mcp: Default::default() })
+    Ok(Program {
+        logger,
+        verbose,
+        tracer,
+        observer: None,
+        spans: Default::default(),
+        models,
+        embeddings,
+        utilities,
+        resources,
+        external,
+        blackboards,
+        nodes,
+        edges,
+        warnings,
+        mcp: Default::default(),
+    })
 }
 
 /// The value of a manager that built, or its errors added to the list.

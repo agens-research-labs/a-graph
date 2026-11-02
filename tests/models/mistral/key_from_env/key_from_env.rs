@@ -9,6 +9,12 @@ fn key_from_env() {
     assert_eq!(err.path.to_string(), "models[3].api_key");
     // SAFETY: a variable only this test uses.
     unsafe { std::env::set_var("A_GRAPH_TEST_MISTRAL_SECRET", "super-secret-value") };
-    let shown = format!("{:?}", Mistral::new(&api_model("A_GRAPH_TEST_MISTRAL_SECRET"), &at).unwrap());
-    assert!(!shown.contains("super-secret-value") && shown.contains("redacted"), "{shown}");
+    let shown = format!(
+        "{:?}",
+        Mistral::new(&api_model("A_GRAPH_TEST_MISTRAL_SECRET"), &at).unwrap()
+    );
+    assert!(
+        !shown.contains("super-secret-value") && shown.contains("redacted"),
+        "{shown}"
+    );
 }

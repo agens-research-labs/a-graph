@@ -21,7 +21,9 @@ async fn run_timeout() {
     let _ = std::fs::remove_file(log);
     let (model, _) = listen_slowly(std::time::Duration::from_secs(3), |_| Resp::ok(answer("too late"))).await;
     let s = start(&config_path()).await;
-    let (status, body) = s.start_run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "how long?" })).await;
+    let (status, body) = s
+        .start_run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "how long?" }))
+        .await;
     assert_eq!(status, 202, "{body}");
     let id = body["run"].as_str().unwrap().to_string();
     let state = s.finished(&id).await;
@@ -29,8 +31,15 @@ async fn run_timeout() {
     assert_eq!(state["errors"][0]["rule"], "run_timeout", "{state}");
     let events = s.events(&id).await;
     let (name, data) = events.last().unwrap();
-    assert_eq!((name.as_str(), &data["errors"][0]["rule"]), ("error", &json!("run_timeout")));
+    assert_eq!(
+        (name.as_str(), &data["errors"][0]["rule"]),
+        ("error", &json!("run_timeout"))
+    );
     // the log is closed before the run is said to be over: its last line is the end of the run, with the rule
     let lines = log_lines(log);
-    assert_eq!(lines.last().map(|l| &l["code"]), Some(&json!("run_timeout")), "{lines:?}");
+    assert_eq!(
+        lines.last().map(|l| &l["code"]),
+        Some(&json!("run_timeout")),
+        "{lines:?}"
+    );
 }

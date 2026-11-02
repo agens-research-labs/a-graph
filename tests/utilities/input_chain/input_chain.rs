@@ -9,5 +9,9 @@ fn here() -> &'static std::path::Path {
 async fn input_chain() {
     let (p, seen) = program(here(), "input_chain", Resp::ok(chat("ok", None))).await;
     p.run_node(entity(&p), user("hello")).await.unwrap();
-    assert_eq!(sent(&seen)["messages"][1]["content"], "Q: [HELLO]", "first upper case, then in brackets");
+    assert_eq!(
+        sent(&seen)["messages"][1]["content"],
+        "Q: [HELLO]",
+        "first upper case, then in brackets"
+    );
 }

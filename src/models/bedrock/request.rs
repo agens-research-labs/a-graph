@@ -3,9 +3,10 @@
 use aws_sdk_bedrockruntime::Client;
 use aws_sdk_bedrockruntime::operation::converse::ConverseOutput;
 use aws_sdk_bedrockruntime::types::{
-    ContentBlock, ConversationRole, ImageBlock, ImageSource, InferenceConfiguration, JsonSchemaDefinition, Message, OutputConfig, OutputFormat, OutputFormatStructure, OutputFormatType,
-    ReasoningContentBlock, ReasoningTextBlock, SystemContentBlock, Tool, ToolConfiguration, ToolInputSchema, ToolResultBlock, ToolResultContentBlock, ToolResultStatus, ToolSpecification,
-    ToolUseBlock,
+    ContentBlock, ConversationRole, ImageBlock, ImageSource, InferenceConfiguration, JsonSchemaDefinition, Message,
+    OutputConfig, OutputFormat, OutputFormatStructure, OutputFormatType, ReasoningContentBlock, ReasoningTextBlock,
+    SystemContentBlock, Tool, ToolConfiguration, ToolInputSchema, ToolResultBlock, ToolResultContentBlock,
+    ToolResultStatus, ToolSpecification, ToolUseBlock,
 };
 use aws_smithy_types::Blob;
 use base64::Engine;
@@ -67,7 +68,11 @@ impl Bedrock {
             }
             if let Some(schema) = &call.schema {
                 // Converse takes the schema as a JSON string
-                let def = JsonSchemaDefinition::builder().schema(schema.to_string()).name("output").build().map_err(|e| self.who.unsupported(vec![e.to_string()]))?;
+                let def = JsonSchemaDefinition::builder()
+                    .schema(schema.to_string())
+                    .name("output")
+                    .build()
+                    .map_err(|e| self.who.unsupported(vec![e.to_string()]))?;
                 let format = OutputFormat::builder()
                     .r#type(OutputFormatType::JsonSchema)
                     .structure(OutputFormatStructure::JsonSchema(def))
@@ -81,8 +86,14 @@ impl Bedrock {
         // the thinking switch is a field of the model itself (the way Claude models take it)
         match call.reasoning {
             None => {}
-            Some(Reasoning::Off) => req = req.additional_model_request_fields(to_document(&json!({ "thinking": { "type": "disabled" } }))),
-            Some(_) => req = req.additional_model_request_fields(to_document(&json!({ "thinking": { "type": "adaptive", "display": "summarized" } }))),
+            Some(Reasoning::Off) => {
+                req = req.additional_model_request_fields(to_document(&json!({ "thinking": { "type": "disabled" } })))
+            }
+            Some(_) => {
+                req = req.additional_model_request_fields(to_document(
+                    &json!({ "thinking": { "type": "adaptive", "display": "summarized" } }),
+                ))
+            }
         }
 
         req.send().await.map_err(|e| self.sdk_error(e))
@@ -90,7 +101,9 @@ impl Bedrock {
 
     fn messages(&self, call: &ModelInvocation) -> Result<Vec<Message>, ModelError> {
         let mut messages = Vec::new();
-        let build = |role: ConversationRole, content: Vec<ContentBlock>| Message::builder().role(role).set_content(Some(content)).build();
+        let build = |role: ConversationRole, content: Vec<ContentBlock>| {
+            Message::builder().role(role).set_content(Some(content)).build()
+        };
         let fail = |e: aws_smithy_types::error::operation::BuildError| self.who.unsupported(vec![e.to_string()]);
 
         for e in &call.history {
@@ -106,9 +119,20 @@ impl Bedrock {
             match m {
                 MediaInput::Markdown(md) => content.push(ContentBlock::Text(md.clone())),
                 MediaInput::Image { format, data } => {
-                    let f = image_format(format).ok_or_else(|| self.who.unsupported(vec![format!("image format `{format}` is not accepted (png, jpeg, gif, webp)")]))?;
-                    let bytes = STANDARD.decode(data).map_err(|e| self.who.unsupported(vec![format!("the image is not valid base64: {e}")]))?;
-                    let block = ImageBlock::builder().format(f).source(ImageSource::Bytes(Blob::new(bytes))).build().map_err(fail)?;
+                    let f = image_format(format).ok_or_else(|| {
+                        self.who.unsupported(vec![format!(
+                            "image format `{format}` is not accepted (png, jpeg, gif, webp)"
+                        )])
+                    })?;
+                    let bytes = STANDARD.decode(data).map_err(|e| {
+                        self.who
+                            .unsupported(vec![format!("the image is not valid base64: {e}")])
+                    })?;
+                    let block = ImageBlock::builder()
+                        .format(f)
+                        .source(ImageSource::Bytes(Blob::new(bytes)))
+                        .build()
+                        .map_err(fail)?;
                     content.push(ContentBlock::Image(block));
                 }
             }
@@ -136,7 +160,12 @@ impl Bedrock {
             assistant.push(ContentBlock::Text(m.to_string()));
         }
         for c in &round.calls {
-            let block = ToolUseBlock::builder().tool_use_id(&c.call_id).name(&c.function_name).input(to_document(&c.arguments)).build().map_err(fail)?;
+            let block = ToolUseBlock::builder()
+                .tool_use_id(&c.call_id)
+                .name(&c.function_name)
+                .input(to_document(&c.arguments))
+                .build()
+                .map_err(fail)?;
             assistant.push(ContentBlock::ToolUse(block));
         }
         let mut results = Vec::new();
@@ -148,14 +177,26 @@ impl Bedrock {
             let block = ToolResultBlock::builder()
                 .tool_use_id(&r.call_id)
                 .content(ToolResultContentBlock::Text(text))
-                .status(if r.is_error { ToolResultStatus::Error } else { ToolResultStatus::Success })
+                .status(if r.is_error {
+                    ToolResultStatus::Error
+                } else {
+                    ToolResultStatus::Success
+                })
                 .build()
                 .map_err(fail)?;
             results.push(ContentBlock::ToolResult(block));
         }
         Ok(vec![
-            Message::builder().role(ConversationRole::Assistant).set_content(Some(assistant)).build().map_err(fail)?,
-            Message::builder().role(ConversationRole::User).set_content(Some(results)).build().map_err(fail)?,
+            Message::builder()
+                .role(ConversationRole::Assistant)
+                .set_content(Some(assistant))
+                .build()
+                .map_err(fail)?,
+            Message::builder()
+                .role(ConversationRole::User)
+                .set_content(Some(results))
+                .build()
+                .map_err(fail)?,
         ])
     }
 
@@ -170,9 +211,14 @@ impl Bedrock {
             return Ok(ReasoningContentBlock::ReasoningText(block));
         }
         if let Some(b64) = v.get("redacted").and_then(Value::as_str) {
-            let bytes = STANDARD.decode(b64).map_err(|e| self.who.invalid(format!("a stored redacted reasoning block is not base64: {e}")))?;
+            let bytes = STANDARD.decode(b64).map_err(|e| {
+                self.who
+                    .invalid(format!("a stored redacted reasoning block is not base64: {e}"))
+            })?;
             return Ok(ReasoningContentBlock::RedactedContent(Blob::new(bytes)));
         }
-        Err(self.who.invalid("a stored reasoning block has neither `text` nor `redacted`"))
+        Err(self
+            .who
+            .invalid("a stored reasoning block has neither `text` nor `redacted`"))
     }
 }

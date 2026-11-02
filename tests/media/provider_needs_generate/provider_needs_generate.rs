@@ -7,5 +7,10 @@ fn here() -> &'static std::path::Path {
 /// Provider goes with generate.
 #[test]
 fn provider_needs_generate() {
-    assert!(has(here(), "provider_needs_generate", "unexpected_field", "resources.media[0].provider"));
+    assert!(has(
+        here(),
+        "provider_needs_generate",
+        "unexpected_field",
+        "resources.media[0].provider"
+    ));
 }

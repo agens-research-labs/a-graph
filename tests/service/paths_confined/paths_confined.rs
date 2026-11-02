@@ -18,10 +18,22 @@ fn config_path() -> String {
 async fn paths_confined() {
     let (model, seen) = listen(|_| Resp::ok(answer("ok"))).await;
     let s = start(&config_path()).await;
-    let (status, body) = s.run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "x" })).await;
+    let (status, body) = s
+        .run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "x" }))
+        .await;
     assert_eq!(status, 422, "{body}");
-    let at: Vec<&str> = body["errors"].as_array().unwrap().iter().map(|e| e["path"].as_str().unwrap()).collect();
-    for wanted in ["blackboards[0].source.file", "resources.media[0].source.path", "external.memory[0].path", "resources.prompts[2].source.path"] {
+    let at: Vec<&str> = body["errors"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e["path"].as_str().unwrap())
+        .collect();
+    for wanted in [
+        "blackboards[0].source.file",
+        "resources.media[0].source.path",
+        "external.memory[0].path",
+        "resources.prompts[2].source.path",
+    ] {
         assert!(at.contains(&wanted), "no error at `{wanted}` in {at:?}");
     }
     assert!(seen.lock().unwrap().is_empty());

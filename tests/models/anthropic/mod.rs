@@ -1,21 +1,33 @@
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
-use serde_json::{Value, json};
+use crate::common::http::{Req, Resp, serve};
 use a_graph::models::*;
 use a_graph::resources::{Generate, MediaKind};
 use a_graph::{Path, Rule};
-use crate::common::http::{Req, Resp, serve};
+use serde_json::{Value, json};
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 const KEY_VAR: &str = "A_GRAPH_TEST_ANTHROPIC_KEY";
 
 fn api_model(var: &str) -> AnthropicModel {
-    AnthropicModel { common: Common { id: "fast".into(), model: "claude-haiku-4-5".into(), input: vec![Modality::Text], output: vec![Modality::Text] }, api_key: var.into(), workspace_id: None }
+    AnthropicModel {
+        common: Common {
+            id: "fast".into(),
+            model: "claude-haiku-4-5".into(),
+            input: vec![Modality::Text],
+            output: vec![Modality::Text],
+        },
+        api_key: var.into(),
+        workspace_id: None,
+    }
 }
 
 fn client(base: &str) -> Anthropic {
     // SAFETY: a variable only these tests use, set to the same value every time.
     unsafe { std::env::set_var(KEY_VAR, "test-key") };
-    Anthropic::new(&api_model(KEY_VAR), &Path::root().key("models").idx(0)).unwrap().with_base_url(base).with_poll_interval(Duration::from_millis(10))
+    Anthropic::new(&api_model(KEY_VAR), &Path::root().key("models").idx(0))
+        .unwrap()
+        .with_base_url(base)
+        .with_poll_interval(Duration::from_millis(10))
 }
 
 fn call(user: &str) -> ModelInvocation {
@@ -79,7 +91,9 @@ fn batch_server(polls_before_end: usize) -> (impl Fn(&Req) -> Resp + Send + Sync
     .collect::<Vec<_>>()
     .join("\n");
     let handler = move |req: &Req| match (req.method.as_str(), req.path.as_str()) {
-        ("POST", "/v1/messages/batches") => Resp::ok(json!({ "id": "msgbatch_1", "processing_status": "in_progress" }).to_string()),
+        ("POST", "/v1/messages/batches") => {
+            Resp::ok(json!({ "id": "msgbatch_1", "processing_status": "in_progress" }).to_string())
+        }
         ("GET", "/v1/messages/batches/msgbatch_1") => {
             let mut n = polls.lock().unwrap();
             *n += 1;

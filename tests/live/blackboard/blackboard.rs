@@ -1,5 +1,5 @@
+use crate::common::fresh_copy;
 use crate::common::run_live::*;
-use crate::common::{fresh_copy};
 
 fn here() -> &'static std::path::Path {
     std::path::Path::new(file!()).parent().unwrap()
@@ -13,5 +13,8 @@ async fn blackboard() {
     fresh_copy(here(), "board.md", path);
     let out = ask(&program(here(), "blackboard"), "Reply with the single word: pong").await;
     let answer = text(&out.assistant.message);
-    assert!(std::fs::read_to_string(path).unwrap().contains(answer.trim()), "the board holds the answer");
+    assert!(
+        std::fs::read_to_string(path).unwrap().contains(answer.trim()),
+        "the board holds the answer"
+    );
 }

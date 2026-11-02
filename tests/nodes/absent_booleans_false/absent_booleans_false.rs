@@ -1,5 +1,5 @@
 use crate::common::graph::*;
-use crate::common::{own_yml};
+use crate::common::own_yml;
 
 fn here() -> &'static std::path::Path {
     std::path::Path::new(file!()).parent().unwrap()
@@ -12,7 +12,14 @@ fn absent_booleans_false() {
     let a = n.entity("a").unwrap();
     let media = n.media().get(a).unwrap();
     assert_eq!(media.input.len(), 1);
-    assert_eq!((media.input[0].id.as_str(), media.input[0].from, media.input[0].utility.len()), ("scan", a_graph::graph::nodes::component::InFrom::Resources, 0));
+    assert_eq!(
+        (
+            media.input[0].id.as_str(),
+            media.input[0].from,
+            media.input[0].utility.len()
+        ),
+        ("scan", a_graph::graph::nodes::component::InFrom::Resources, 0)
+    );
     assert!(media.output.is_empty());
     let msg = n.message().get(a).unwrap();
     let i = msg.input.unwrap();
@@ -24,5 +31,8 @@ fn absent_booleans_false() {
 
     let b = n.entity("b").unwrap();
     let out = &n.media().get(b).unwrap().output[0];
-    assert_eq!((out.id.as_str(), out.from, out.assistant, out.node), ("cover", a_graph::graph::nodes::component::OutFrom::Model, false, false));
+    assert_eq!(
+        (out.id.as_str(), out.from, out.assistant, out.node),
+        ("cover", a_graph::graph::nodes::component::OutFrom::Model, false, false)
+    );
 }

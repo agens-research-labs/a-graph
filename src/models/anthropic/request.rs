@@ -32,7 +32,9 @@ impl Anthropic {
         if !call.output_media.is_empty() {
             return Err(self.unsupported(vec!["anthropic produces text only".into()]));
         }
-        let max_tokens = call.max_tokens.ok_or_else(|| self.unsupported(vec!["max_tokens is mandatory for anthropic".into()]))?;
+        let max_tokens = call
+            .max_tokens
+            .ok_or_else(|| self.unsupported(vec!["max_tokens is mandatory for anthropic".into()]))?;
         let mut body = Map::new();
         body.insert("model".into(), json!(self.model));
         body.insert("max_tokens".into(), json!(max_tokens));
@@ -41,7 +43,11 @@ impl Anthropic {
         }
         body.insert("messages".into(), Value::Array(self.messages(call)?));
         if !call.tools.is_empty() {
-            let tools: Vec<Value> = call.tools.iter().map(|t| json!({ "name": t.name, "description": t.description, "input_schema": t.parameters })).collect();
+            let tools: Vec<Value> = call
+                .tools
+                .iter()
+                .map(|t| json!({ "name": t.name, "description": t.description, "input_schema": t.parameters }))
+                .collect();
             body.insert("tools".into(), Value::Array(tools));
         }
         if let Some(t) = call.temperature {
@@ -59,7 +65,10 @@ impl Anthropic {
             }
             Some(level) => {
                 // `summarized`: without it newer models return the thinking blocks empty
-                body.insert("thinking".into(), json!({ "type": "adaptive", "display": "summarized" }));
+                body.insert(
+                    "thinking".into(),
+                    json!({ "type": "adaptive", "display": "summarized" }),
+                );
                 let effort = match level {
                     Reasoning::Minimal | Reasoning::Low => "low",
                     Reasoning::Medium => "medium",
@@ -85,7 +94,11 @@ impl Anthropic {
     }
 
     fn messages(&self, call: &ModelInvocation) -> Result<Vec<Value>, ModelError> {
-        let mut messages: Vec<Value> = call.history.iter().map(|e| json!({ "role": role(e.role), "content": e.content })).collect();
+        let mut messages: Vec<Value> = call
+            .history
+            .iter()
+            .map(|e| json!({ "role": role(e.role), "content": e.content }))
+            .collect();
 
         // media first, then the question
         let mut content = Vec::new();
@@ -94,8 +107,12 @@ impl Anthropic {
             match m {
                 MediaInput::Markdown(md) => content.push(text_block(md)),
                 MediaInput::Image { format, data } => match image_mime(format) {
-                    Some(mime) => content.push(json!({ "type": "image", "source": { "type": "base64", "media_type": mime, "data": data } })),
-                    None => problems.push(format!("image format `{format}` is not accepted (jpeg, png, gif, webp)")),
+                    Some(mime) => content.push(
+                        json!({ "type": "image", "source": { "type": "base64", "media_type": mime, "data": data } }),
+                    ),
+                    None => problems.push(format!(
+                        "image format `{format}` is not accepted (jpeg, png, gif, webp)"
+                    )),
                 },
             }
         }
@@ -134,5 +151,8 @@ fn tool_round(round: &ToolRound) -> [Value; 2] {
             json!({ "type": "tool_result", "tool_use_id": r.call_id, "content": content, "is_error": r.is_error })
         })
         .collect();
-    [json!({ "role": "assistant", "content": assistant }), json!({ "role": "user", "content": results })]
+    [
+        json!({ "role": "assistant", "content": assistant }),
+        json!({ "role": "user", "content": results }),
+    ]
 }

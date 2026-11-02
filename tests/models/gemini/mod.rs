@@ -1,20 +1,30 @@
-use std::sync::{Arc, Mutex};
-use serde_json::{Value, json};
+use crate::common::http::{Req, Resp, serve};
 use a_graph::models::*;
 use a_graph::resources::{GeminiImageSize, GeminiMedia, Generate, MediaKind, MediaProvider, OpenaiMedia, Size};
 use a_graph::{Path, Rule};
-use crate::common::http::{Req, Resp, serve};
+use serde_json::{Value, json};
+use std::sync::{Arc, Mutex};
 
 const KEY_VAR: &str = "A_GRAPH_TEST_GEMINI_KEY";
 
 fn api_model(var: &str) -> ApiModel {
-    ApiModel { common: Common { id: "flash".into(), model: "gemini-3.5-flash-lite".into(), input: vec![Modality::Text], output: vec![Modality::Text] }, api_key: var.into() }
+    ApiModel {
+        common: Common {
+            id: "flash".into(),
+            model: "gemini-3.5-flash-lite".into(),
+            input: vec![Modality::Text],
+            output: vec![Modality::Text],
+        },
+        api_key: var.into(),
+    }
 }
 
 fn client(base: &str) -> Gemini {
     // SAFETY: a variable only these tests use, set to the same value every time.
     unsafe { std::env::set_var(KEY_VAR, "test-key") };
-    Gemini::new(&api_model(KEY_VAR), &Path::root().key("models").idx(0)).unwrap().with_base_url(base)
+    Gemini::new(&api_model(KEY_VAR), &Path::root().key("models").idx(0))
+        .unwrap()
+        .with_base_url(base)
 }
 
 fn call(user: &str) -> ModelInvocation {
@@ -35,7 +45,13 @@ fn call(user: &str) -> ModelInvocation {
 }
 
 fn generate() -> Generate {
-    Generate { voice: None, language_code: None, size: None, quality: None, background: None }
+    Generate {
+        voice: None,
+        language_code: None,
+        size: None,
+        quality: None,
+        background: None,
+    }
 }
 
 fn interaction(status: &str, steps: Value) -> String {
@@ -51,7 +67,10 @@ fn output(text: &str) -> Value {
 }
 
 fn text_answer(text: &str) -> String {
-    interaction("completed", json!([{ "type": "thought", "signature": "sig1" }, output(text)]))
+    interaction(
+        "completed",
+        json!([{ "type": "thought", "signature": "sig1" }, output(text)]),
+    )
 }
 
 async fn one_call(call: ModelInvocation, answer: Resp) -> (Result<ModelResponse, ModelError>, Req) {
@@ -78,7 +97,12 @@ fn live(model: &str) -> Gemini {
 
 fn vertex_model(location: &str) -> VertexModel {
     VertexModel {
-        common: Common { id: "gemini_gcp".into(), model: "gemini-3.5-flash-lite".into(), input: vec![Modality::Text], output: vec![Modality::Text] },
+        common: Common {
+            id: "gemini_gcp".into(),
+            model: "gemini-3.5-flash-lite".into(),
+            input: vec![Modality::Text],
+            output: vec![Modality::Text],
+        },
         publisher: VertexPublisher::Google,
         project: "my-project".into(),
         location: location.into(),

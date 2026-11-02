@@ -16,5 +16,8 @@ async fn live_thinking() {
     let r = live("gemini-3.5-flash-lite").invoke(&c).await.unwrap();
     assert!(r.message.unwrap().contains("391"));
     assert!(r.info.usage.reasoning_tokens > 0, "{:?}", r.info.usage);
-    assert!(r.reasoning.iter().any(|t| t.get("summary").is_some()), "no thinking summary came back");
+    assert!(
+        r.reasoning.iter().any(|t| t.get("summary").is_some()),
+        "no thinking summary came back"
+    );
 }

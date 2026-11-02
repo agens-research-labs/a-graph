@@ -12,18 +12,37 @@ impl Ollama {
         let done_reason = v.get("done_reason").and_then(Value::as_str).unwrap_or_default();
 
         let mut tools_call = Vec::new();
-        for (n, c) in msg.get("tool_calls").and_then(Value::as_array).into_iter().flatten().enumerate() {
-            let f = c.get("function").ok_or_else(|| self.who.invalid("a tool call without `function`"))?;
+        for (n, c) in msg
+            .get("tool_calls")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .enumerate()
+        {
+            let f = c
+                .get("function")
+                .ok_or_else(|| self.who.invalid("a tool call without `function`"))?;
             let arguments = match f.get("arguments") {
                 Some(a) if a.is_object() => a.clone(),
                 // some servers send the arguments as a JSON string
-                Some(Value::String(s)) => serde_json::from_str::<Value>(s).ok().filter(Value::is_object).ok_or_else(|| self.who.invalid("tool call arguments are not a JSON object"))?,
+                Some(Value::String(s)) => serde_json::from_str::<Value>(s)
+                    .ok()
+                    .filter(Value::is_object)
+                    .ok_or_else(|| self.who.invalid("tool call arguments are not a JSON object"))?,
                 _ => return Err(self.who.invalid("a tool call without object `arguments`")),
             };
             tools_call.push(ToolCall {
                 // the server may give no id: one is made, unique in this answer
-                call_id: c.get("id").and_then(Value::as_str).map(str::to_string).unwrap_or_else(|| format!("call_{n}")),
-                function_name: f.get("name").and_then(Value::as_str).ok_or_else(|| self.who.invalid("a tool call without `name`"))?.to_string(),
+                call_id: c
+                    .get("id")
+                    .and_then(Value::as_str)
+                    .map(str::to_string)
+                    .unwrap_or_else(|| format!("call_{n}")),
+                function_name: f
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .ok_or_else(|| self.who.invalid("a tool call without `name`"))?
+                    .to_string(),
                 arguments,
                 opaque: None,
             });
@@ -50,7 +69,10 @@ impl Ollama {
                 return Err(self.who.truncated());
             }
             if tools_call.is_empty() {
-                structured = Some(serde_json::from_str(text).map_err(|e| self.who.invalid(format!("the output is not the JSON asked for: {e}")))?);
+                structured = Some(
+                    serde_json::from_str(text)
+                        .map_err(|e| self.who.invalid(format!("the output is not the JSON asked for: {e}")))?,
+                );
             }
         } else if !text.is_empty() {
             message = Some(text.to_string());
@@ -60,7 +82,13 @@ impl Ollama {
         // eval_count and the server does not count them apart
         let n = |k: &str| v.get(k).and_then(Value::as_u64).unwrap_or(0);
         let cached = n("prompt_eval_cached_count");
-        let usage = Usage { input_tokens: n("prompt_eval_count").saturating_sub(cached), cache_read_tokens: cached, cache_write_tokens: 0, output_tokens: n("eval_count"), reasoning_tokens: 0 };
+        let usage = Usage {
+            input_tokens: n("prompt_eval_count").saturating_sub(cached),
+            cache_read_tokens: cached,
+            cache_write_tokens: 0,
+            output_tokens: n("eval_count"),
+            reasoning_tokens: 0,
+        };
 
         Ok(ModelResponse {
             message,
@@ -70,7 +98,16 @@ impl Ollama {
             reasoning,
             stop_reason,
             stop_detail: Some(done_reason.to_string()),
-            info: ResponseInfo { provider: self.who.provider.into(), model: v.get("model").and_then(Value::as_str).unwrap_or(&self.model).to_string(), execution_time, usage },
+            info: ResponseInfo {
+                provider: self.who.provider.into(),
+                model: v
+                    .get("model")
+                    .and_then(Value::as_str)
+                    .unwrap_or(&self.model)
+                    .to_string(),
+                execution_time,
+                usage,
+            },
         })
     }
 }

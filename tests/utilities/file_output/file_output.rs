@@ -12,5 +12,11 @@ fn utility() -> Utility {
 #[tokio::test]
 async fn file_output() {
     let out = call_utility(&utility(), &UtilityInput::Text("x".into())).await.unwrap();
-    assert_eq!(out, UtilityOutput::File { mime_type: "application/pdf".into(), data: "AAAA".into() });
+    assert_eq!(
+        out,
+        UtilityOutput::File {
+            mime_type: "application/pdf".into(),
+            data: "AAAA".into()
+        }
+    );
 }

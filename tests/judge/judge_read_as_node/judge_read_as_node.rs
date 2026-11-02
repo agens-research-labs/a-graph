@@ -1,5 +1,5 @@
 use crate::common::graph::*;
-use crate::common::{own_yml};
+use crate::common::own_yml;
 
 fn here() -> &'static std::path::Path {
     std::path::Path::new(file!()).parent().unwrap()
@@ -17,7 +17,10 @@ fn judge_read_as_node() {
     assert!(n.message().get(judge).unwrap().input.unwrap().user_message);
     // reading is implicit
     let b = n.blackboard().get(judge).unwrap();
-    assert_eq!((b.id.as_str(), b.read, b.write.is_none(), b.cleanup), ("findings", true, true, false));
+    assert_eq!(
+        (b.id.as_str(), b.read, b.write.is_none(), b.cleanup),
+        ("findings", true, true, false)
+    );
     // an ordinary node does not carry `Validation`
     assert!(n.validation().get(n.entity("a").unwrap()).is_none());
 }

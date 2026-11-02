@@ -27,7 +27,17 @@ pub struct Event {
 
 impl Event {
     pub fn new(level: LogLevel, code: impl Into<String>) -> Self {
-        Event { level, code: code.into(), node: None, fields: Vec::new(), content: Vec::new(), depth: 0, span: 0, parent: 0, at: 0 }
+        Event {
+            level,
+            code: code.into(),
+            node: None,
+            fields: Vec::new(),
+            content: Vec::new(),
+            depth: 0,
+            span: 0,
+            parent: 0,
+            at: 0,
+        }
     }
 
     pub fn span(mut self, span: u64, parent: u64) -> Self {

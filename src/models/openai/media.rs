@@ -5,9 +5,11 @@ use base64::engine::general_purpose::STANDARD;
 use serde_json::{Map, Value, json};
 
 use super::OpenAi;
-use crate::resources::{MediaKind, MediaProvider};
 use crate::models::timing::timed;
-use crate::models::{MediaOutput, ModelError, ModelInvocation, ModelResponse, ProducedMedia, ResponseInfo, StopReason, Usage};
+use crate::models::{
+    MediaOutput, ModelError, ModelInvocation, ModelResponse, ProducedMedia, ResponseInfo, StopReason, Usage,
+};
+use crate::resources::{MediaKind, MediaProvider};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Kind {
@@ -42,7 +44,11 @@ impl OpenAi {
     /// `Ok(None)`: no media is produced. `Err`: everything OpenAI cannot do with what is asked.
     pub(super) fn media_kind(&self, produced: &[ProducedMedia]) -> Result<Option<Kind>, Vec<String>> {
         let [media] = produced else {
-            return if produced.is_empty() { Ok(None) } else { Err(vec!["OpenAI produces one media per call".to_string()]) };
+            return if produced.is_empty() {
+                Ok(None)
+            } else {
+                Err(vec!["OpenAI produces one media per call".to_string()])
+            };
         };
         let mut problems = Vec::new();
         let g = &media.generate;
@@ -50,7 +56,8 @@ impl OpenAi {
             problems.push("the media provider fields are for gemini, not openai".to_string());
         }
         if g.language_code.is_some() {
-            problems.push("`language_code` is not accepted by OpenAI: the language is detected from the text".to_string());
+            problems
+                .push("`language_code` is not accepted by OpenAI: the language is detected from the text".to_string());
         }
         let kind = match &media.kind {
             MediaKind::Img(_) => {
@@ -63,7 +70,12 @@ impl OpenAi {
                 if g.voice.is_none() {
                     problems.push("`voice` is mandatory for audio".to_string());
                 }
-                for (name, present) in [("size", g.size.is_some()), ("quality", g.quality.is_some()), ("background", g.background.is_some()), ("provider", media.provider.is_some())] {
+                for (name, present) in [
+                    ("size", g.size.is_some()),
+                    ("quality", g.quality.is_some()),
+                    ("background", g.background.is_some()),
+                    ("provider", media.provider.is_some()),
+                ] {
                     if present {
                         problems.push(format!("`{name}` is for images"));
                     }
@@ -75,12 +87,20 @@ impl OpenAi {
                 return Err(problems);
             }
         };
-        if problems.is_empty() { Ok(Some(kind)) } else { Err(problems) }
+        if problems.is_empty() {
+            Ok(Some(kind))
+        } else {
+            Err(problems)
+        }
     }
 
     pub(super) async fn invoke_media(&self, call: &ModelInvocation, kind: Kind) -> Result<ModelResponse, ModelError> {
         let media = &call.output_media[0];
-        let prompt = if call.system.is_empty() { call.user.clone() } else { format!("{}\n\n{}", call.system, call.user) };
+        let prompt = if call.system.is_empty() {
+            call.user.clone()
+        } else {
+            format!("{}\n\n{}", call.system, call.user)
+        };
         match kind {
             Kind::Image => self.image(media, &prompt).await,
             Kind::Speech => self.speech(call, media).await,
@@ -124,14 +144,22 @@ impl OpenAi {
     async fn image(&self, media: &ProducedMedia, prompt: &str) -> Result<ModelResponse, ModelError> {
         let body = self.image_body(media, prompt);
         let (text, secs) = timed(self.post_text("/images/generations", &body)).await;
-        let v: Value = serde_json::from_str(&text?).map_err(|e| self.who.invalid(format!("the answer is not JSON: {e}")))?;
-        let item = v.pointer("/data/0").ok_or_else(|| self.who.invalid("no image in `data`"))?;
+        let v: Value =
+            serde_json::from_str(&text?).map_err(|e| self.who.invalid(format!("the answer is not JSON: {e}")))?;
+        let item = v
+            .pointer("/data/0")
+            .ok_or_else(|| self.who.invalid("no image in `data`"))?;
 
         // gpt-image models answer base64; the dall-e ones an address, downloaded here
-        let data = match (item.get("b64_json").and_then(Value::as_str), item.get("url").and_then(Value::as_str)) {
+        let data = match (
+            item.get("b64_json").and_then(Value::as_str),
+            item.get("url").and_then(Value::as_str),
+        ) {
             (Some(b), _) => b.to_string(),
             (None, Some(url)) => {
-                let bytes = crate::models::http::send_bytes(&self.who, self.client.get(url), |s, b| self.api_error(s, b)).await?;
+                let bytes =
+                    crate::models::http::send_bytes(&self.who, self.client.get(url), |s, b| self.api_error(s, b))
+                        .await?;
                 STANDARD.encode(bytes)
             }
             (None, None) => return Err(self.who.invalid("the image has neither `b64_json` nor `url`")),
@@ -143,16 +171,32 @@ impl OpenAi {
         };
         let format = produced.unwrap_or_else(|| asked.clone());
         if format != asked {
-            return Err(self.who.mime_mismatch(&format!("image/{asked}"), &format!("image/{format}")));
+            return Err(self
+                .who
+                .mime_mismatch(&format!("image/{asked}"), &format!("image/{format}")));
         }
 
         let n = |k: &str| v.pointer(&format!("/usage/{k}")).and_then(Value::as_u64).unwrap_or(0);
-        let usage = Usage { input_tokens: n("input_tokens"), output_tokens: n("output_tokens"), ..Usage::default() };
-        Ok(self.media_response(MediaOutput { mime_type: format!("image/{format}"), data, id: None }, usage, secs))
+        let usage = Usage {
+            input_tokens: n("input_tokens"),
+            output_tokens: n("output_tokens"),
+            ..Usage::default()
+        };
+        Ok(self.media_response(
+            MediaOutput {
+                mime_type: format!("image/{format}"),
+                data,
+                id: None,
+            },
+            usage,
+            secs,
+        ))
     }
 
     async fn speech(&self, call: &ModelInvocation, media: &ProducedMedia) -> Result<ModelResponse, ModelError> {
-        let MediaKind::Audio(f) = &media.kind else { unreachable!("an image is not a speech") };
+        let MediaKind::Audio(f) = &media.kind else {
+            unreachable!("an image is not a speech")
+        };
         let format = speech_format(f);
         let mut body = json!({ "model": self.model, "input": call.user, "voice": media.generate.voice, "response_format": format });
         // how to speak (gpt-4o-mini-tts)
@@ -161,7 +205,15 @@ impl OpenAi {
         }
         let (bytes, secs) = timed(self.post_bytes("/audio/speech", &body)).await;
         let data = STANDARD.encode(bytes?);
-        Ok(self.media_response(MediaOutput { mime_type: audio_mime(&format), data, id: None }, Usage::default(), secs))
+        Ok(self.media_response(
+            MediaOutput {
+                mime_type: audio_mime(&format),
+                data,
+                id: None,
+            },
+            Usage::default(),
+            secs,
+        ))
     }
 
     fn media_response(&self, media: MediaOutput, usage: Usage, execution_time: f64) -> ModelResponse {
@@ -173,7 +225,12 @@ impl OpenAi {
             reasoning: Vec::new(),
             stop_reason: StopReason::End,
             stop_detail: None,
-            info: ResponseInfo { provider: self.who.provider.into(), model: self.model.clone(), execution_time, usage },
+            info: ResponseInfo {
+                provider: self.who.provider.into(),
+                model: self.model.clone(),
+                execution_time,
+                usage,
+            },
         }
     }
 }

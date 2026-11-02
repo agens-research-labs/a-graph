@@ -38,7 +38,10 @@ impl<T> Components<T> {
 
     /// The entities that have the component.
     pub fn iter(&self) -> impl Iterator<Item = (Entity, &T)> {
-        self.slots.iter().enumerate().filter_map(|(i, s)| s.as_ref().map(|v| (Entity(i as u32), v)))
+        self.slots
+            .iter()
+            .enumerate()
+            .filter_map(|(i, s)| s.as_ref().map(|v| (Entity(i as u32), v)))
     }
 }
 
@@ -72,17 +75,35 @@ impl Nodes {
         };
         for mut o in Obj::items(&Path::root().key(key::GRAPH).key(key::NODES), list, &mut errs) {
             let at = o.at().clone();
-            let Some(id) = o.req::<String>(key::ID, &mut errs) else { continue };
+            let Some(id) = o.req::<String>(key::ID, &mut errs) else {
+                continue;
+            };
             // the entity of this node is the next position
             let entity = Entity(nodes.ids.len() as u32);
             if nodes.by_id.insert(id.clone(), entity).is_some() {
-                errs.add(&at.key(key::ID), Rule::DuplicateId, format!("node id `{id}` is already used"));
+                errs.add(
+                    &at.key(key::ID),
+                    Rule::DuplicateId,
+                    format!("node id `{id}` is already used"),
+                );
             }
             nodes.ids.push(id);
             // a validation node is made of `id` and `validation-node`
             if o.has(key::VALIDATION_NODE) {
-                for other in [key::MODEL, key::EXTERNAL, key::RESOURCES, key::BLACKBOARD, key::MEDIA, key::MESSAGE] {
-                    errs.forbid(&at, other, o.has(other), "a validation node has only `id` and `validation-node`");
+                for other in [
+                    key::MODEL,
+                    key::EXTERNAL,
+                    key::RESOURCES,
+                    key::BLACKBOARD,
+                    key::MEDIA,
+                    key::MESSAGE,
+                ] {
+                    errs.forbid(
+                        &at,
+                        other,
+                        o.has(other),
+                        "a validation node has only `id` and `validation-node`",
+                    );
                 }
             }
             // a validation node has the same blocks inside `validation-node`: they are read as a
@@ -90,13 +111,36 @@ impl Nodes {
             let judge = o.sub(key::VALIDATION_NODE, &mut errs);
             let is_judge = judge.is_some();
             let mut src = judge.unwrap_or(o);
-            nodes.model.push(src.sub(key::MODEL, &mut errs).and_then(|m| read::model(m, &mut errs)));
-            nodes.external.push(src.sub(key::EXTERNAL, &mut errs).map(|e| read::external(e, &mut errs, is_judge)));
-            nodes.resources.push(src.sub(key::RESOURCES, &mut errs).map(|r| read::resources(r, &mut errs)));
-            nodes.blackboard.push(src.sub(key::BLACKBOARD, &mut errs).and_then(|b| read::blackboard(b, &mut errs)).map(|b| Blackboard { read: b.read || is_judge, ..b }));
-            nodes.media.push(src.sub(key::MEDIA, &mut errs).map(|m| read::media(m, &mut errs)));
-            nodes.message.push(src.sub(key::MESSAGE, &mut errs).map(|m| read::message(m, &mut errs)));
-            nodes.validation.push(if is_judge { read::validation(src, &mut errs) } else { None });
+            nodes
+                .model
+                .push(src.sub(key::MODEL, &mut errs).and_then(|m| read::model(m, &mut errs)));
+            nodes.external.push(
+                src.sub(key::EXTERNAL, &mut errs)
+                    .map(|e| read::external(e, &mut errs, is_judge)),
+            );
+            nodes.resources.push(
+                src.sub(key::RESOURCES, &mut errs)
+                    .map(|r| read::resources(r, &mut errs)),
+            );
+            nodes.blackboard.push(
+                src.sub(key::BLACKBOARD, &mut errs)
+                    .and_then(|b| read::blackboard(b, &mut errs))
+                    .map(|b| Blackboard {
+                        read: b.read || is_judge,
+                        ..b
+                    }),
+            );
+            nodes
+                .media
+                .push(src.sub(key::MEDIA, &mut errs).map(|m| read::media(m, &mut errs)));
+            nodes
+                .message
+                .push(src.sub(key::MESSAGE, &mut errs).map(|m| read::message(m, &mut errs)));
+            nodes.validation.push(if is_judge {
+                read::validation(src, &mut errs)
+            } else {
+                None
+            });
         }
         errs.finish(nodes)
     }

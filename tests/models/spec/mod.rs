@@ -1,10 +1,10 @@
 //! The `models` block read from the yml: the rules about the content of a model. Every case is a
 //! folder with its own yml files.
 
+use super::common::yml_in;
 use a_graph::loader::load;
 use a_graph::models::ModelManager;
 use a_graph::schema::key;
-use super::common::{yml_in};
 
 /// The (rule, path) pairs the managers report for `<dir>/<name>.yml`, a file of the test whose folder is `dir`. The Loader must accept it.
 fn errors(dir: &std::path::Path, name: &str) -> Vec<(String, String)> {
@@ -12,7 +12,11 @@ fn errors(dir: &std::path::Path, name: &str) -> Vec<(String, String)> {
     let mut doc = load(&yml_in(dir, name)).unwrap_or_else(|e| panic!("the Loader rejected the yml: {e}"));
     match ModelManager::build(doc.take(key::MODELS)) {
         Ok(_) => vec![],
-        Err(e) => e.0.iter().map(|e| (e.rule.code().to_string(), e.path.to_string())).collect(),
+        Err(e) => {
+            e.0.iter()
+                .map(|e| (e.rule.code().to_string(), e.path.to_string()))
+                .collect()
+        }
     }
 }
 

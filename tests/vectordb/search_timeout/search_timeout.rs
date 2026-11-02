@@ -19,9 +19,18 @@ async fn search_timeout() {
             held.push(silent.accept().await.unwrap());
         }
     });
-    let (p, _) = program_with(here(), "search_timeout", &[("embedding", embedding_port), ("vectordb", vectordb_port)], Resp::ok(chat("ok", None))).await;
+    let (p, _) = program_with(
+        here(),
+        "search_timeout",
+        &[("embedding", embedding_port), ("vectordb", vectordb_port)],
+        Resp::ok(chat("ok", None)),
+    )
+    .await;
     let started = std::time::Instant::now();
     let e = p.run_node(entity(&p), user("q")).await.unwrap_err();
     assert_eq!(e.rule.code(), "io");
-    assert!(started.elapsed().as_secs() < 10, "the 60 s default was used instead of the 1 s of the yml");
+    assert!(
+        started.elapsed().as_secs() < 10,
+        "the 60 s default was used instead of the 1 s of the yml"
+    );
 }

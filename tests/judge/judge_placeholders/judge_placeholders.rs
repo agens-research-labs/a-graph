@@ -7,6 +7,16 @@ fn here() -> &'static std::path::Path {
 /// The prompt of a judge follows the rules of the placeholders.
 #[test]
 fn judge_placeholders() {
-    assert!(has(here(), "judge_unused", "placeholder_unused", "graph.nodes[3].validation-node.resources.prompt"));
-    assert!(has(here(), "judge_unbound", "placeholder_unbound", "graph.nodes[3].validation-node.resources.prompt"));
+    assert!(has(
+        here(),
+        "judge_unused",
+        "placeholder_unused",
+        "graph.nodes[3].validation-node.resources.prompt"
+    ));
+    assert!(has(
+        here(),
+        "judge_unbound",
+        "placeholder_unbound",
+        "graph.nodes[3].validation-node.resources.prompt"
+    ));
 }

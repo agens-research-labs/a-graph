@@ -1,7 +1,13 @@
 use crate::common::cli::*;
 
 fn path() -> String {
-    std::path::Path::new(file!()).parent().unwrap().join(std::path::Path::new(file!()).file_stem().unwrap()).with_extension("yml").to_string_lossy().to_string()
+    std::path::Path::new(file!())
+        .parent()
+        .unwrap()
+        .join(std::path::Path::new(file!()).file_stem().unwrap())
+        .with_extension("yml")
+        .to_string_lossy()
+        .to_string()
 }
 
 /// An invalid file is not run: it ends with 1 and nothing reaches the model.

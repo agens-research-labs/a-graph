@@ -8,5 +8,8 @@ async fn live_own_error() {
     let mut c = call("hi");
     c.reasoning = Some(Reasoning::Low);
     let err = live_model().invoke(&c).await.unwrap_err().to_string();
-    assert!(err.contains("`fast`") && err.contains("(anthropic)") && err.contains("400"), "{err}");
+    assert!(
+        err.contains("`fast`") && err.contains("(anthropic)") && err.contains("400"),
+        "{err}"
+    );
 }

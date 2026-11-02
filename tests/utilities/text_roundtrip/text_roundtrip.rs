@@ -11,6 +11,8 @@ fn utility() -> Utility {
 /// A text goes in and a text comes out.
 #[tokio::test]
 async fn text_roundtrip() {
-    let out = call_utility(&utility(), &UtilityInput::Text("hello world".into())).await.unwrap();
+    let out = call_utility(&utility(), &UtilityInput::Text("hello world".into()))
+        .await
+        .unwrap();
     assert_eq!(out, UtilityOutput::Text("HELLO WORLD".into()));
 }

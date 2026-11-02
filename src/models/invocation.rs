@@ -2,8 +2,8 @@
 
 use serde_json::Value;
 
-use super::requirements::ProducedMedia;
 use super::reasoning::Reasoning;
+use super::requirements::ProducedMedia;
 
 #[derive(Debug, Clone)]
 pub struct ModelInvocation {

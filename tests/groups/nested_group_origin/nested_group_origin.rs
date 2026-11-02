@@ -11,5 +11,8 @@ async fn nested_group_origin() {
     let out = p.run("hi").await.unwrap();
     let ids: Vec<String> = items(&out).into_iter().map(|(id, _)| id).collect();
     assert_eq!(ids, ["s", "i", "d", "j", "k", "mm", "f", "z"]);
-    assert_eq!(asked_of(&seen, 'F'), "---\nfrom agent d\n---\nD(I(S(hi)))\n\n---\nfrom agent mm\n---\nM(---\nfrom agent k\n---\nK(J(I(S(hi)))))");
+    assert_eq!(
+        asked_of(&seen, 'F'),
+        "---\nfrom agent d\n---\nD(I(S(hi)))\n\n---\nfrom agent mm\n---\nM(---\nfrom agent k\n---\nK(J(I(S(hi)))))"
+    );
 }

@@ -22,7 +22,13 @@ async fn runs_capped_detached() {
     let body = json!({ "yml": read("graph.yml", &[("model", model)]), "message": "how long?" });
     let first = tokio::spawn({
         let body = body.clone();
-        async move { reqwest::Client::new().post(format!("http://127.0.0.1:{port}/run")).json(&body).send().await }
+        async move {
+            reqwest::Client::new()
+                .post(format!("http://127.0.0.1:{port}/run"))
+                .json(&body)
+                .send()
+                .await
+        }
     });
     // the run is going on once the model is called: then the caller hangs up
     for _ in 0..100 {

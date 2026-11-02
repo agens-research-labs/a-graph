@@ -11,5 +11,8 @@ async fn http_failure() {
     let (p, _) = program_with(here(), "http_failure", &[("tool", tool_port)], model(city(), false)).await;
     let out = p.run("hi").await.unwrap();
     let said = &items(&out)[0].1;
-    assert!(said.starts_with("R(error: the service answered 500") && said.contains("overloaded"), "{said}");
+    assert!(
+        said.starts_with("R(error: the service answered 500") && said.contains("overloaded"),
+        "{said}"
+    );
 }

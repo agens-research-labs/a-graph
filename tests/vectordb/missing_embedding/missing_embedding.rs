@@ -7,5 +7,10 @@ fn here() -> &'static std::path::Path {
 /// A vectordb must say which embedding it uses.
 #[test]
 fn missing_embedding() {
-    assert!(has(here(), "missing_embedding", "missing_field", "external.vectordb[0].embedding"));
+    assert!(has(
+        here(),
+        "missing_embedding",
+        "missing_field",
+        "external.vectordb[0].embedding"
+    ));
 }

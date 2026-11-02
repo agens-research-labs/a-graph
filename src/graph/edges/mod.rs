@@ -53,11 +53,19 @@ pub struct React {
 impl React {
     /// The names the controller calls its workers by: the node, or the `in` node of a group.
     pub fn worker_ids(&self, nodes: &Nodes) -> Vec<String> {
-        self.workers.iter().map(|w| nodes.id(match w {
-            Step::Node(x) => *x,
-            Step::Group(g) => g.r#in,
-            Step::React(r) => r.controller,
-        }).unwrap_or_default().to_string()).collect()
+        self.workers
+            .iter()
+            .map(|w| {
+                nodes
+                    .id(match w {
+                        Step::Node(x) => *x,
+                        Step::Group(g) => g.r#in,
+                        Step::React(r) => r.controller,
+                    })
+                    .unwrap_or_default()
+                    .to_string()
+            })
+            .collect()
     }
 
     /// What the controller answers at every turn: whether it is done, the final answer, or the

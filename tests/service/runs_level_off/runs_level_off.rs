@@ -18,7 +18,9 @@ fn config_path() -> String {
 async fn runs_level_off() {
     let (model, _) = listen(|_| Resp::ok(answer("ok"))).await;
     let s = start(&config_path()).await;
-    let (_, body) = s.start_run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "how long?" })).await;
+    let (_, body) = s
+        .start_run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "how long?" }))
+        .await;
     let events = s.events(body["run"].as_str().unwrap()).await;
     assert_eq!(events.iter().map(|(n, _)| n.as_str()).collect::<Vec<_>>(), ["result"]);
 }

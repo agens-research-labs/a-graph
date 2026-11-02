@@ -23,7 +23,10 @@ pub enum UtilityTransport {
     /// A program, started for each call.
     Stdio { command: String, args: Vec<String> },
     /// A service already running. The headers are kept as the name of the variable holding each value.
-    Http { url: String, headers: BTreeMap<String, String> },
+    Http {
+        url: String,
+        headers: BTreeMap<String, String>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -59,7 +62,12 @@ impl UtilityManager {
                 Some(RawTransport::Stdio) => {
                     errs.require(&at, key::COMMAND, command.is_some(), "transport stdio needs `command`");
                     errs.forbid(&at, key::URL, url.is_some(), "`url` is for transport http");
-                    errs.forbid(&at, key::HEADERS, !headers.is_empty(), "`headers` is for transport http");
+                    errs.forbid(
+                        &at,
+                        key::HEADERS,
+                        !headers.is_empty(),
+                        "`headers` is for transport http",
+                    );
                     command.map(|command| UtilityTransport::Stdio { command, args })
                 }
                 Some(RawTransport::Http) => {
@@ -68,7 +76,11 @@ impl UtilityManager {
                     errs.forbid(&at, key::ARGS, !args.is_empty(), "`args` is for transport stdio");
                     for (name, var) in &headers {
                         if std::env::var(var).is_err() {
-                            errs.add(&at.key(key::HEADERS).key(name), Rule::EnvMissing, format!("environment variable `{var}` is not set"));
+                            errs.add(
+                                &at.key(key::HEADERS).key(name),
+                                Rule::EnvMissing,
+                                format!("environment variable `{var}` is not set"),
+                            );
                         }
                     }
                     url.map(|url| UtilityTransport::Http { url, headers })

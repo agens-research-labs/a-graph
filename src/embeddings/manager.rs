@@ -56,13 +56,20 @@ impl EmbeddingManager {
 
     /// Embeds `texts` with the model `id`. A vectordb cites only ids the Loader has checked.
     pub async fn embed(&self, id: &str, texts: &[String]) -> Result<Vec<Vec<f32>>, ModelError> {
-        self.get(id).expect("the Loader checked that the id is declared").embed(texts).await
+        self.get(id)
+            .expect("the Loader checked that the id is declared")
+            .embed(texts)
+            .await
     }
 
     /// The host of each embedding model, for the network permission.
     pub fn destinations(&self) -> Vec<Destination> {
         let base = Path::root().key(key::EMBEDDINGS);
-        self.hosts.iter().enumerate().map(|(i, (_, host))| Destination::url(base.idx(i).key(key::HOST), host)).collect()
+        self.hosts
+            .iter()
+            .enumerate()
+            .map(|(i, (_, host))| Destination::url(base.idx(i).key(key::HOST), host))
+            .collect()
     }
 
     pub fn len(&self) -> usize {

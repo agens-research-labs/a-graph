@@ -102,21 +102,32 @@ impl Reference {
 
     /// The table, with `first` as its first row when given.
     fn table_with(&mut self, fields: &[Field], first: Option<String>) {
-        self.out.push_str("| Key | Required | Value | Description |\n|---|---|---|---|\n");
+        self.out
+            .push_str("| Key | Required | Value | Description |\n|---|---|---|---|\n");
         if let Some(row) = first {
             let _ = writeln!(self.out, "{row}");
         }
         for f in fields {
             let required = if f.required { "yes" } else { "no" };
             let value = self.value(&f.shape);
-            let _ = writeln!(self.out, "| `{}` | {required} | {} | {} |", f.name, cell(&value), cell(f.doc));
+            let _ = writeln!(
+                self.out,
+                "| `{}` | {required} | {} | {} |",
+                f.name,
+                cell(&value),
+                cell(f.doc)
+            );
         }
     }
 
     /// The sections of the maps inside the fields of a map at `path`.
     fn fields_below(&mut self, path: &str, fields: &[Field]) {
         for f in fields {
-            let p = if path.is_empty() { f.name.to_string() } else { format!("{path}.{}", f.name) };
+            let p = if path.is_empty() {
+                f.name.to_string()
+            } else {
+                format!("{path}.{}", f.name)
+            };
             self.below(&p, &f.shape, false);
         }
     }
@@ -142,10 +153,18 @@ impl Reference {
                 }
                 self.fields_below(path, fields);
             }
-            Shape::Tagged { by, by_doc, common, variants } => {
+            Shape::Tagged {
+                by,
+                by_doc,
+                common,
+                variants,
+            } => {
                 let names: Vec<String> = variants.iter().map(|v| format!("`{}`", v.name)).collect();
                 self.heading(&self.title(path));
-                let _ = write!(self.out, "The key `{by}` chooses the other keys, described in a section for each value.\n\n");
+                let _ = write!(
+                    self.out,
+                    "The key `{by}` chooses the other keys, described in a section for each value.\n\n"
+                );
                 let row = format!("| `{by}` | yes | {} | {} |", or_list(&names), cell(by_doc));
                 self.table_with(common, Some(row));
                 self.fields_below(path, common);
@@ -157,7 +176,16 @@ impl Reference {
                 }
             }
             Shape::Either(alternatives) => {
-                let maps: Vec<&[Field]> = alternatives.iter().filter_map(|a| if let Shape::Map(f) = a { (!is_secret(f)).then_some(*f) } else { None }).collect();
+                let maps: Vec<&[Field]> = alternatives
+                    .iter()
+                    .filter_map(|a| {
+                        if let Shape::Map(f) = a {
+                            (!is_secret(f)).then_some(*f)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
                 if maps.is_empty() {
                     return;
                 }
@@ -202,7 +230,11 @@ impl Reference {
             Shape::Id(kind) => format!("the id of this {}", kind_name(*kind)),
             Shape::Ref(kind) => {
                 let name = kind_name(*kind);
-                let article = if name.starts_with(['a', 'e', 'i', 'o', 'u', 'M']) { "an" } else { "a" };
+                let article = if name.starts_with(['a', 'e', 'i', 'o', 'u', 'M']) {
+                    "an"
+                } else {
+                    "a"
+                };
                 format!("the id of {article} {name}")
             }
             Shape::List(inner) => format!("list of: {}", self.value(inner)),

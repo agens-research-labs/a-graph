@@ -18,11 +18,33 @@ fn config_path() -> String {
 async fn session_mark_refused() {
     let (model, seen) = listen(|_| Resp::ok(answer("ok"))).await;
     let s = start(&config_path()).await;
-    let (status, body) = s.run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "x" })).await;
+    let (status, body) = s
+        .run(json!({ "yml": read("graph.yml", &[("model", model)]), "message": "x" }))
+        .await;
     assert_eq!(status, 422, "{body}");
-    let mut at: Vec<&str> = body["errors"].as_array().unwrap().iter().map(|e| e["path"].as_str().unwrap()).collect();
+    let mut at: Vec<&str> = body["errors"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e["path"].as_str().unwrap())
+        .collect();
     at.sort();
-    assert_eq!(at, ["blackboards[0].source.file", "external.memory[0].path", "observability.output.file"], "{body}");
-    assert!(body["errors"].as_array().unwrap().iter().all(|e| e["rule"] == "not_supported"), "{body}");
+    assert_eq!(
+        at,
+        [
+            "blackboards[0].source.file",
+            "external.memory[0].path",
+            "observability.output.file"
+        ],
+        "{body}"
+    );
+    assert!(
+        body["errors"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|e| e["rule"] == "not_supported"),
+        "{body}"
+    );
     assert!(seen.lock().unwrap().is_empty());
 }

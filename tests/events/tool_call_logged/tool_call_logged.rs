@@ -11,8 +11,14 @@ async fn tool_call_logged() {
     let (p, _) = program(here(), "tool_call_logged", model(city(), false)).await;
     p.run("hi").await.unwrap();
     let lines = crate::common::run::log_lines("tool_call_logged");
-    let call = lines.iter().find(|l| l["code"] == "tool.call").expect("a tool.call event");
-    assert_eq!((call["kind"].as_str(), call["name"].as_str(), call["is_error"].as_bool()), (Some("tool"), Some("t"), Some(false)));
+    let call = lines
+        .iter()
+        .find(|l| l["code"] == "tool.call")
+        .expect("a tool.call event");
+    assert_eq!(
+        (call["kind"].as_str(), call["name"].as_str(), call["is_error"].as_bool()),
+        (Some("tool"), Some("t"), Some(false))
+    );
     assert!(call["duration"].as_f64().unwrap() >= 0.0);
     assert!(call["result"].as_str().unwrap().contains("Roma"), "{call}");
 }

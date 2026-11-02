@@ -1,5 +1,5 @@
 use super::*;
-use crate::common::{yml_in};
+use crate::common::yml_in;
 
 fn here() -> &'static std::path::Path {
     std::path::Path::new(file!()).parent().unwrap()

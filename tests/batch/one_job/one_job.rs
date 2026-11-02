@@ -11,10 +11,21 @@ async fn one_job() {
     let out = p.run("hi").await.unwrap();
 
     assert_eq!(job_sizes(&seen), [2], "one job with the requests of d and e");
-    assert_eq!(jobs.lock().unwrap().created["b1"].iter().map(|(_, t)| t.as_str()).collect::<Vec<_>>(), ["D(I(S(hi)))", "E(I(S(hi)))"]);
+    assert_eq!(
+        jobs.lock().unwrap().created["b1"]
+            .iter()
+            .map(|(_, t)| t.as_str())
+            .collect::<Vec<_>>(),
+        ["D(I(S(hi)))", "E(I(S(hi)))"]
+    );
 
     // the nodes before and after the group are called one by one
-    let calls = seen.lock().unwrap().iter().filter(|r| r.method == "POST" && r.path == "/v1/messages").count();
+    let calls = seen
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|r| r.method == "POST" && r.path == "/v1/messages")
+        .count();
     assert_eq!(calls, 4, "s, i, f and z");
 
     // the answers went back to the right nodes, in the order of the edges, and `out` got them packed
@@ -25,5 +36,8 @@ async fn one_job() {
         other => panic!("{other:?}"),
     };
     assert_eq!(text(2), "D(I(S(hi)))");
-    assert_eq!(text(4), "F(---\nfrom agent d\n---\nD(I(S(hi)))\n\n---\nfrom agent e\n---\nE(I(S(hi))))");
+    assert_eq!(
+        text(4),
+        "F(---\nfrom agent d\n---\nD(I(S(hi)))\n\n---\nfrom agent e\n---\nE(I(S(hi))))"
+    );
 }

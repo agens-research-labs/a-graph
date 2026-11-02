@@ -15,14 +15,26 @@ use super::ToolOutcome;
 /// Longer than `timeout` seconds, it is stopped. What it writes is cut at `max_bytes`.
 pub async fn run_script(folder: &str, script: &Path, args: &[String], timeout: u32, max_bytes: u64) -> ToolOutcome {
     let mut command = Command::new(script);
-    command.args(args).current_dir(folder).env_clear().stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped()).kill_on_drop(true);
+    command
+        .args(args)
+        .current_dir(folder)
+        .env_clear()
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .kill_on_drop(true);
     if let Ok(path) = std::env::var("PATH") {
         command.env("PATH", path);
     }
-    let name = script.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+    let name = script
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_default();
     let child = match command.spawn() {
         Ok(c) => c,
-        Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => return ToolOutcome::failed(format!("`{name}` cannot be run: it has no permission to execute")),
+        Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
+            return ToolOutcome::failed(format!("`{name}` cannot be run: it has no permission to execute"));
+        }
         Err(e) => return ToolOutcome::failed(format!("`{name}` cannot be run: {e}")),
     };
     let output = match tokio::time::timeout(Duration::from_secs(timeout.into()), child.wait_with_output()).await {
@@ -32,7 +44,11 @@ pub async fn run_script(folder: &str, script: &Path, args: &[String], timeout: u
     };
     if !output.status.success() {
         let stderr = cut(&output.stderr, max_bytes);
-        return ToolOutcome::failed(if stderr.trim().is_empty() { format!("`{name}` exited with {}", output.status) } else { stderr.trim().to_string() });
+        return ToolOutcome::failed(if stderr.trim().is_empty() {
+            format!("`{name}` exited with {}", output.status)
+        } else {
+            stderr.trim().to_string()
+        });
     }
     ToolOutcome::ok(Value::String(cut(&output.stdout, max_bytes)))
 }

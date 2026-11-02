@@ -95,14 +95,23 @@ impl Skill {
     pub fn script_path(&self, relative: &str) -> Result<std::path::PathBuf, String> {
         let rel = FsPath::new(relative);
         let mut parts = rel.components();
-        let inside = !rel.is_absolute() && parts.next().is_some_and(|c| c.as_os_str() == SCRIPTS_DIR) && rel.components().count() > 1 && rel.components().all(|c| matches!(c, std::path::Component::Normal(_)));
+        let inside = !rel.is_absolute()
+            && parts.next().is_some_and(|c| c.as_os_str() == SCRIPTS_DIR)
+            && rel.components().count() > 1
+            && rel.components().all(|c| matches!(c, std::path::Component::Normal(_)));
         if !inside {
-            return Err(format!("`{relative}` is not a file inside the `{SCRIPTS_DIR}` folder of the skill"));
+            return Err(format!(
+                "`{relative}` is not a file inside the `{SCRIPTS_DIR}` folder of the skill"
+            ));
         }
-        let root = std::fs::canonicalize(FsPath::new(&self.path).join(SCRIPTS_DIR)).map_err(|_| format!("the skill has no `{SCRIPTS_DIR}` folder"))?;
-        let file = std::fs::canonicalize(FsPath::new(&self.path).join(rel)).map_err(|_| format!("the skill has no file `{relative}`"))?;
+        let root = std::fs::canonicalize(FsPath::new(&self.path).join(SCRIPTS_DIR))
+            .map_err(|_| format!("the skill has no `{SCRIPTS_DIR}` folder"))?;
+        let file = std::fs::canonicalize(FsPath::new(&self.path).join(rel))
+            .map_err(|_| format!("the skill has no file `{relative}`"))?;
         if !file.starts_with(&root) || !file.is_file() {
-            return Err(format!("`{relative}` is not a file inside the `{SCRIPTS_DIR}` folder of the skill"));
+            return Err(format!(
+                "`{relative}` is not a file inside the `{SCRIPTS_DIR}` folder of the skill"
+            ));
         }
         Ok(file)
     }
@@ -112,7 +121,10 @@ impl Skill {
     /// model to read.
     pub fn read_file(&self, relative: &str) -> Result<String, String> {
         let rel = FsPath::new(relative);
-        if relative.is_empty() || rel.is_absolute() || rel.components().any(|c| !matches!(c, std::path::Component::Normal(_))) {
+        if relative.is_empty()
+            || rel.is_absolute()
+            || rel.components().any(|c| !matches!(c, std::path::Component::Normal(_)))
+        {
             return Err(format!("`{relative}` is not a path inside the skill folder"));
         }
         let root = std::fs::canonicalize(&self.path).map_err(|e| format!("cannot open the skill folder: {e}"))?;
@@ -125,7 +137,11 @@ impl Skill {
             return Err(format!("`{relative}` is not a file"));
         }
         if meta.len() > self.max_file_bytes {
-            return Err(format!("`{relative}` has {} bytes, more than the {} that can be read", meta.len(), self.max_file_bytes));
+            return Err(format!(
+                "`{relative}` has {} bytes, more than the {} that can be read",
+                meta.len(),
+                self.max_file_bytes
+            ));
         }
         let bytes = std::fs::read(&file).map_err(|e| format!("cannot read `{relative}`: {e}"))?;
         String::from_utf8(bytes).map_err(|_| format!("`{relative}` is not text"))
@@ -147,14 +163,21 @@ fn walk(root: &FsPath, dir: &FsPath, depth: usize, max_depth: usize, found: &mut
             continue;
         }
         // a link is followed only if it stays inside the folder
-        let Ok(real) = std::fs::canonicalize(&path) else { continue };
+        let Ok(real) = std::fs::canonicalize(&path) else {
+            continue;
+        };
         if !canonical_root.as_ref().is_some_and(|r| real.starts_with(r)) {
             continue;
         }
         if real.is_dir() {
             walk(root, &path, depth + 1, max_depth, found);
         } else if let Ok(rel) = path.strip_prefix(root) {
-            found.push(rel.components().map(|c| c.as_os_str().to_string_lossy().to_string()).collect::<Vec<_>>().join("/"));
+            found.push(
+                rel.components()
+                    .map(|c| c.as_os_str().to_string_lossy().to_string())
+                    .collect::<Vec<_>>()
+                    .join("/"),
+            );
         }
     }
 }
@@ -173,7 +196,10 @@ impl SkillsManager {
         let mut warnings = Vec::new();
         for mut o in Obj::items(&list_path(key::SKILLS), list, &mut errs) {
             let at = o.at().key(key::PATH);
-            let (id, path) = (o.req::<String>(key::ID, &mut errs), o.req::<String>(key::PATH, &mut errs));
+            let (id, path) = (
+                o.req::<String>(key::ID, &mut errs),
+                o.req::<String>(key::PATH, &mut errs),
+            );
             let mut limit = |name: &str, default: u64, errs: &mut Errs| -> Option<u64> {
                 let value = o.opt::<u64>(name, errs).unwrap_or(default);
                 if value == 0 {
@@ -188,10 +214,19 @@ impl SkillsManager {
             let timeout = limit(key::TIMEOUT, DEFAULT_TIMEOUT as u64, &mut errs);
             let max_iter = limit(key::MAX_ITER, DEFAULT_MAX_ITER as u64, &mut errs);
             let run_scripts = o.opt::<bool>(key::RUN_SCRIPTS, &mut errs).unwrap_or(true);
-            if let (Some(id), Some(path), Some(max_files), Some(max_file_bytes), Some(max_depth), Some(timeout), Some(max_iter)) = (id, path, max_files, max_file_bytes, max_depth, timeout, max_iter)
+            if let (
+                Some(id),
+                Some(path),
+                Some(max_files),
+                Some(max_file_bytes),
+                Some(max_depth),
+                Some(timeout),
+                Some(max_iter),
+            ) = (id, path, max_files, max_file_bytes, max_depth, timeout, max_iter)
                 && let Some(mut skill) = load(&at, id, path, &mut errs, &mut warnings)
             {
-                (skill.max_files, skill.max_file_bytes, skill.max_depth) = (max_files as usize, max_file_bytes, max_depth as usize);
+                (skill.max_files, skill.max_file_bytes, skill.max_depth) =
+                    (max_files as usize, max_file_bytes, max_depth as usize);
                 (skill.run_scripts, skill.timeout, skill.max_iter) = (run_scripts, timeout as u32, max_iter as u32);
                 skills.push(skill);
             }
@@ -224,13 +259,24 @@ fn load(at: &Path, id: String, path: String, errs: &mut Errs, warnings: &mut Vec
         }
     };
     let Some((front, _)) = split(&text) else {
-        errs.add(at, Rule::BadValue, format!("`{}` must start with a frontmatter between two `---` lines", file.display()));
+        errs.add(
+            at,
+            Rule::BadValue,
+            format!(
+                "`{}` must start with a frontmatter between two `---` lines",
+                file.display()
+            ),
+        );
         return None;
     };
     let front: Frontmatter = match serde_norway::from_str(front) {
         Ok(f) => f,
         Err(e) => {
-            errs.add(at, Rule::BadValue, format!("the frontmatter of `{}` is not valid: {e}", file.display()));
+            errs.add(
+                at,
+                Rule::BadValue,
+                format!("the frontmatter of `{}` is not valid: {e}", file.display()),
+            );
             return None;
         }
     };
@@ -240,7 +286,10 @@ fn load(at: &Path, id: String, path: String, errs: &mut Errs, warnings: &mut Vec
             Phase::Interpretation,
             at.clone(),
             "unknown_field",
-            format!("`{}` has the field `{field}`, which the Agent Skills standard does not define: ignored", file.display()),
+            format!(
+                "`{}` has the field `{field}`, which the Agent Skills standard does not define: ignored",
+                file.display()
+            ),
         ));
     }
 
@@ -292,15 +341,35 @@ fn check_name(at: &Path, name: &str, folder: &str, errs: &mut Errs) {
     if length > 64 {
         errs.add(at, Rule::BadValue, "`name` is at most 64 characters");
     }
-    if !name.chars().all(|c| c == '-' || c.is_ascii_digit() || (c.is_alphabetic() && c.is_lowercase())) {
-        errs.add(at, Rule::BadValue, format!("`name` `{name}` may only have lowercase letters, numbers and hyphens"));
+    if !name
+        .chars()
+        .all(|c| c == '-' || c.is_ascii_digit() || (c.is_alphabetic() && c.is_lowercase()))
+    {
+        errs.add(
+            at,
+            Rule::BadValue,
+            format!("`name` `{name}` may only have lowercase letters, numbers and hyphens"),
+        );
     }
     if name.starts_with('-') || name.ends_with('-') || name.contains("--") {
-        errs.add(at, Rule::BadValue, format!("`name` `{name}` cannot start or end with a hyphen, nor have two in a row"));
+        errs.add(
+            at,
+            Rule::BadValue,
+            format!("`name` `{name}` cannot start or end with a hyphen, nor have two in a row"),
+        );
     }
-    let dir = std::fs::canonicalize(folder).ok().and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()));
+    let dir = std::fs::canonicalize(folder)
+        .ok()
+        .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()));
     if dir.as_deref() != Some(name) {
-        errs.add(at, Rule::BadValue, format!("`name` `{name}` must be the name of the folder `{}`", dir.unwrap_or_default()));
+        errs.add(
+            at,
+            Rule::BadValue,
+            format!(
+                "`name` `{name}` must be the name of the folder `{}`",
+                dir.unwrap_or_default()
+            ),
+        );
     }
 }
 

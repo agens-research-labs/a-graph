@@ -15,7 +15,13 @@ pub enum Endpoint {
 }
 
 impl Endpoint {
-    pub const ALL: [Endpoint; 5] = [Endpoint::Health, Endpoint::Run, Endpoint::Start, Endpoint::State, Endpoint::Events];
+    pub const ALL: [Endpoint; 5] = [
+        Endpoint::Health,
+        Endpoint::Run,
+        Endpoint::Start,
+        Endpoint::State,
+        Endpoint::Events,
+    ];
 
     pub fn path(self) -> &'static str {
         match self {
@@ -42,10 +48,24 @@ impl Endpoint {
         let id = json!([{ "name": "id", "in": "path", "required": true, "description": "The id of the run, as `POST /runs` gave it.", "schema": { "type": "string" } }]);
         let refusals = |mut responses: serde_json::Map<String, Value>| {
             responses.insert("400".into(), errors("The body is not a JSON object with `yml`, `message` and, if wanted, `session` (an unknown key too), or `session` is not a name."));
-            responses.insert("413".into(), json!({ "description": "The body is larger than 64 MiB." }));
-            responses.insert("422".into(), errors("The graph is not valid, it breaks a rule of the service, or the session is full (`session_full`)."));
-            responses.insert("500".into(), errors("The folder of the session cannot be created or weighed."));
-            responses.insert("503".into(), errors("The service is running its most runs, `max_runs` (`too_many_runs`): try again later."));
+            responses.insert(
+                "413".into(),
+                json!({ "description": "The body is larger than 64 MiB." }),
+            );
+            responses.insert(
+                "422".into(),
+                errors(
+                    "The graph is not valid, it breaks a rule of the service, or the session is full (`session_full`).",
+                ),
+            );
+            responses.insert(
+                "500".into(),
+                errors("The folder of the session cannot be created or weighed."),
+            );
+            responses.insert(
+                "503".into(),
+                errors("The service is running its most runs, `max_runs` (`too_many_runs`): try again later."),
+            );
             Value::Object(responses)
         };
         match self {

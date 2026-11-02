@@ -10,13 +10,24 @@ fn count(v: Option<&Value>, key: &str) -> u64 {
 }
 
 impl OpenAi {
-    pub(crate) fn parse_response(&self, schema: bool, v: &Value, execution_time: f64) -> Result<ModelResponse, ModelError> {
+    pub(crate) fn parse_response(
+        &self,
+        schema: bool,
+        v: &Value,
+        execution_time: f64,
+    ) -> Result<ModelResponse, ModelError> {
         let status = v.get("status").and_then(Value::as_str).unwrap_or("completed");
         if status == "failed" {
-            let msg = v.pointer("/error/message").and_then(Value::as_str).unwrap_or("the response failed");
+            let msg = v
+                .pointer("/error/message")
+                .and_then(Value::as_str)
+                .unwrap_or("the response failed");
             return Err(self.who.provider_error(None, msg));
         }
-        let items = v.get("output").and_then(Value::as_array).ok_or_else(|| self.who.invalid("no `output` array"))?;
+        let items = v
+            .get("output")
+            .and_then(Value::as_array)
+            .ok_or_else(|| self.who.invalid("no `output` array"))?;
 
         let (mut text, mut refusal) = (String::new(), String::new());
         let mut reasoning = Vec::new();
@@ -28,19 +39,37 @@ impl OpenAi {
                 Some("message") => {
                     for part in item.get("content").and_then(Value::as_array).into_iter().flatten() {
                         match part.get("type").and_then(Value::as_str) {
-                            Some("output_text") => text.push_str(part.get("text").and_then(Value::as_str).unwrap_or_default()),
-                            Some("refusal") => refusal.push_str(part.get("refusal").and_then(Value::as_str).unwrap_or_default()),
+                            Some("output_text") => {
+                                text.push_str(part.get("text").and_then(Value::as_str).unwrap_or_default())
+                            }
+                            Some("refusal") => {
+                                refusal.push_str(part.get("refusal").and_then(Value::as_str).unwrap_or_default())
+                            }
                             _ => {}
                         }
                     }
                 }
                 Some("function_call") => {
                     // the arguments are a JSON string
-                    let raw = item.get("arguments").and_then(Value::as_str).ok_or_else(|| self.who.invalid("a `function_call` without `arguments`"))?;
-                    let arguments = serde_json::from_str::<Value>(raw).ok().filter(Value::is_object).ok_or_else(|| self.who.invalid("tool call arguments are not a JSON object"))?;
+                    let raw = item
+                        .get("arguments")
+                        .and_then(Value::as_str)
+                        .ok_or_else(|| self.who.invalid("a `function_call` without `arguments`"))?;
+                    let arguments = serde_json::from_str::<Value>(raw)
+                        .ok()
+                        .filter(Value::is_object)
+                        .ok_or_else(|| self.who.invalid("tool call arguments are not a JSON object"))?;
                     tools_call.push(ToolCall {
-                        call_id: item.get("call_id").and_then(Value::as_str).ok_or_else(|| self.who.invalid("a `function_call` without `call_id`"))?.to_string(),
-                        function_name: item.get("name").and_then(Value::as_str).ok_or_else(|| self.who.invalid("a `function_call` without `name`"))?.to_string(),
+                        call_id: item
+                            .get("call_id")
+                            .and_then(Value::as_str)
+                            .ok_or_else(|| self.who.invalid("a `function_call` without `call_id`"))?
+                            .to_string(),
+                        function_name: item
+                            .get("name")
+                            .and_then(Value::as_str)
+                            .ok_or_else(|| self.who.invalid("a `function_call` without `name`"))?
+                            .to_string(),
                         arguments,
                         // the whole item goes back with the result
                         opaque: Some(item.clone()),
@@ -73,7 +102,10 @@ impl OpenAi {
                 return Err(self.who.truncated());
             }
             if tools_call.is_empty() && stop_reason != StopReason::Refused {
-                structured = Some(serde_json::from_str(&text).map_err(|e| self.who.invalid(format!("the output is not the JSON asked for: {e}")))?);
+                structured = Some(
+                    serde_json::from_str(&text)
+                        .map_err(|e| self.who.invalid(format!("the output is not the JSON asked for: {e}")))?,
+                );
             }
         } else if !text.is_empty() {
             message = Some(text);
@@ -95,8 +127,21 @@ impl OpenAi {
             tools_call,
             reasoning,
             stop_reason,
-            stop_detail: Some(incomplete.map(|r| format!("{status}: {r}")).unwrap_or_else(|| status.to_string())),
-            info: ResponseInfo { provider: self.who.provider.into(), model: v.get("model").and_then(Value::as_str).unwrap_or(&self.model).to_string(), execution_time, usage },
+            stop_detail: Some(
+                incomplete
+                    .map(|r| format!("{status}: {r}"))
+                    .unwrap_or_else(|| status.to_string()),
+            ),
+            info: ResponseInfo {
+                provider: self.who.provider.into(),
+                model: v
+                    .get("model")
+                    .and_then(Value::as_str)
+                    .unwrap_or(&self.model)
+                    .to_string(),
+                execution_time,
+                usage,
+            },
         })
     }
 }
