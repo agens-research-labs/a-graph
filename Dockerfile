@@ -14,12 +14,15 @@
 FROM rust:1.99-bookworm AS build
 WORKDIR /src
 COPY Cargo.toml Cargo.lock ./
+# the dependencies alone first, on an empty crate: their layer is kept until Cargo.lock changes, here and in the
+# cache of the CI, so after a change in src/ only the crate itself is compiled again
+RUN mkdir src && echo 'fn main() {}' > src/main.rs && touch src/lib.rs \
+    && cargo build --release --locked \
+    && rm -rf src
 COPY src ./src
-# the registry and the build folder are caches of BuildKit, kept from one build to the next: after a change
-# in src/ only the crate itself is compiled again. A cache is not part of the image, so the binary is copied out.
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/src/target \
-    cargo build --release --locked \
+# the sources are older than the empty crate built above: touched, so that cargo builds them
+RUN touch src/main.rs src/lib.rs \
+    && cargo build --release --locked \
     && cp target/release/a-graph /usr/local/bin/a-graph
 
 FROM debian:bookworm-slim
