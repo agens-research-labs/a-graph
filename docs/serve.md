@@ -130,6 +130,9 @@ if it breaks one of these rules:
   every alias would copy its value, so a small graph could fill the memory of the service. Write the value again
   where it is used. A `*` or a `&` inside a text is not an alias and is allowed. The command line still accepts
   aliases.
+- **No tags.** A YAML tag (`!name` before a value, as in `path: !x notes.md`) is refused (`not_supported`): the
+  rules below would not see the value under the tag, while the graph would still use it. Write the value without
+  its tag. A `!` inside a text is not a tag and is allowed. The command line still accepts tags.
 - **No programs.** A tool, an MCP server or a utility with `transport: stdio` is refused, and so is a skill without
   `run_scripts: false`: only services reached over `http` are allowed (`not_supported`).
 - **Files in the session.** Every path of the graph (the `path` of a prompt, a media, a skill or a memory, the `file`

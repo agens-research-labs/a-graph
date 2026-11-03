@@ -28,12 +28,22 @@ fn refuse(at: Path, rule: Rule, msg: impl Into<String>) -> Error {
 
 /// The yml, ready to be built: its paths inside `<data_dir>/<session>/`. `Err` has every rule it breaks.
 pub fn prepare(yml: &str, config: &ServiceConfig, session: &str) -> Result<String, Vec<Error>> {
-    if has_alias(yml) {
-        return Err(vec![refuse(
-            Path::root(),
-            Rule::NotSupported,
-            "this service does not accept YAML aliases: write the value again where it is used",
-        )]);
+    match first_alias_or_tag(yml) {
+        Some(Found::Alias) => {
+            return Err(vec![refuse(
+                Path::root(),
+                Rule::NotSupported,
+                "this service does not accept YAML aliases: write the value again where it is used",
+            )]);
+        }
+        Some(Found::Tag) => {
+            return Err(vec![refuse(
+                Path::root(),
+                Rule::NotSupported,
+                "this service does not accept YAML tags (`!name`): write the value without its tag",
+            )]);
+        }
+        None => {}
     }
     let mut root: Value =
         serde_norway::from_str(yml).map_err(|e| vec![refuse(Path::root(), Rule::Parse, e.to_string())])?;
@@ -77,37 +87,59 @@ pub fn prepare(yml: &str, config: &ServiceConfig, session: &str) -> Result<Strin
     serde_norway::to_string(&root).map_err(|e| vec![refuse(Path::root(), Rule::Parse, e.to_string())])
 }
 
-/// Whether the yml has an alias (`*name`). serde_norway copies the value of the anchor at every alias, so a small
-/// yml can become a tree of gigabytes: here only the events of the parser are read, one at a time, and nothing is
-/// copied. A yml that does not parse answers `false`: serde_norway then reports the error.
-fn has_alias(yml: &str) -> bool {
+/// What the yml may not have: an alias or a tag.
+enum Found {
+    /// `*name`: serde_norway copies the value of the anchor at every alias, so a small yml can become a tree of
+    /// gigabytes.
+    Alias,
+    /// `!name` before a value: the rules below look for a text or a list and skip a tagged value, while the build
+    /// reads the value under the tag, so a tagged path or list of hosts would escape them.
+    Tag,
+}
+
+/// The first alias or tag of the yml. Only the events of the parser are read, one at a time, and nothing is copied. A
+/// yml that does not parse answers `None`: serde_norway then reports the error.
+fn first_alias_or_tag(yml: &str) -> Option<Found> {
     use std::mem::MaybeUninit;
     use unsafe_libyaml_norway::{
-        YAML_ALIAS_EVENT, YAML_STREAM_END_EVENT, YAML_UTF8_ENCODING, yaml_event_delete, yaml_event_t,
-        yaml_parser_delete, yaml_parser_initialize, yaml_parser_parse, yaml_parser_set_encoding,
-        yaml_parser_set_input_string, yaml_parser_t,
+        YAML_ALIAS_EVENT, YAML_MAPPING_START_EVENT, YAML_SCALAR_EVENT, YAML_SEQUENCE_START_EVENT,
+        YAML_STREAM_END_EVENT, YAML_UTF8_ENCODING, yaml_event_delete, yaml_event_t, yaml_parser_delete,
+        yaml_parser_initialize, yaml_parser_parse, yaml_parser_set_encoding, yaml_parser_set_input_string,
+        yaml_parser_t,
     };
 
     let mut parser = MaybeUninit::<yaml_parser_t>::uninit();
     let parser = parser.as_mut_ptr();
     // SAFETY: the parser is initialized before use and deleted once; it reads `yml`, which outlives it. Every event
-    // is deleted after its type is read, and only its type is read.
+    // is deleted after it is read; of its data, only the tag of a scalar, a sequence or a mapping is read, the field
+    // of the union that belongs to that type, and only whether it is null.
     unsafe {
         if yaml_parser_initialize(parser).fail {
-            return false;
+            return None;
         }
         yaml_parser_set_encoding(parser, YAML_UTF8_ENCODING);
         yaml_parser_set_input_string(parser, yml.as_ptr(), yml.len() as _);
-        let mut found = false;
+        let mut found = None;
         loop {
             let mut event = MaybeUninit::<yaml_event_t>::uninit();
             if yaml_parser_parse(parser, event.as_mut_ptr()).fail {
                 break;
             }
-            let kind = (*event.as_ptr()).type_;
+            let read = &*event.as_ptr();
+            let kind = read.type_;
+            let tagged = match kind {
+                YAML_SCALAR_EVENT => !read.data.scalar.tag.is_null(),
+                YAML_SEQUENCE_START_EVENT => !read.data.sequence_start.tag.is_null(),
+                YAML_MAPPING_START_EVENT => !read.data.mapping_start.tag.is_null(),
+                _ => false,
+            };
             yaml_event_delete(event.as_mut_ptr());
             if kind == YAML_ALIAS_EVENT {
-                found = true;
+                found = Some(Found::Alias);
+                break;
+            }
+            if tagged {
+                found = Some(Found::Tag);
                 break;
             }
             if kind == YAML_STREAM_END_EVENT {
