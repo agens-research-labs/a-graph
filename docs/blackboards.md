@@ -63,3 +63,5 @@ service and runs of the command line that share the file. Each write or cleanup 
 one step (a temporary file of its own, then renamed), so a reader sees it before or after a write, never half of it. A
 write or a cleanup of a file whose header is no longer valid is refused (`blackboard_header`) and leaves the file as it
 is.
+If the process dies between the write of the temporary file and its rename, the temporary file stays next to the
+blackboard, and the blackboard stays as it was.
