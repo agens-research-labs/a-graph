@@ -51,8 +51,11 @@ The file is a JSON list of records, one for each node. A node reads and writes o
   the user carries the vector of its text when the memory has `chat.embedding`.
 
 A file that does not exist yet, an empty file, or a file without a record of the node, is an empty memory. The file,
-its folder and the record are created at the first write. The file is written in one step (a temporary file, then
-renamed).
+its folder and the record are created at the first write. The file is written in one step (a temporary file of its
+own, then renamed), so a reader sees the file before or after a write, never half of it. Each change of a record holds
+an exclusive lock on `<path>.lock`, a file left next to the memory, from the read of the file to its write: requests
+of the service and runs of the command line that share the file wait for each other and none of their records is
+lost.
 
 ## Reading
 

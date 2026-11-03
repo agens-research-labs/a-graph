@@ -1,6 +1,9 @@
 //! The file of a `json_file` memory: a list of records, one per node, each with the summary
 //! (`synt`) and the current exchanges (`chat`). This module reads it and chooses what a node gets.
 
+use std::io::Write;
+use std::sync::atomic::{AtomicU64, Ordering};
+
 use serde::{Deserialize, Serialize};
 
 use super::ChatConfig;
@@ -139,16 +142,48 @@ fn cosine(a: &[f32], b: &[f32]) -> f32 {
     if na == 0.0 || nb == 0.0 { 0.0 } else { dot / (na * nb) }
 }
 
-/// Writes `records` to `path` in one step (a temporary file, then renamed), creating the folder.
+/// Writes `records` to `path` in one step: a temporary file of its own, then renamed.
 fn write_records(path: &str, records: &[Record]) -> Result<(), String> {
-    let target = std::path::Path::new(path);
-    if let Some(dir) = target.parent().filter(|d| !d.as_os_str().is_empty()) {
+    static WRITES: AtomicU64 = AtomicU64::new(0);
+    let text = serde_json::to_string_pretty(records).map_err(|e| e.to_string())?;
+    let temporary = format!(
+        "{path}.{}.{}.tmp",
+        std::process::id(),
+        WRITES.fetch_add(1, Ordering::Relaxed)
+    );
+    let written = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&temporary)
+        .and_then(|mut f| f.write_all(text.as_bytes()))
+        .map_err(|e| format!("cannot write `{temporary}`: {e}"))
+        .and_then(|()| std::fs::rename(&temporary, path).map_err(|e| format!("cannot replace `{path}`: {e}")));
+    if written.is_err() {
+        // The error of the write is the one that matters; the file may not even exist.
+        let _ = std::fs::remove_file(&temporary);
+    }
+    written
+}
+
+/// An exclusive lock on `{path}.lock`, held until the file is dropped: the other programs and processes
+/// that change the same memory wait, so none of them reads the records while another is changing them.
+/// Creates the folder of the memory.
+fn lock_records(path: &str) -> Result<std::fs::File, String> {
+    if let Some(dir) = std::path::Path::new(path)
+        .parent()
+        .filter(|d| !d.as_os_str().is_empty())
+    {
         std::fs::create_dir_all(dir).map_err(|e| format!("cannot create `{}`: {e}", dir.display()))?;
     }
-    let text = serde_json::to_string_pretty(records).map_err(|e| e.to_string())?;
-    let temporary = format!("{path}.tmp");
-    std::fs::write(&temporary, text).map_err(|e| format!("cannot write `{temporary}`: {e}"))?;
-    std::fs::rename(&temporary, target).map_err(|e| format!("cannot replace `{path}`: {e}"))
+    let name = format!("{path}.lock");
+    let file = std::fs::OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .write(true)
+        .open(&name)
+        .map_err(|e| format!("cannot open `{name}`: {e}"))?;
+    file.lock().map_err(|e| format!("cannot lock `{name}`: {e}"))?;
+    Ok(file)
 }
 
 /// Reads the whole list of records; a file that does not exist yet is an empty list.
@@ -162,8 +197,10 @@ fn read_records(path: &str) -> Result<Vec<Record>, String> {
 }
 
 /// Changes the record of `node` (created if it does not exist), sets its `timestamp` and saves
-/// the file. Gives back the record as it is after the change.
+/// the file, holding the lock of the file from the read to the write. Gives back the record as it is
+/// after the change.
 pub fn update_record(path: &str, node: &str, change: impl FnOnce(&mut Record)) -> Result<Record, String> {
+    let _held = lock_records(path)?;
     let mut records = read_records(path)?;
     let index = match records.iter().position(|r| r.id == node) {
         Some(i) => i,

@@ -12,6 +12,9 @@ mod chat_required;
 #[path = "chat_unknown_embedding/chat_unknown_embedding.rs"]
 mod chat_unknown_embedding;
 
+#[path = "concurrent_writes/concurrent_writes.rs"]
+mod concurrent_writes;
+
 #[path = "embedding_similar/embedding_similar.rs"]
 mod embedding_similar;
 
