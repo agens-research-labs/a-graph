@@ -15,9 +15,11 @@ use async_trait::async_trait;
 use aws_config::SdkConfig;
 use aws_sdk_bedrockruntime::Client;
 use aws_sdk_bedrockruntime::config::{BehaviorVersion, Credentials, Region, SharedCredentialsProvider};
+use aws_smithy_types::timeout::TimeoutConfig;
 use std::fmt;
 use tokio::sync::OnceCell;
 
+use super::http::CALL_TIMEOUT;
 use super::identity::Identity;
 use super::spec::{BedrockBatch, BedrockCredentials, BedrockModel};
 use super::timing::timed;
@@ -40,6 +42,7 @@ pub struct Bedrock {
     /// The `batch` block of the yml.
     batch: Option<BedrockBatch>,
     poll_interval: std::time::Duration,
+    call_timeout: std::time::Duration,
     config: OnceCell<SdkConfig>,
 }
 
@@ -103,6 +106,7 @@ impl Bedrock {
             endpoint_url: None,
             batch: m.batch.clone(),
             poll_interval: POLL_INTERVAL,
+            call_timeout: CALL_TIMEOUT,
             config: OnceCell::new(),
         })
     }
@@ -118,13 +122,20 @@ impl Bedrock {
         self
     }
 
+    pub fn with_call_timeout(mut self, timeout: std::time::Duration) -> Self {
+        self.call_timeout = timeout;
+        self
+    }
+
     /// The SDK configuration, built at the first call: with `ambient` credentials this is where the
     /// default chain starts to be used. It is pinned to the hosts the allow-list checked.
     async fn sdk_config(&self) -> &SdkConfig {
         self.config
             .get_or_init(|| async {
-                let mut loader =
-                    aws_config::defaults(BehaviorVersion::latest()).region(Region::new(self.region.clone()));
+                // the clients of Bedrock and S3 are built from this configuration: no call may hang for ever
+                let mut loader = aws_config::defaults(BehaviorVersion::latest())
+                    .region(Region::new(self.region.clone()))
+                    .timeout_config(TimeoutConfig::builder().operation_timeout(self.call_timeout).build());
                 if let Some(k) = &self.keys {
                     loader = loader.credentials_provider(SharedCredentialsProvider::new(Credentials::new(
                         &k.access_key,

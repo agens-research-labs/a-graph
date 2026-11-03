@@ -6,7 +6,7 @@ use super::error::ModelError;
 use super::identity::Identity;
 
 /// A call can take minutes (long outputs, reasoning).
-const CALL_TIMEOUT: Duration = Duration::from_secs(600);
+pub(crate) const CALL_TIMEOUT: Duration = Duration::from_secs(600);
 
 pub(crate) fn client() -> Result<reqwest::Client, reqwest::Error> {
     crate::net::client().timeout(CALL_TIMEOUT).build()

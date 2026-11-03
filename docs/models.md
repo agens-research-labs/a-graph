@@ -50,6 +50,9 @@ On `bedrock` the hosts are always the standard ones of the region: the FIPS and 
 endpoints set in the environment or in the AWS profile (`AWS_ENDPOINT_URL` and similar), are not used, so the hosts
 called are the hosts checked.
 
+A call to a model that does not end within 10 minutes is abandoned and fails like a network error. On `bedrock` the
+same limit applies to each call to Bedrock and to S3 (the batch files).
+
 ## What each provider can do
 
 What a node asks of its model is checked when the file is checked, before anything runs: a model asked for something
