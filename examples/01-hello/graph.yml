@@ -8,7 +8,7 @@ passport:
     description: One node answers the message of the user. A graph of one node is the `start` alo
     version: "1.0.0"
     data_classification: { sensitivity: public }
-    permissions: { network: { allowed_hosts: [localhost] } }
+    permissions: { network: { allowed_hosts: [localhost:11434] } }
 observability: { level: warn }      # the log goes to the standard error
 verbose: { level: steps }        # the display of the run: off | steps | detail
 models:
