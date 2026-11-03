@@ -15,7 +15,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{MethodFilter, MethodRouter, on};
 use serde::Deserialize;
 use serde_json::{Value, json};
-use tokio::sync::{Semaphore, watch};
+use tokio::sync::{OwnedSemaphorePermit, Semaphore, watch};
 
 use super::api::Endpoint;
 use super::rules::{SESSION_MARKER, valid_session};
@@ -190,8 +190,35 @@ fn folder_over(folder: &std::path::Path, cap: u64) -> std::io::Result<bool> {
     Ok(false)
 }
 
-/// The program of a request, built, its message and the session it keeps in use; or the answer that refuses the request.
-async fn accept(app: &Arc<App>, body: &[u8]) -> Result<(Program, String, SessionInUse), Response> {
+/// The program of a request, built, its message, the session it keeps in use and the permit; or the answer that
+/// refuses the request. The permit is held by the blocking work, so a caller that hangs up during the setup does
+/// not give it back before the setup ends.
+async fn accept(
+    app: &Arc<App>,
+    body: axum::body::Bytes,
+    permit: OwnedSemaphorePermit,
+) -> Result<(Program, String, SessionInUse, OwnedSemaphorePermit), Response> {
+    // parsing, the disk and the build are blocking work: they do not run on a thread of the executor
+    let work = tokio::task::spawn_blocking({
+        let app = app.clone();
+        move || setup(&app, &body).map(|(program, message, using)| (program, message, using, permit))
+    })
+    .await;
+    work.unwrap_or_else(|e| {
+        Err(failure(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            &[Error::new(
+                Phase::Execution,
+                Path::root(),
+                Rule::Io,
+                format!("cannot prepare the request: {e}"),
+            )],
+        ))
+    })
+}
+
+/// The blocking part of `accept`.
+fn setup(app: &App, body: &[u8]) -> Result<(Program, String, SessionInUse), Response> {
     let config = &app.config;
     let request: Request = serde_json::from_slice(body).map_err(|e| {
         bad_request(format!(
@@ -204,100 +231,54 @@ async fn accept(app: &Arc<App>, body: &[u8]) -> Result<(Program, String, Session
             "`session` is a name of letters, digits, `-`, `_` and `.`, at most 64 characters".to_string(),
         ));
     }
-    // parsing, the disk and the build are blocking work: they do not run on a thread of the executor
-    let work = tokio::task::spawn_blocking({
-        let app = app.clone();
-        let session = session.clone();
-        move || {
-            let config = &app.config;
-            let yml = prepare(&request.yml, config, &session)
-                .map_err(|errors| failure(StatusCode::UNPROCESSABLE_ENTITY, &errors))?;
-            // in use before the folder exists, so the sweep cannot delete it from under the request
-            let using = app.runs.enter(&session);
-            let folder = config.data_dir.join(&session);
-            // the folder is there before the build, which may open files in it (the log)
-            std::fs::create_dir_all(&folder).map_err(|e| {
-                failure(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    &[Error::new(
-                        Phase::Execution,
-                        Path::root(),
-                        Rule::Io,
-                        format!("cannot create the folder of the session: {e}"),
-                    )],
-                )
-            })?;
-            // the sweep deletes only the folders with this mark, so it never touches what the service did not make;
-            // it is only made here, not stamped: a refused request does not keep the session alive
-            std::fs::OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(folder.join(SESSION_MARKER))
-                .map_err(|e| {
-                    failure(
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        &[Error::new(
-                            Phase::Execution,
-                            Path::root(),
-                            Rule::Io,
-                            format!("cannot mark the folder of the session: {e}"),
-                        )],
-                    )
-                })?;
-            // the program is built again for each request: requests share nothing
-            let program = build(&yml).map_err(|errors| failure(StatusCode::UNPROCESSABLE_ENTITY, &errors.0))?;
-            Ok((program, using))
-        }
-    })
-    .await;
-    let (program, mut using) = match work {
-        Ok(Ok(x)) => x,
-        Ok(Err(refusal)) => return Err(refusal),
-        Err(e) => {
-            return Err(failure(
+    let yml =
+        prepare(&request.yml, config, &session).map_err(|errors| failure(StatusCode::UNPROCESSABLE_ENTITY, &errors))?;
+    // in use before the folder exists, so the sweep cannot delete it from under the request
+    let mut using = app.runs.enter(&session);
+    let folder = config.data_dir.join(&session);
+    // the folder is there before the build, which may open files in it (the log)
+    std::fs::create_dir_all(&folder).map_err(|e| {
+        failure(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            &[Error::new(
+                Phase::Execution,
+                Path::root(),
+                Rule::Io,
+                format!("cannot create the folder of the session: {e}"),
+            )],
+        )
+    })?;
+    // the sweep deletes only the folders with this mark, so it never touches what the service did not make; it is
+    // only made here, not stamped: a refused request does not keep the session alive
+    std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(folder.join(SESSION_MARKER))
+        .map_err(|e| {
+            failure(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 &[Error::new(
                     Phase::Execution,
                     Path::root(),
                     Rule::Io,
-                    format!("cannot prepare the request: {e}"),
+                    format!("cannot mark the folder of the session: {e}"),
                 )],
-            ));
-        }
-    };
-    let folder = config.data_dir.join(&session);
+            )
+        })?;
+    // the program is built again for each request: requests share nothing
+    let program = build(&yml).map_err(|errors| failure(StatusCode::UNPROCESSABLE_ENTITY, &errors.0))?;
     if let Some(cap) = config.session_max_bytes {
-        // the walk reads the disk: it does not run on a thread of the executor
-        let weighed = tokio::task::spawn_blocking({
-            let folder = folder.clone();
-            move || folder_over(&folder, cap)
-        })
-        .await;
-        let over = match weighed {
-            Ok(Ok(over)) => over,
-            Ok(Err(e)) => {
-                return Err(failure(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    &[Error::new(
-                        Phase::Execution,
-                        Path::root(),
-                        Rule::Io,
-                        format!("cannot weigh the folder of the session: {e}"),
-                    )],
-                ));
-            }
-            Err(e) => {
-                return Err(failure(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    &[Error::new(
-                        Phase::Execution,
-                        Path::root(),
-                        Rule::Io,
-                        format!("cannot weigh the folder of the session: {e}"),
-                    )],
-                ));
-            }
-        };
+        let over = folder_over(&folder, cap).map_err(|e| {
+            failure(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &[Error::new(
+                    Phase::Execution,
+                    Path::root(),
+                    Rule::Io,
+                    format!("cannot weigh the folder of the session: {e}"),
+                )],
+            )
+        })?;
         if over {
             let message = format!(
                 "the session `{session}` weighs more than session_max_bytes ({cap}): use another session, or ask the operator of the service to free it"
@@ -327,7 +308,7 @@ async fn run(State(app): State<Arc<App>>, body: axum::body::Bytes) -> Response {
     let Ok(permit) = app.permits.clone().try_acquire_owned() else {
         return busy(app.config.max_runs);
     };
-    let (program, message, using) = match accept(&app, &body).await {
+    let (program, message, using, permit) = match accept(&app, body, permit).await {
         Ok(x) => x,
         Err(refusal) => return refusal,
     };
@@ -359,7 +340,7 @@ async fn start(State(app): State<Arc<App>>, body: axum::body::Bytes) -> Response
     let Ok(permit) = app.permits.clone().try_acquire_owned() else {
         return busy(app.config.max_runs);
     };
-    let (program, message, using) = match accept(&app, &body).await {
+    let (program, message, using, permit) = match accept(&app, body, permit).await {
         Ok(x) => x,
         Err(refusal) => return refusal,
     };
