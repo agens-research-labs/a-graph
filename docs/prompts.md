@@ -56,8 +56,8 @@ The prompt and the node must agree in both directions. These rules are checked w
   `synt`, a blackboard it reads, and `{{chunks}}` when it reads a vector database;
 - the prompt must use the message of the node: with both messages enabled it must use both `{{user_message}}` and
   `{{agent_message}}`, with one it must use it or `{{input_message}}` (`placeholder_unused`);
-- `chunks` is a reserved name: nothing on the node can have it as its id, and the same id cannot appear twice on a node
-  (`duplicate_id`).
+- `chunks`, `user_message`, `agent_message` and `input_message` are reserved names: nothing on the node can have one
+  as its id, and the same id cannot appear twice on a node (`duplicate_id`).
 
 ## Without a prompt
 

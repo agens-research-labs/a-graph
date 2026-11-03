@@ -344,6 +344,9 @@ fn board_rules(nodes: &Nodes, e: Entity, id: &str, at: &Path, errs: &mut Vec<Err
 /// The placeholder that takes the chunks found in the vector databases of the node.
 pub const CHUNKS: &str = "chunks";
 
+/// The placeholders that take the messages of the node.
+const MESSAGES: [&str; 3] = [key::USER_MESSAGE, key::AGENT_MESSAGE, "input_message"];
+
 /// `{{name}}` placeholders of the prompt against what the node declares.
 fn placeholders(
     nodes: &Nodes,
@@ -386,6 +389,11 @@ fn placeholders(
     }
     if declared.contains(&CHUNKS) {
         errs.push(err(at.key(key::EXTERNAL), Rule::DuplicateId, format!("`{CHUNKS}` is the placeholder of the vectordb chunks: it cannot be the id of something else on node `{id}`")));
+    }
+    for name in MESSAGES {
+        if declared.contains(&name) {
+            errs.push(err(at.key(key::EXTERNAL), Rule::DuplicateId, format!("`{name}` is the placeholder of the message of the node: it cannot be the id of something else on node `{id}`")));
+        }
     }
     let mut seen = HashSet::new();
     for d in &declared {
