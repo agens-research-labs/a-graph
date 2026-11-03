@@ -383,7 +383,17 @@ impl Runs {
         let run_timeout = self.run_timeout;
         tokio::spawn(async move {
             let _permit = permit;
-            let outcome = run_within(program, &message, run_timeout, deadline).await;
+            // the run is a task of its own, so that a panic in it still ends the run, as failed
+            let outcome = tokio::spawn(async move { run_within(program, &message, run_timeout, deadline).await })
+                .await
+                .unwrap_or_else(|e| {
+                    Err(Error::new(
+                        Phase::Execution,
+                        Path::root(),
+                        Rule::Io,
+                        format!("the run stopped: {e}"),
+                    ))
+                });
             state.finish(match outcome {
                 Ok(output) => Outcome::Done(output.to_json()),
                 Err(e) => Outcome::Failed(errors_json(&[e])),
