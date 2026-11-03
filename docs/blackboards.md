@@ -57,4 +57,9 @@ A node manages one blackboard only: `blackboard` is a single block, not a list.
 - `cleanup: true`: when the node is done, everything below the header is removed. It cannot be `true` together with an
   enabled `write`, because what the node wrote would be lost (`cleanup_write`).
 
-Two nodes may write the same blackboard: the writes of a file are made one at a time.
+Two nodes may write the same blackboard: the writes of a file are made one at a time, also between requests of the
+service and runs of the command line that share the file. Each write or cleanup of a file holds an exclusive lock on
+`<file>.lock`, a file left next to the blackboard, from the read of the blackboard to its write. The file is written in
+one step (a temporary file of its own, then renamed), so a reader sees it before or after a write, never half of it. A
+write or a cleanup of a file whose header is no longer valid is refused (`blackboard_header`) and leaves the file as it
+is.

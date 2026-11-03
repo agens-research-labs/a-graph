@@ -3,7 +3,9 @@
 
 mod header;
 
+use std::io::Write;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde::Deserialize;
 use serde_norway::Value;
@@ -26,7 +28,8 @@ pub enum Place {
 enum Store {
     /// In the process: starts empty, lost when the program ends.
     Memory(Mutex<String>),
-    /// A file, opened as written in the yml. The lock serializes read, change and write.
+    /// A file, opened as written in the yml. The mutex serializes read, change and write inside the
+    /// program; the lock of `<file>.lock` does it between programs and processes (`change_file`).
     File { path: String, lock: Mutex<()> },
     /// Not read yet.
     Url { url: String },
@@ -103,8 +106,7 @@ impl BlackboardManager {
             }
             Store::File { path, lock } => {
                 let _held = lock.lock().unwrap();
-                let content = std::fs::read_to_string(path).map_err(|e| io(b, path, e))?;
-                std::fs::write(path, header::write(&content, text, place)).map_err(|e| io(b, path, e))
+                change_file(b, path, |content| header::write(content, text, place))
             }
             Store::Url { url } => Err(not_read(b, url)),
         }
@@ -121,8 +123,7 @@ impl BlackboardManager {
             }
             Store::File { path, lock } => {
                 let _held = lock.lock().unwrap();
-                let content = std::fs::read_to_string(path).map_err(|e| io(b, path, e))?;
-                std::fs::write(path, header::cleared(&content)).map_err(|e| io(b, path, e))
+                change_file(b, path, header::cleared)
             }
             Store::Url { url } => Err(not_read(b, url)),
         }
@@ -151,6 +152,61 @@ fn io(b: &Board, path: &str, e: std::io::Error) -> Error {
         Rule::Io,
         format!("blackboard `{}`: `{path}`: {e}", b.id),
     )
+}
+
+/// Reads the file of `b`, changes it and writes it back, holding an exclusive lock on `<path>.lock` from
+/// the read to the write: the other programs and processes that change the same file wait. The lock file
+/// is never deleted, since deleting it while another run waits on it would let two runs hold the lock. A
+/// file whose header is no longer valid is not changed: without its header, the whole file would be
+/// taken as the body and written back without it.
+fn change_file(b: &Board, path: &str, change: impl FnOnce(&str) -> String) -> Result<(), Error> {
+    let _held = lock_file(b, path)?;
+    let content = std::fs::read_to_string(path).map_err(|e| io(b, path, e))?;
+    header::header_end(&content).map_err(|why| {
+        Error::new(
+            Phase::Execution,
+            at(b),
+            Rule::BlackboardHeader,
+            format!("blackboard `{}`: `{path}`: {why}", b.id),
+        )
+    })?;
+    replace_file(b, path, &change(&content))
+}
+
+/// An exclusive lock on `<path>.lock`, held until the file is dropped.
+fn lock_file(b: &Board, path: &str) -> Result<std::fs::File, Error> {
+    let name = format!("{path}.lock");
+    let file = std::fs::OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .write(true)
+        .open(&name)
+        .map_err(|e| io(b, &name, e))?;
+    file.lock().map_err(|e| io(b, &name, e))?;
+    Ok(file)
+}
+
+/// Writes `content` to `path` in one step: a temporary file of its own, then renamed, so a reader sees
+/// the file before or after the write, never half of it.
+fn replace_file(b: &Board, path: &str, content: &str) -> Result<(), Error> {
+    static WRITES: AtomicU64 = AtomicU64::new(0);
+    let temporary = format!(
+        "{path}.{}.{}.tmp",
+        std::process::id(),
+        WRITES.fetch_add(1, Ordering::Relaxed)
+    );
+    let written = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&temporary)
+        .and_then(|mut f| f.write_all(content.as_bytes()))
+        .map_err(|e| io(b, &temporary, e))
+        .and_then(|()| std::fs::rename(&temporary, path).map_err(|e| io(b, path, e)));
+    if written.is_err() {
+        // The error of the write is the one that matters; the file may not even exist.
+        let _ = std::fs::remove_file(&temporary);
+    }
+    written
 }
 
 fn not_read(b: &Board, url: &str) -> Error {

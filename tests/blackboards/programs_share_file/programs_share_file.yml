@@ -1,0 +1,38 @@
+# One node `n` that writes its board `notes`, the file target/test-boards/programs_share_file.md, a copy of board.md made by the test.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:11434
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: pr
+      content:
+        system: "Take notes."
+        user: "Question: {{user_message}}"
+blackboards:
+  - id: notes
+    source: { file: ./target/test-boards/programs_share_file.md }
+graph:
+  nodes:
+    - id: n
+      model: { id: m }
+      resources: { prompt: pr }
+      blackboard: { id: notes, write: { enabled: true, place: bottom } }
+      message: { input: { user_message: true }, output: { assistant_message: true } }
+  edges:
+    - start: n
+    - end: n

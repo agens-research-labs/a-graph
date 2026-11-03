@@ -45,8 +45,14 @@ mod node_cleanup;
 #[path = "parallel_writes/parallel_writes.rs"]
 mod parallel_writes;
 
+#[path = "programs_share_file/programs_share_file.rs"]
+mod programs_share_file;
+
 #[path = "unknown_board/unknown_board.rs"]
 mod unknown_board;
 
 #[path = "url_board_unused/url_board_unused.rs"]
 mod url_board_unused;
+
+#[path = "write_no_header/write_no_header.rs"]
+mod write_no_header;
