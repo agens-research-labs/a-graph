@@ -28,6 +28,13 @@ fn refuse(at: Path, rule: Rule, msg: impl Into<String>) -> Error {
 
 /// The yml, ready to be built: its paths inside `<data_dir>/<session>/`. `Err` has every rule it breaks.
 pub fn prepare(yml: &str, config: &ServiceConfig, session: &str) -> Result<String, Vec<Error>> {
+    if has_alias(yml) {
+        return Err(vec![refuse(
+            Path::root(),
+            Rule::NotSupported,
+            "this service does not accept YAML aliases: write the value again where it is used",
+        )]);
+    }
     let mut root: Value =
         serde_norway::from_str(yml).map_err(|e| vec![refuse(Path::root(), Rule::Parse, e.to_string())])?;
     let folder = config.data_dir.join(session);
@@ -68,6 +75,48 @@ pub fn prepare(yml: &str, config: &ServiceConfig, session: &str) -> Result<Strin
         return Err(errs);
     }
     serde_norway::to_string(&root).map_err(|e| vec![refuse(Path::root(), Rule::Parse, e.to_string())])
+}
+
+/// Whether the yml has an alias (`*name`). serde_norway copies the value of the anchor at every alias, so a small
+/// yml can become a tree of gigabytes: here only the events of the parser are read, one at a time, and nothing is
+/// copied. A yml that does not parse answers `false`: serde_norway then reports the error.
+fn has_alias(yml: &str) -> bool {
+    use std::mem::MaybeUninit;
+    use unsafe_libyaml_norway::{
+        YAML_ALIAS_EVENT, YAML_STREAM_END_EVENT, YAML_UTF8_ENCODING, yaml_event_delete, yaml_event_t,
+        yaml_parser_delete, yaml_parser_initialize, yaml_parser_parse, yaml_parser_set_encoding,
+        yaml_parser_set_input_string, yaml_parser_t,
+    };
+
+    let mut parser = MaybeUninit::<yaml_parser_t>::uninit();
+    let parser = parser.as_mut_ptr();
+    // SAFETY: the parser is initialized before use and deleted once; it reads `yml`, which outlives it. Every event
+    // is deleted after its type is read, and only its type is read.
+    unsafe {
+        if yaml_parser_initialize(parser).fail {
+            return false;
+        }
+        yaml_parser_set_encoding(parser, YAML_UTF8_ENCODING);
+        yaml_parser_set_input_string(parser, yml.as_ptr(), yml.len() as _);
+        let mut found = false;
+        loop {
+            let mut event = MaybeUninit::<yaml_event_t>::uninit();
+            if yaml_parser_parse(parser, event.as_mut_ptr()).fail {
+                break;
+            }
+            let kind = (*event.as_ptr()).type_;
+            yaml_event_delete(event.as_mut_ptr());
+            if kind == YAML_ALIAS_EVENT {
+                found = true;
+                break;
+            }
+            if kind == YAML_STREAM_END_EVENT {
+                break;
+            }
+        }
+        yaml_parser_delete(parser);
+        found
+    }
 }
 
 fn path_of(keys: &[&str]) -> Path {

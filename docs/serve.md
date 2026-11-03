@@ -126,6 +126,10 @@ What the cap does not do:
 A graph sent to the service comes from outside, so it is not trusted. Before anything is built, it is refused (422)
 if it breaks one of these rules:
 
+- **No aliases.** A YAML alias (`*name`, which repeats the value marked `&name`) is refused (`not_supported`):
+  every alias would copy its value, so a small graph could fill the memory of the service. Write the value again
+  where it is used. A `*` or a `&` inside a text is not an alias and is allowed. The command line still accepts
+  aliases.
 - **No programs.** A tool, an MCP server or a utility with `transport: stdio` is refused, and so is a skill without
   `run_scripts: false`: only services reached over `http` are allowed (`not_supported`).
 - **Files in the session.** Every path of the graph (the `path` of a prompt, a media, a skill or a memory, the `file`

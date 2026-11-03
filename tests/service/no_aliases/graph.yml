@@ -1,0 +1,46 @@
+# A graph that names its system prompt once (&brief) and uses it again (*brief): the service refuses aliases.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:{{port:model}}
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: pa
+      content:
+        system: &brief "Be brief."
+        user: "Q: {{user_message}}"
+    - id: pb
+      content:
+        system: *brief
+        user: "From a: {{agent_message}}"
+graph:
+  nodes:
+    - id: a
+      model: { id: m, max_tokens: 50 }
+      resources: { prompt: pa }
+      message:
+        input: { user_message: true }
+        output: { node: true }
+    - id: b
+      model: { id: m, max_tokens: 50 }
+      resources: { prompt: pb }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true }
+  edges:
+    - start: a
+    - end: b
