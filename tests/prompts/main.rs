@@ -38,3 +38,6 @@ mod prompt_filled;
 
 #[path = "prompt_url_kept/prompt_url_kept.rs"]
 mod prompt_url_kept;
+
+#[path = "reserved_names/reserved_names.rs"]
+mod reserved_names;
