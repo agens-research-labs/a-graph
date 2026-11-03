@@ -454,6 +454,57 @@ pub(super) fn errors_json(errors: &[Error]) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::{
+        BatchEvents, BatchRequest, BatchReturn, Llm, ModelError, ModelInvocation, ModelRequirements, ModelResponse,
+    };
+
+    /// A model that panics when it is called.
+    struct Panics;
+
+    #[async_trait::async_trait]
+    impl Llm for Panics {
+        fn check(&self, _: &ModelRequirements) -> Result<(), ModelError> {
+            Ok(())
+        }
+
+        async fn invoke(&self, _: &ModelInvocation) -> Result<ModelResponse, ModelError> {
+            panic!("the model panicked");
+        }
+
+        async fn invoke_batch(&self, _: Vec<BatchRequest>, _: BatchEvents) -> BatchReturn {
+            unreachable!("no batch here")
+        }
+    }
+
+    /// A run started with `POST /runs` whose model panics ends as failed, with the error of `POST /run`, instead of
+    /// staying `running` for ever.
+    #[tokio::test]
+    async fn run_panicked_failed() {
+        let mut program = crate::run::build(include_str!("../../tests/service/run_panic/graph.yml"))
+            .unwrap_or_else(|e| panic!("{e}"));
+        program.models.insert("m", Box::new(Panics));
+        let runs = Runs::new(
+            Duration::from_secs(60),
+            Duration::from_secs(60),
+            PathBuf::from("target/test-service/run_panic"),
+            None,
+        );
+        let permit = Arc::new(tokio::sync::Semaphore::new(1)).try_acquire_owned().unwrap();
+        let (_stop, deadline) = watch::channel(None);
+        let using = runs.enter("s");
+        let id = runs.start(program, "x".into(), permit, deadline, using);
+        let state = runs.get(&id).unwrap();
+        let waited = Instant::now();
+        while state.status()["state"] == "running" {
+            assert!(waited.elapsed() < Duration::from_secs(5), "the run is still running");
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        let status = state.status();
+        assert_eq!(status["state"], "failed", "{status}");
+        assert_eq!(status["errors"][0]["rule"], "io", "{status}");
+        let message = status["errors"][0]["message"].as_str().unwrap();
+        assert!(message.starts_with("the run stopped:"), "{status}");
+    }
 
     fn names(state: &RunState, mut index: usize) -> Vec<String> {
         let mut seen = Vec::new();
