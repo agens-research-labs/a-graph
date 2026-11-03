@@ -33,6 +33,9 @@ mod invalid_yml;
 #[path = "no_aliases/no_aliases.rs"]
 mod no_aliases;
 
+#[path = "no_tags/no_tags.rs"]
+mod no_tags;
+
 #[path = "no_programs/no_programs.rs"]
 mod no_programs;
 

@@ -1,0 +1,36 @@
+# The log is written to a path with a YAML tag, not moved into the folder of the session: the service refuses tags.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error, output: { file: !x target/test-service/no_tags_outside/outside.log } }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:{{port:model}}
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: p
+      content:
+        system: "Be brief."
+        user: "Q: {{user_message}}"
+graph:
+  nodes:
+    - id: n
+      model: { id: m, max_tokens: 50 }
+      resources: { prompt: p }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true }
+  edges:
+    - start: n
+    - end: n
