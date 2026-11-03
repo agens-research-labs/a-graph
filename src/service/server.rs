@@ -191,7 +191,7 @@ fn folder_over(folder: &std::path::Path, cap: u64) -> std::io::Result<bool> {
 }
 
 /// The program of a request, built, its message and the session it keeps in use; or the answer that refuses the request.
-async fn accept(app: &App, body: &[u8]) -> Result<(Program, String, SessionInUse), Response> {
+async fn accept(app: &Arc<App>, body: &[u8]) -> Result<(Program, String, SessionInUse), Response> {
     let config = &app.config;
     let request: Request = serde_json::from_slice(body).map_err(|e| {
         bad_request(format!(
@@ -204,42 +204,68 @@ async fn accept(app: &App, body: &[u8]) -> Result<(Program, String, SessionInUse
             "`session` is a name of letters, digits, `-`, `_` and `.`, at most 64 characters".to_string(),
         ));
     }
-    let yml =
-        prepare(&request.yml, config, &session).map_err(|errors| failure(StatusCode::UNPROCESSABLE_ENTITY, &errors))?;
-    // in use before the folder exists, so the sweep cannot delete it from under the request
-    let mut using = app.runs.enter(&session);
-    let folder = config.data_dir.join(&session);
-    // the folder is there before the build, which may open files in it (the log)
-    std::fs::create_dir_all(&folder).map_err(|e| {
-        failure(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            &[Error::new(
-                Phase::Execution,
-                Path::root(),
-                Rule::Io,
-                format!("cannot create the folder of the session: {e}"),
-            )],
-        )
-    })?;
-    // the sweep deletes only the folders with this mark, so it never touches what the service did not make; it is
-    // only made here, not stamped: a refused request does not keep the session alive
-    std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(folder.join(SESSION_MARKER))
-        .map_err(|e| {
-            failure(
+    // parsing, the disk and the build are blocking work: they do not run on a thread of the executor
+    let work = tokio::task::spawn_blocking({
+        let app = app.clone();
+        let session = session.clone();
+        move || {
+            let config = &app.config;
+            let yml = prepare(&request.yml, config, &session)
+                .map_err(|errors| failure(StatusCode::UNPROCESSABLE_ENTITY, &errors))?;
+            // in use before the folder exists, so the sweep cannot delete it from under the request
+            let using = app.runs.enter(&session);
+            let folder = config.data_dir.join(&session);
+            // the folder is there before the build, which may open files in it (the log)
+            std::fs::create_dir_all(&folder).map_err(|e| {
+                failure(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    &[Error::new(
+                        Phase::Execution,
+                        Path::root(),
+                        Rule::Io,
+                        format!("cannot create the folder of the session: {e}"),
+                    )],
+                )
+            })?;
+            // the sweep deletes only the folders with this mark, so it never touches what the service did not make;
+            // it is only made here, not stamped: a refused request does not keep the session alive
+            std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(folder.join(SESSION_MARKER))
+                .map_err(|e| {
+                    failure(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        &[Error::new(
+                            Phase::Execution,
+                            Path::root(),
+                            Rule::Io,
+                            format!("cannot mark the folder of the session: {e}"),
+                        )],
+                    )
+                })?;
+            // the program is built again for each request: requests share nothing
+            let program = build(&yml).map_err(|errors| failure(StatusCode::UNPROCESSABLE_ENTITY, &errors.0))?;
+            Ok((program, using))
+        }
+    })
+    .await;
+    let (program, mut using) = match work {
+        Ok(Ok(x)) => x,
+        Ok(Err(refusal)) => return Err(refusal),
+        Err(e) => {
+            return Err(failure(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 &[Error::new(
                     Phase::Execution,
                     Path::root(),
                     Rule::Io,
-                    format!("cannot mark the folder of the session: {e}"),
+                    format!("cannot prepare the request: {e}"),
                 )],
-            )
-        })?;
-    // the program is built again for each request: requests share nothing
-    let program = build(&yml).map_err(|errors| failure(StatusCode::UNPROCESSABLE_ENTITY, &errors.0))?;
+            ));
+        }
+    };
+    let folder = config.data_dir.join(&session);
     if let Some(cap) = config.session_max_bytes {
         // the walk reads the disk: it does not run on a thread of the executor
         let weighed = tokio::task::spawn_blocking({
