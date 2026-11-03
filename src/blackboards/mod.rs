@@ -28,9 +28,9 @@ pub enum Place {
 enum Store {
     /// In the process: starts empty, lost when the program ends.
     Memory(Mutex<String>),
-    /// A file, opened as written in the yml. The mutex serializes read, change and write inside the
-    /// program; the lock of `<file>.lock` does it between programs and processes (`change_file`).
-    File { path: String, lock: Mutex<()> },
+    /// A file, opened as written in the yml. The lock of `<file>.lock` serializes read, change and
+    /// write, inside the program and between programs and processes (`change_file`).
+    File { path: String },
     /// Not read yet.
     Url { url: String },
 }
@@ -87,16 +87,14 @@ impl BlackboardManager {
         let b = self.board(id)?;
         match &b.store {
             Store::Memory(m) => Ok(m.lock().unwrap().clone()),
-            Store::File { path, lock } => {
-                let _held = lock.lock().unwrap();
-                std::fs::read_to_string(path).map_err(|e| io(b, path, e))
-            }
+            // the file is replaced in one step, so it is read whole without the lock
+            Store::File { path } => std::fs::read_to_string(path).map_err(|e| io(b, path, e)),
             Store::Url { url } => Err(not_read(b, url)),
         }
     }
 
     /// Adds `text` below the header, at the top of the body or at the bottom.
-    pub fn write(&self, id: &str, text: &str, place: Place) -> Result<(), Error> {
+    pub async fn write(&self, id: &str, text: &str, place: Place) -> Result<(), Error> {
         let b = self.board(id)?;
         match &b.store {
             Store::Memory(m) => {
@@ -104,16 +102,16 @@ impl BlackboardManager {
                 *content = header::write(&content, text, place);
                 Ok(())
             }
-            Store::File { path, lock } => {
-                let _held = lock.lock().unwrap();
-                change_file(b, path, |content| header::write(content, text, place))
+            Store::File { path } => {
+                let text = text.to_string();
+                change_file(b, path, move |content| header::write(content, &text, place)).await
             }
             Store::Url { url } => Err(not_read(b, url)),
         }
     }
 
     /// Removes everything below the header; the header stays.
-    pub fn cleanup(&self, id: &str) -> Result<(), Error> {
+    pub async fn cleanup(&self, id: &str) -> Result<(), Error> {
         let b = self.board(id)?;
         match &b.store {
             Store::Memory(m) => {
@@ -121,10 +119,7 @@ impl BlackboardManager {
                 *content = header::cleared(&content);
                 Ok(())
             }
-            Store::File { path, lock } => {
-                let _held = lock.lock().unwrap();
-                change_file(b, path, header::cleared)
-            }
+            Store::File { path } => change_file(b, path, header::cleared).await,
             Store::Url { url } => Err(not_read(b, url)),
         }
     }
@@ -154,41 +149,67 @@ fn io(b: &Board, path: &str, e: std::io::Error) -> Error {
     )
 }
 
-/// Reads the file of `b`, changes it and writes it back, holding an exclusive lock on `<path>.lock` from
-/// the read to the write: the other programs and processes that change the same file wait. The lock file
-/// is never deleted, since deleting it while another run waits on it would let two runs hold the lock. A
-/// file whose header is no longer valid is not changed: without its header, the whole file would be
-/// taken as the body and written back without it.
-fn change_file(b: &Board, path: &str, change: impl FnOnce(&str) -> String) -> Result<(), Error> {
-    let _held = lock_file(b, path)?;
-    let content = std::fs::read_to_string(path).map_err(|e| io(b, path, e))?;
-    header::header_end(&content).map_err(|why| {
-        Error::new(
+/// Why the change of a board file failed, before it is told as an error of the board.
+enum Failure {
+    /// The file named, and what the system answered.
+    Io(String, std::io::Error),
+    /// Why the header is not valid.
+    Header(String),
+}
+
+/// Changes the file of `b` (`change_locked`) on a thread for blocking work: the wait for the lock and the
+/// write do not hold a thread of the executor.
+async fn change_file(b: &Board, path: &str, change: impl FnOnce(&str) -> String + Send + 'static) -> Result<(), Error> {
+    let owned = path.to_string();
+    let done = tokio::task::spawn_blocking(move || change_locked(&owned, change))
+        .await
+        .map_err(|e| {
+            Error::new(
+                Phase::Execution,
+                at(b),
+                Rule::Io,
+                format!("blackboard `{}`: the change of `{path}` stopped: {e}", b.id),
+            )
+        })?;
+    done.map_err(|failure| match failure {
+        Failure::Io(file, e) => io(b, &file, e),
+        Failure::Header(why) => Error::new(
             Phase::Execution,
             at(b),
             Rule::BlackboardHeader,
             format!("blackboard `{}`: `{path}`: {why}", b.id),
-        )
-    })?;
-    replace_file(b, path, &change(&content))
+        ),
+    })
+}
+
+/// Reads the file, changes it and writes it back, holding an exclusive lock on `<path>.lock` from the read
+/// to the write: the other nodes, programs and processes that change the same file wait, since each change
+/// opens the lock file again. The lock file is never deleted, since deleting it while another run waits on
+/// it would let two runs hold the lock. A file whose header is no longer valid is not changed: without its
+/// header, the whole file would be taken as the body and written back without it.
+fn change_locked(path: &str, change: impl FnOnce(&str) -> String) -> Result<(), Failure> {
+    let _held = lock_file(path)?;
+    let content = std::fs::read_to_string(path).map_err(|e| Failure::Io(path.to_string(), e))?;
+    header::header_end(&content).map_err(Failure::Header)?;
+    replace_file(path, &change(&content))
 }
 
 /// An exclusive lock on `<path>.lock`, held until the file is dropped.
-fn lock_file(b: &Board, path: &str) -> Result<std::fs::File, Error> {
+fn lock_file(path: &str) -> Result<std::fs::File, Failure> {
     let name = format!("{path}.lock");
     let file = std::fs::OpenOptions::new()
         .create(true)
         .truncate(false)
         .write(true)
         .open(&name)
-        .map_err(|e| io(b, &name, e))?;
-    file.lock().map_err(|e| io(b, &name, e))?;
+        .map_err(|e| Failure::Io(name.clone(), e))?;
+    file.lock().map_err(|e| Failure::Io(name, e))?;
     Ok(file)
 }
 
 /// Writes `content` to `path` in one step: a temporary file of its own, then renamed, so a reader sees
 /// the file before or after the write, never half of it.
-fn replace_file(b: &Board, path: &str, content: &str) -> Result<(), Error> {
+fn replace_file(path: &str, content: &str) -> Result<(), Failure> {
     static WRITES: AtomicU64 = AtomicU64::new(0);
     let temporary = format!(
         "{path}.{}.{}.tmp",
@@ -200,8 +221,8 @@ fn replace_file(b: &Board, path: &str, content: &str) -> Result<(), Error> {
         .create_new(true)
         .open(&temporary)
         .and_then(|mut f| f.write_all(content.as_bytes()))
-        .map_err(|e| io(b, &temporary, e))
-        .and_then(|()| std::fs::rename(&temporary, path).map_err(|e| io(b, path, e)));
+        .map_err(|e| Failure::Io(temporary.clone(), e))
+        .and_then(|()| std::fs::rename(&temporary, path).map_err(|e| Failure::Io(path.to_string(), e)));
     if written.is_err() {
         // The error of the write is the one that matters; the file may not even exist.
         let _ = std::fs::remove_file(&temporary);
@@ -246,10 +267,7 @@ fn store(v: Value, at: &Path, errs: &mut Errs) -> Option<Store> {
     }
     let mut o = Obj::new(v, at.clone(), errs)?;
     match (o.opt::<String>(key::FILE, errs), o.opt::<String>(key::URL, errs)) {
-        (Some(path), None) => check_file(&at.key(key::FILE), &path, errs).then(|| Store::File {
-            path,
-            lock: Mutex::new(()),
-        }),
+        (Some(path), None) => check_file(&at.key(key::FILE), &path, errs).then_some(Store::File { path }),
         // `access` is accepted; its content is not defined yet, so it is not kept.
         (None, Some(url)) => Some(Store::Url { url }),
         _ => {

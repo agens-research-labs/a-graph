@@ -5,12 +5,12 @@ fn here() -> &'static std::path::Path {
 }
 
 /// A file board keeps the header first and places text below it.
-#[test]
-fn file_header_first() {
+#[tokio::test]
+async fn file_header_first() {
     let (m, path) = file_board(here(), "file_header_first");
-    m.write("notes", "one", Place::Bottom).unwrap();
-    m.write("notes", "two", Place::Bottom).unwrap();
-    m.write("notes", "top", Place::Top).unwrap();
+    m.write("notes", "one", Place::Bottom).await.unwrap();
+    m.write("notes", "two", Place::Bottom).await.unwrap();
+    m.write("notes", "top", Place::Top).await.unwrap();
     let want = format!("{HEADER}\ntop\n\none\n\ntwo\n");
     assert_eq!(m.read("notes").unwrap(), want);
     assert_eq!(

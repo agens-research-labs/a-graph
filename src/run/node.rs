@@ -336,10 +336,10 @@ impl Program {
                         c.text(),
                     )
                     .await?;
-                self.blackboards.write(&b.id, &text, w.place)?;
+                self.blackboards.write(&b.id, &text, w.place).await?;
             }
             if b.cleanup {
-                self.blackboards.cleanup(&b.id)?;
+                self.blackboards.cleanup(&b.id).await?;
             }
         }
         // the memories: the exchange of this turn is saved, and the summary is made when it is time
