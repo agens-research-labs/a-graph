@@ -30,6 +30,9 @@ mod host_refused;
 #[path = "invalid_yml/invalid_yml.rs"]
 mod invalid_yml;
 
+#[path = "no_aliases/no_aliases.rs"]
+mod no_aliases;
+
 #[path = "no_programs/no_programs.rs"]
 mod no_programs;
 
