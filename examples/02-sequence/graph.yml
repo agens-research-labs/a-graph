@@ -8,7 +8,7 @@ passport:
     description: Two nodes one after the other - the output of the first is the input of the secon
     version: "1.0.0"
     data_classification: { sensitivity: public }
-    permissions: { network: { allowed_hosts: [localhost] } }
+    permissions: { network: { allowed_hosts: [localhost:11434] } }
 observability: { level: warn }      # the log goes to the standard error
 verbose: { level: steps }        # the display of the run: off | steps | detail
 models:
