@@ -69,8 +69,6 @@ pub struct Memory {
 #[derive(Debug, Default)]
 pub struct MemoryManager {
     memories: Vec<Memory>,
-    /// One writer at a time: nodes that run together may write the same file.
-    lock: std::sync::Mutex<()>,
 }
 
 impl MemoryManager {
@@ -148,10 +146,7 @@ impl MemoryManager {
                 });
             }
         }
-        errs.finish(MemoryManager {
-            memories,
-            lock: Default::default(),
-        })
+        errs.finish(MemoryManager { memories })
     }
 
     /// A prompt used for the summary must contain `{{synt}}` and `{{chat}}`.
@@ -193,10 +188,19 @@ impl MemoryManager {
         errors
     }
 
-    /// Changes the record of `node` in the file at `path`, alone (see `update_record`).
-    pub fn update(&self, path: &str, node: &str, change: impl FnOnce(&mut Record)) -> Result<Record, String> {
-        let _held = self.lock.lock().unwrap();
-        update_record(path, node, change)
+    /// Changes the record of `node` in the file at `path`, alone (see `update_record`). The wait for the lock and the
+    /// write run on a thread for blocking work, not on a thread of the executor. The lock of the file also keeps out
+    /// the other nodes of the same program, since each change opens the lock file again.
+    pub async fn update(
+        &self,
+        path: &str,
+        node: &str,
+        change: impl FnOnce(&mut Record) + Send + 'static,
+    ) -> Result<Record, String> {
+        let (path, node) = (path.to_string(), node.to_string());
+        tokio::task::spawn_blocking(move || update_record(&path, &node, change))
+            .await
+            .map_err(|e| format!("the change of the record stopped: {e}"))?
     }
 
     pub fn get(&self, id: &str) -> Option<&Memory> {

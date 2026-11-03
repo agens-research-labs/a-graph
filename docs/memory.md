@@ -55,7 +55,8 @@ its folder and the record are created at the first write. The file is written in
 own, then renamed), so a reader sees the file before or after a write, never half of it. Each change of a record holds
 an exclusive lock on `<path>.lock`, a file left next to the memory, from the read of the file to its write: requests
 of the service and runs of the command line that share the file wait for each other and none of their records is
-lost.
+lost. If the process dies between the write of the temporary file and its rename, the temporary file stays next to
+the memory, and the memory stays as it was.
 
 ## Reading
 
