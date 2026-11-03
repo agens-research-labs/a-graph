@@ -160,7 +160,7 @@ impl Program {
             let saved = self
                 .external
                 .memory
-                .update(path, &id, |r| {
+                .update(path, &id, move |r| {
                     if let Some(content) = question {
                         r.chat.push(Entry {
                             role: "user".into(),
@@ -176,6 +176,7 @@ impl Program {
                         });
                     }
                 })
+                .await
                 .map_err(|e| fail(Rule::Io, format!("memory `{}`: {e}", m.id)))?;
 
             if let Some(synt) = &memory.synt
@@ -250,10 +251,11 @@ impl Program {
         let summarized = saved.chat.len();
         self.external
             .memory
-            .update(path, node, |r| {
+            .update(path, node, move |r| {
                 r.synt = summary;
                 r.chat.drain(..summarized.min(r.chat.len()));
             })
+            .await
             .map_err(|e| fail(Rule::Io, format!("memory `{}`: {e}", memory.id)))?;
         Ok(())
     }
