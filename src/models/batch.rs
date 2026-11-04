@@ -94,6 +94,16 @@ pub(crate) fn may_create(events: &BatchEvents, requests: usize) -> bool {
     events.send(BatchEvent::Creating { requests }).is_ok()
 }
 
+/// The outcome of a cancel the provider refused (`refused`), given the status of the job read after it (`state`,
+/// `None` when it could not be read). A job that ended, or that is already being cancelled, leaves nothing running:
+/// the refusal is no failure (`over` lists those statuses). Otherwise the job may still run, and the refusal stands.
+pub(crate) fn refused_unless_over(refused: ModelError, state: Option<&str>, over: &[&str]) -> Result<(), ModelError> {
+    match state {
+        Some(s) if over.contains(&s) => Ok(()),
+        _ => Err(refused),
+    }
+}
+
 /// Tells `Submitted`, as soon as the id of the job is known. When nobody waits for the batch any more, the run let go
 /// of it while the job was created: only the provider knows the id, so it cancels the job here (`cancel`), and
 /// `false` is returned.

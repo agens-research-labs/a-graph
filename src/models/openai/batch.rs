@@ -6,7 +6,7 @@ use std::time::Duration;
 use serde_json::{Value, json};
 
 use super::OpenAi;
-use crate::models::batch::{may_create, patiently, submitted};
+use crate::models::batch::{may_create, patiently, refused_unless_over, submitted};
 use crate::models::{BatchEvent, BatchEvents, BatchOutcome, BatchRequest, BatchResult, BatchReturn, ModelError};
 
 /// How often a batch is polled. There is no maximum wait: it ends when OpenAI says so.
@@ -178,11 +178,23 @@ impl OpenAi {
         self.parse_response(schema, body, 0.0)
     }
 
-    /// `POST /batches/{id}/cancel`: the batch goes to `cancelling`, then `cancelled`.
+    /// `POST /batches/{id}/cancel`: the batch goes to `cancelling`, then `cancelled`. When it is refused, the status
+    /// of the batch tells whether it had already ended or was being cancelled (`refused_unless_over`).
     pub(super) async fn cancel(&self, batch_id: &str) -> Result<(), ModelError> {
-        self.post_text(&format!("/batches/{batch_id}/cancel"), &json!({}))
-            .await
-            .map(drop)
+        let path = format!("/batches/{batch_id}");
+        let Err(refused) = self.post_text(&format!("{path}/cancel"), &json!({})).await else {
+            return Ok(());
+        };
+        let status = self.get_text(&path).await.ok();
+        let state = status
+            .as_deref()
+            .and_then(|s| serde_json::from_str::<Value>(s).ok())
+            .and_then(|v| v.get("status")?.as_str().map(str::to_string));
+        refused_unless_over(
+            refused,
+            state.as_deref(),
+            &["completed", "failed", "expired", "cancelled", "cancelling"],
+        )
     }
 
     fn parse_json(&self, text: String) -> Result<Value, ModelError> {

@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use serde_json::{Value, json};
 
 use super::Mistral;
-use crate::models::batch::{may_create, patiently, submitted};
+use crate::models::batch::{may_create, patiently, refused_unless_over, submitted};
 use crate::models::{BatchEvent, BatchEvents, BatchOutcome, BatchRequest, BatchResult, BatchReturn, ModelError};
 
 impl Mistral {
@@ -149,11 +149,30 @@ impl Mistral {
         self.parse_completion(schema, body, 0.0)
     }
 
-    /// `POST /v1/batch/jobs/{id}/cancel`: the job goes to `CANCELLATION_REQUESTED`, then `CANCELLED`.
+    /// `POST /v1/batch/jobs/{id}/cancel`: the job goes to `CANCELLATION_REQUESTED`, then `CANCELLED`. When it is
+    /// refused, the status of the job tells whether it had already ended or was being cancelled
+    /// (`refused_unless_over`).
     pub(super) async fn cancel(&self, job_id: &str) -> Result<(), ModelError> {
-        self.post_text(&format!("/v1/batch/jobs/{job_id}/cancel"), &json!({}))
-            .await
-            .map(drop)
+        let path = format!("/v1/batch/jobs/{job_id}");
+        let Err(refused) = self.post_text(&format!("{path}/cancel"), &json!({})).await else {
+            return Ok(());
+        };
+        let status = self.get_text(&path).await.ok();
+        let state = status
+            .as_deref()
+            .and_then(|s| serde_json::from_str::<Value>(s).ok())
+            .and_then(|v| v.get("status")?.as_str().map(str::to_string));
+        refused_unless_over(
+            refused,
+            state.as_deref(),
+            &[
+                "SUCCESS",
+                "FAILED",
+                "TIMEOUT_EXCEEDED",
+                "CANCELLED",
+                "CANCELLATION_REQUESTED",
+            ],
+        )
     }
 
     fn parse_json(&self, text: String) -> Result<Value, ModelError> {

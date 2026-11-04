@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use serde_json::{Value, json};
 
 use super::Anthropic;
-use crate::models::batch::{may_create, patiently, submitted};
+use crate::models::batch::{may_create, patiently, refused_unless_over, submitted};
 use crate::models::{BatchEvent, BatchEvents, BatchOutcome, BatchRequest, BatchResult, BatchReturn, ModelError};
 
 impl Anthropic {
@@ -125,14 +125,19 @@ impl Anthropic {
         Ok(results)
     }
 
-    /// `POST /v1/messages/batches/{id}/cancel`: the requests not yet processed are canceled.
+    /// `POST /v1/messages/batches/{id}/cancel`: the requests not yet processed are canceled. When it is refused, the
+    /// status of the batch tells whether it had already ended or was being canceled (`refused_unless_over`).
     pub(super) async fn cancel(&self, batch_id: &str) -> Result<(), ModelError> {
-        self.send(
-            self.client
-                .post(format!("{}/v1/messages/batches/{batch_id}/cancel", self.base_url)),
-        )
-        .await
-        .map(drop)
+        let url = format!("{}/v1/messages/batches/{batch_id}", self.base_url);
+        let Err(refused) = self.send(self.client.post(format!("{url}/cancel"))).await else {
+            return Ok(());
+        };
+        let status = self.send(self.client.get(url)).await.ok();
+        let state = status
+            .as_deref()
+            .and_then(|s| serde_json::from_str::<Value>(s).ok())
+            .and_then(|v| v.get("processing_status")?.as_str().map(str::to_string));
+        refused_unless_over(refused, state.as_deref(), &["ended", "canceling"])
     }
 
     fn batch_result(&self, schema: bool, result: &Value) -> Result<crate::models::ModelResponse, ModelError> {

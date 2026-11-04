@@ -95,8 +95,9 @@ service shutting down, Ctrl-C on the command line), when a branch beside the gro
 fails. The end of the program waits for each cancel, 3 seconds at most. A run stopped while its batch is prepared (on
 `openai` and `bedrock` the requests are first uploaded as a file) sends nothing more, and no job is created. A job whose
 creation was on its way is still created, and cancelled as soon as its id comes, within the same 3 seconds. A cancel
-that fails is written on the standard error, with the id of the job: `a-graph: cannot cancel the batch job <id> at the
-provider: <why>`; a creation that did not answer in time is written too, without an id, since none came. A process that
+the provider refuses is followed by one read of the status of the job: a job that has ended, or that is already being
+cancelled, leaves nothing running, and the refusal is not a failure. Any other cancel that fails is written on the
+standard error, with the id of the job: `a-graph: cannot cancel the batch job <id> at the provider: <why>`; a creation that did not answer in time is written too, without an id, since none came. A process that
 is killed cancels nothing, nor does a second Ctrl-C, which ends the process at once.
 
 - `bedrock` needs a `batch` block on the model: the S3 folder where the requests are written, the S3 folder where the

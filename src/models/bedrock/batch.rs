@@ -13,7 +13,7 @@ use serde_json::{Map, Value, json};
 use super::Bedrock;
 use super::hosts::split_s3;
 use crate::models::Reasoning;
-use crate::models::batch::{may_create, submitted};
+use crate::models::batch::{may_create, refused_unless_over, submitted};
 use crate::models::{
     BatchEvent, BatchEvents, BatchOutcome, BatchRequest, BatchResult, BatchReturn, MediaInput, ModelError,
     ModelInvocation, ModelResponse, ResponseInfo, Role, StopReason, ToolCall, Usage,
@@ -205,15 +205,37 @@ impl Bedrock {
         Ok(results)
     }
 
-    /// `StopModelInvocationJob`, with the id of the job: the API takes it with or without the rest of the ARN.
+    /// `StopModelInvocationJob`, with the id of the job: the API takes it with or without the rest of the ARN, and so
+    /// does `GetModelInvocationJob`. When it is refused, the status of the job tells whether it had already ended or
+    /// was being stopped (`refused_unless_over`).
     pub(super) async fn cancel(&self, job_id: &str) -> Result<(), ModelError> {
-        aws_sdk_bedrock::Client::new(self.sdk_config().await)
-            .stop_model_invocation_job()
+        let control = aws_sdk_bedrock::Client::new(self.sdk_config().await);
+        let Err(refused) = control.stop_model_invocation_job().job_identifier(job_id).send().await else {
+            return Ok(());
+        };
+        let refused = self.sdk_error(refused);
+        let got = control
+            .get_model_invocation_job()
             .job_identifier(job_id)
             .send()
             .await
-            .map(drop)
-            .map_err(|e| self.sdk_error(e))
+            .ok();
+        let state = got
+            .as_ref()
+            .and_then(|g| g.status())
+            .map(ModelInvocationJobStatus::as_str);
+        refused_unless_over(
+            refused,
+            state,
+            &[
+                "Completed",
+                "PartiallyCompleted",
+                "Failed",
+                "Stopped",
+                "Expired",
+                "Stopping",
+            ],
+        )
     }
 
     fn batch_result(&self, line: &Value) -> Result<ModelResponse, ModelError> {
