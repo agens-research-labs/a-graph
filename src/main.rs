@@ -129,7 +129,7 @@ async fn main() -> ExitCode {
     };
 
     let program = Arc::new(program);
-    let outcome = program.run(&message).await;
+    let outcome = program.run_until(&message, interrupted()).await;
     // the batch jobs the run let go of are cancelled, and the log of a network output delivers what is still queued,
     // before the program ends
     a_graph::run::close(program).await;
@@ -146,6 +146,55 @@ async fn main() -> ExitCode {
             eprintln!("{e}");
             ExitCode::from(FAILED)
         }
+    }
+}
+
+/// Ready at the first Ctrl-C: the run stops as `run_timeout` stops it, its batch jobs are cancelled and its log is
+/// closed. A second Ctrl-C, during the run or while it closes, ends the process at once. On unix the handler is set
+/// at once, before the run starts, and one listener hears every Ctrl-C, so none is missed. Without a signal to listen
+/// for, it never comes, and Ctrl-C ends the process as without this handler.
+fn interrupted() -> impl Future<Output = a_graph::Error> {
+    #[cfg(unix)]
+    let mut interrupts = match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt()) {
+        Ok(s) => Some(s),
+        Err(e) => {
+            eprintln!("a-graph: cannot listen for SIGINT: {e}");
+            None
+        }
+    };
+    let (told, first) = tokio::sync::oneshot::channel::<()>();
+    tokio::spawn(async move {
+        let mut told = Some(told);
+        loop {
+            #[cfg(unix)]
+            let heard = match interrupts.as_mut() {
+                Some(s) => s.recv().await.is_some(),
+                None => false,
+            };
+            #[cfg(not(unix))]
+            let heard = tokio::signal::ctrl_c().await.is_ok();
+            if !heard {
+                return;
+            }
+            match told.take() {
+                Some(t) => {
+                    eprintln!("a-graph: stopping the run, Ctrl-C again to quit at once");
+                    let _ = t.send(());
+                }
+                None => std::process::exit(i32::from(FAILED)),
+            }
+        }
+    });
+    async move {
+        if first.await.is_err() {
+            std::future::pending::<()>().await;
+        }
+        a_graph::Error::new(
+            a_graph::error::Phase::Execution,
+            a_graph::Path::root(),
+            a_graph::Rule::Interrupted,
+            "the run was interrupted (Ctrl-C)",
+        )
     }
 }
 

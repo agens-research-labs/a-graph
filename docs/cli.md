@@ -82,6 +82,14 @@ Every error is written on one line of the standard error, in this form:
 
 A file is checked as a whole before anything runs, and all its errors are written together, not only the first.
 
+## Stopping a run
+
+Ctrl-C (`SIGINT`) during a run stops it as a run that lasted too long is stopped: it writes `a-graph: stopping the run,
+Ctrl-C again to quit at once`, its MCP servers are closed, its batch jobs still going on are cancelled at the provider
+(see [models](models.md#batch)), its last event is logged and its trace is sent. Then it ends with the error
+`interrupted` and exit code 3, in a few seconds at most. A second Ctrl-C ends the process at once, with exit code 3,
+without waiting for any of that.
+
 ## Exit codes
 
 | Code | Meaning |
@@ -89,4 +97,4 @@ A file is checked as a whole before anything runs, and all its errors are writte
 | 0 | the file is valid and, if it was run, the run ended well |
 | 1 | the file is not valid (the errors are on the standard error) |
 | 2 | wrong use: no file, a file that cannot be read, an unknown option, no message |
-| 3 | the run failed: a model, a tool, a utility... |
+| 3 | the run failed: a model, a tool, a utility..., or it was stopped with Ctrl-C |

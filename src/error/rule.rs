@@ -62,5 +62,6 @@ rules! {
     TooManyRuns => "too_many_runs",
     RunTimeout => "run_timeout",
     ServiceStopped => "service_stopped",
+    Interrupted => "interrupted",
     SessionFull => "session_full",
 }
