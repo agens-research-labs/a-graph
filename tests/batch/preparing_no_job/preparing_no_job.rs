@@ -43,9 +43,15 @@ impl Llm for Slow {
 
     async fn invoke_batch(&self, requests: Vec<BatchRequest>, events: BatchEvents) -> BatchReturn {
         tokio::time::sleep(PREPARE).await;
-        let _ = events.send(BatchEvent::Creating {
-            requests: requests.len(),
-        });
+        // as a provider does: no job when nobody waits for the batch any more
+        if events
+            .send(BatchEvent::Creating {
+                requests: requests.len(),
+            })
+            .is_err()
+        {
+            return Ok(vec![]);
+        }
         self.done.lock().unwrap().push("created b1".into());
         let _ = events.send(BatchEvent::Submitted {
             batch_id: "b1".into(),

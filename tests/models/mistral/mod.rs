@@ -155,3 +155,6 @@ mod batch_cancel;
 
 #[path = "batch_retry/batch_retry.rs"]
 mod batch_retry;
+
+#[path = "batch_let_go/batch_let_go.rs"]
+mod batch_let_go;

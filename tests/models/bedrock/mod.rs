@@ -197,3 +197,6 @@ mod no_batch_block;
 
 #[path = "batch_cancel/batch_cancel.rs"]
 mod batch_cancel;
+
+#[path = "batch_let_go/batch_let_go.rs"]
+mod batch_let_go;
