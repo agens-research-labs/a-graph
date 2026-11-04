@@ -1,6 +1,6 @@
 [package]
 name = "a-graph"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2024"
 authors = ["Fabio Gagliardi"]
 description = "Runs a graph of agents written in a YAML file."
