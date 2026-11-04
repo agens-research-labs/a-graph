@@ -6,6 +6,7 @@ use std::time::Duration;
 use serde_json::{Value, json};
 
 use super::OpenAi;
+use crate::models::batch::patiently;
 use crate::models::{BatchEvent, BatchEvents, BatchOutcome, BatchRequest, BatchResult, BatchReturn, ModelError};
 
 /// How often a batch is polled. There is no maximum wait: it ends when OpenAI says so.
@@ -84,7 +85,8 @@ impl OpenAi {
 
         // polled until a terminal state: there is no maximum wait
         let last = loop {
-            let status = self.get_text(&format!("/batches/{batch_id}")).await?;
+            let path = format!("/batches/{batch_id}");
+            let status = patiently(self.poll_interval, || self.get_text(&path)).await?;
             let status = self.parse_json(status)?;
             let state = status
                 .get("status")
@@ -123,8 +125,8 @@ impl OpenAi {
 
         let mut by_id: HashMap<String, Value> = HashMap::new();
         for file_id in [output_id, error_id].into_iter().flatten() {
-            for line in self
-                .get_text(&format!("/files/{file_id}/content"))
+            let path = format!("/files/{file_id}/content");
+            for line in patiently(self.poll_interval, || self.get_text(&path))
                 .await?
                 .lines()
                 .filter(|l| !l.trim().is_empty())

@@ -84,6 +84,12 @@ How a produced media is described is explained in [media](media.md).
 A `batch` group (see [edges](edges.md)) sends the requests of its branches to the provider as one batch job instead of
 one call each. The job is submitted, then polled until it ends.
 
+A poll of the job, or the download of its results, that fails with an error that may not come again (the network,
+429, 5xx such as the 529 of Anthropic) is tried again at the next poll; the batch fails after 10 such failures in a row,
+about 5 minutes. Any other error ends it at once. The request that creates the job is never tried again: one that
+arrived but whose answer was lost would create a second job. `bedrock` has the retries of the AWS SDK instead: 3
+attempts.
+
 A job the run lets go of before it ended is cancelled at the provider: when the run is stopped (`run_timeout`, the
 service shutting down, Ctrl-C on the command line), when a branch beside the group fails, and when the poll of the job
 fails. The end of the program waits for each cancel, 3 seconds at most. A run stopped while its batch is prepared (on

@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use serde_json::{Value, json};
 
 use super::Anthropic;
+use crate::models::batch::patiently;
 use crate::models::{BatchEvent, BatchEvents, BatchOutcome, BatchRequest, BatchResult, BatchReturn, ModelError};
 
 impl Anthropic {
@@ -55,12 +56,13 @@ impl Anthropic {
 
         // polled until Anthropic says `ended`: there is no maximum wait
         let counts = loop {
-            let status = self
-                .send(
+            let status = patiently(self.poll_interval, || {
+                self.send(
                     self.client
                         .get(format!("{}/v1/messages/batches/{batch_id}", self.base_url)),
                 )
-                .await?;
+            })
+            .await?;
             let status: Value = serde_json::from_str(&status)
                 .map_err(|e| self.invalid(format!("the batch status is not JSON: {e}")))?;
             let state = status
@@ -92,12 +94,13 @@ impl Anthropic {
 
         // the results come from the documented path, never from a URL the server hands back:
         // the API key goes to the configured host only
-        let body = self
-            .send(
+        let body = patiently(self.poll_interval, || {
+            self.send(
                 self.client
                     .get(format!("{}/v1/messages/batches/{batch_id}/results", self.base_url)),
             )
-            .await?;
+        })
+        .await?;
         let mut by_id: HashMap<String, Value> = HashMap::new();
         for line in body.lines().filter(|l| !l.trim().is_empty()) {
             let v: Value =

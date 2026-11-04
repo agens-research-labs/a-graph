@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use serde_json::{Value, json};
 
 use super::Mistral;
+use crate::models::batch::patiently;
 use crate::models::{BatchEvent, BatchEvents, BatchOutcome, BatchRequest, BatchResult, BatchReturn, ModelError};
 
 impl Mistral {
@@ -56,7 +57,8 @@ impl Mistral {
 
         // polled until a terminal state: there is no maximum wait
         let last = loop {
-            let job = self.parse_json(self.get_text(&format!("/v1/batch/jobs/{job_id}")).await?)?;
+            let path = format!("/v1/batch/jobs/{job_id}");
+            let job = self.parse_json(patiently(self.poll_interval, || self.get_text(&path)).await?)?;
             let state = job
                 .get("status")
                 .and_then(Value::as_str)
@@ -94,8 +96,8 @@ impl Mistral {
 
         let mut by_id: HashMap<String, Value> = HashMap::new();
         for file in [output, errors].into_iter().flatten() {
-            for line in self
-                .get_text(&format!("/v1/files/{file}/content"))
+            let path = format!("/v1/files/{file}/content");
+            for line in patiently(self.poll_interval, || self.get_text(&path))
                 .await?
                 .lines()
                 .filter(|l| !l.trim().is_empty())
