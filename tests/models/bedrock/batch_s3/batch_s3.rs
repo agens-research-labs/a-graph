@@ -77,8 +77,10 @@ async fn batch_s3() {
         .collect();
     assert_eq!(statuses, ["InProgress", "InProgress", "Completed"]);
     assert_eq!(*polls.lock().unwrap(), 3);
+    // the request that creates the job is announced before it is sent
+    assert_eq!(events.first(), Some(&BatchEvent::Creating { requests: 3 }));
     assert_eq!(
-        events.first(),
+        events.get(1),
         Some(&BatchEvent::Submitted {
             batch_id: "job42".into(),
             requests: 3

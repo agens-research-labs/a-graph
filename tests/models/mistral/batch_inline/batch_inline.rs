@@ -39,8 +39,10 @@ async fn batch_inline() {
         .collect();
     assert_eq!(statuses, ["RUNNING", "RUNNING", "SUCCESS"]);
     assert_eq!(*polls.lock().unwrap(), 3);
+    // the request that creates the job is announced before it is sent
+    assert_eq!(events.first(), Some(&BatchEvent::Creating { requests: 4 }));
     assert_eq!(
-        events.first(),
+        events.get(1),
         Some(&BatchEvent::Submitted {
             batch_id: "job_1".into(),
             requests: 4

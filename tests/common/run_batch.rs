@@ -17,13 +17,15 @@ pub use std::time::Duration;
 /// What the mock knows: the jobs it was given (id -> (custom_id, text) of each request), the
 /// request of a batch that must fail, if any, whether the jobs never end, and the start of the
 /// question of a plain call that is refused with a 500, if any: that answer comes `REFUSE_AFTER`
-/// late, when the jobs created at once by the other branches exist.
+/// late, when the jobs created at once by the other branches exist. The answer that creates a job
+/// comes `create_after` late.
 #[derive(Default)]
 pub struct Jobs {
     pub created: HashMap<String, Vec<(String, String)>>,
     pub fail: Option<String>,
     pub endless: bool,
     pub refuse_call: Option<String>,
+    pub create_after: Duration,
 }
 
 /// The text of the question in the `params` of a request of the batch.
@@ -127,9 +129,10 @@ pub async fn program_on(
         std::env::set_var("ANTHROPIC_API_KEY", "a");
         std::env::set_var("A_GRAPH_TEST_RUN_BATCH_KEY", "k");
     }
-    let refused = jobs.refuse_call.clone();
+    let (refused, create_after) = (jobs.refuse_call.clone(), jobs.create_after);
     let delay = move |r: &Req| match &refused {
         Some(start) if r.path == "/v1/messages" && r.body.contains(start.as_str()) => REFUSE_AFTER,
+        _ if r.path == "/v1/messages/batches" => create_after,
         _ => Duration::ZERO,
     };
     let jobs = Arc::new(Mutex::new(jobs));

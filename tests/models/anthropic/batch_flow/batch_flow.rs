@@ -39,8 +39,10 @@ async fn batch_flow() {
         .collect();
     assert_eq!(statuses, ["in_progress", "in_progress", "ended"]);
     assert_eq!(*polls.lock().unwrap(), 3);
+    // the request that creates the job is announced before it is sent
+    assert_eq!(events.first(), Some(&BatchEvent::Creating { requests: 4 }));
     assert_eq!(
-        events.first(),
+        events.get(1),
         Some(&BatchEvent::Submitted {
             batch_id: "msgbatch_1".into(),
             requests: 4
