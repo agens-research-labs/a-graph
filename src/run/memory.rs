@@ -247,13 +247,24 @@ impl Program {
             )
         })?;
 
-        // the messages that were summarized are the first ones; any added in the meantime stay
-        let summarized = saved.chat.len();
+        // the summary is written only over the record it was made from: when another run summarized meanwhile, `synt`
+        // or the first messages of `chat` changed, and this summary is dropped; the messages left are summarized at a
+        // next write. The messages are compared by role and text: the vector of a message is not part of it
+        let before = saved.synt;
+        let summarized: Vec<(String, String)> = saved.chat.into_iter().map(|e| (e.role, e.content)).collect();
         self.external
             .memory
             .update(path, node, move |r| {
-                r.synt = summary;
-                r.chat.drain(..summarized.min(r.chat.len()));
+                let same = r.synt == before
+                    && r.chat.len() >= summarized.len()
+                    && r.chat
+                        .iter()
+                        .zip(&summarized)
+                        .all(|(e, (role, content))| &e.role == role && &e.content == content);
+                if same {
+                    r.synt = summary;
+                    r.chat.drain(..summarized.len());
+                }
             })
             .await
             .map_err(|e| fail(Rule::Io, format!("memory `{}`: {e}", memory.id)))?;

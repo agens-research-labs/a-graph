@@ -90,6 +90,10 @@ The model `synt.model` gets the previous summary and the exchanges to summarize,
 model follows the default of its provider: a model that reasons spends part of `max_tokens` before it writes, which is
 why the default is 4000. A summary with no text fails the run.
 
+The model is called outside the lock of the file, so other runs can save their exchanges meanwhile: they stay in
+`chat`. When another run wrote a summary meanwhile, this one is dropped and `synt` and `chat` are left as they are:
+the exchanges not summarized yet stay in `chat`, and are summarized at a next write.
+
 Without `synt.prompt` the program uses a prompt of its own. A prompt written for the summary must use both of its
 placeholders (`placeholder_unused`):
 
