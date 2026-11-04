@@ -13,6 +13,7 @@ use serde_json::{Map, Value, json};
 use super::Bedrock;
 use super::hosts::split_s3;
 use crate::models::Reasoning;
+use crate::models::batch::{may_create, submitted};
 use crate::models::{
     BatchEvent, BatchEvents, BatchOutcome, BatchRequest, BatchResult, BatchReturn, MediaInput, ModelError,
     ModelInvocation, ModelResponse, ResponseInfo, Role, StopReason, ToolCall, Usage,
@@ -86,7 +87,11 @@ impl Bedrock {
             .s3_uri(&cfg.output_s3_uri)
             .build()
             .map_err(build)?;
-        let _ = events.send(BatchEvent::Creating { requests: sent.len() });
+        if !may_create(&events, sent.len()) {
+            return Err(self
+                .who
+                .provider_error(None, "the run let go of the batch before its job was created"));
+        }
         let job = control
             .create_model_invocation_job()
             .job_name(&name)
@@ -100,10 +105,11 @@ impl Bedrock {
             .map_err(|e| self.sdk_error(e))?;
         let arn = job.job_arn().to_string();
         let job_id = arn.rsplit('/').next().unwrap_or(&arn).to_string();
-        let _ = events.send(BatchEvent::Submitted {
-            batch_id: job_id.clone(),
-            requests: sent.len(),
-        });
+        if !submitted(&events, &job_id, sent.len(), self.cancel(&job_id)).await {
+            return Err(self
+                .who
+                .provider_error(None, "the run let go of the batch: its job was cancelled"));
+        }
 
         // polled until a terminal state: there is no maximum wait
         let (status, message) = loop {

@@ -30,7 +30,7 @@ pub enum BatchOutcome {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BatchEvent {
     /// The request that creates the job is about to be sent: from here on a job may exist at the provider before
-    /// its id is known. Before it, nothing was sent that makes a job.
+    /// its id is known. Before it, nothing was sent that makes a job; when it cannot be told, no job is made.
     Creating {
         requests: usize,
     },
@@ -85,4 +85,38 @@ where
             done => return done,
         }
     }
+}
+
+/// Tells `Creating`, just before the request that creates the job. `false` when nobody waits for the batch any more
+/// (the run let go of it): then the job must not be created. The run closes the channel before it looks at what was
+/// told, so a job is created only if the run will know it is on its way.
+pub(crate) fn may_create(events: &BatchEvents, requests: usize) -> bool {
+    events.send(BatchEvent::Creating { requests }).is_ok()
+}
+
+/// Tells `Submitted`, as soon as the id of the job is known. When nobody waits for the batch any more, the run let go
+/// of it while the job was created: only the provider knows the id, so it cancels the job here (`cancel`), and
+/// `false` is returned.
+pub(crate) async fn submitted(
+    events: &BatchEvents,
+    batch_id: &str,
+    requests: usize,
+    cancel: impl std::future::Future<Output = Result<(), ModelError>>,
+) -> bool {
+    let told = BatchEvent::Submitted {
+        batch_id: batch_id.to_string(),
+        requests,
+    };
+    if events.send(told).is_ok() {
+        return true;
+    }
+    if let Err(e) = cancel.await {
+        cannot_cancel(batch_id, &e.to_string());
+    }
+    false
+}
+
+/// What is written when a job left behind cannot be cancelled: it goes on at the provider, and this is its id.
+pub(crate) fn cannot_cancel(batch_id: &str, why: &str) {
+    eprintln!("a-graph: cannot cancel the batch job {batch_id} at the provider: {why}");
 }

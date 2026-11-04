@@ -401,13 +401,9 @@ impl Program {
                 let llm = llm.clone();
                 async move { llm.invoke_batch(requests, events).await }
             });
-            let _open = super::batch::OpenBatch {
-                heard,
-                job: call.abort_handle(),
-                model: llm.clone(),
-                cancels: &self.cancels,
-            };
-            let results = call
+            let mut open = super::batch::OpenBatch::new(heard, call, llm.clone(), &self.cancels);
+            let results = open
+                .outcome()
                 .await
                 .map_err(|e| node_error(chunk[0], format!("the batch stopped: {e}")))?
                 .map_err(|e| node_error(chunk[0], e.to_string()))?;

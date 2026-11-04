@@ -6,7 +6,7 @@ use std::time::Duration;
 use serde_json::{Value, json};
 
 use super::OpenAi;
-use crate::models::batch::patiently;
+use crate::models::batch::{may_create, patiently, submitted};
 use crate::models::{BatchEvent, BatchEvents, BatchOutcome, BatchRequest, BatchResult, BatchReturn, ModelError};
 
 /// How often a batch is polled. There is no maximum wait: it ends when OpenAI says so.
@@ -65,7 +65,11 @@ impl OpenAi {
             .ok_or_else(|| self.who.invalid("the uploaded file has no `id`"))?
             .to_string();
 
-        let _ = events.send(BatchEvent::Creating { requests: sent.len() });
+        if !may_create(&events, sent.len()) {
+            return Err(self
+                .who
+                .provider_error(None, "the run let go of the batch before its job was created"));
+        }
         let created = self
             .post_text(
                 "/batches",
@@ -78,10 +82,11 @@ impl OpenAi {
             .and_then(Value::as_str)
             .ok_or_else(|| self.who.invalid("the batch has no `id`"))?
             .to_string();
-        let _ = events.send(BatchEvent::Submitted {
-            batch_id: batch_id.clone(),
-            requests: sent.len(),
-        });
+        if !submitted(&events, &batch_id, sent.len(), self.cancel(&batch_id)).await {
+            return Err(self
+                .who
+                .provider_error(None, "the run let go of the batch: its job was cancelled"));
+        }
 
         // polled until a terminal state: there is no maximum wait
         let last = loop {

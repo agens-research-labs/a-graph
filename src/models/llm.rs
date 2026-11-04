@@ -18,7 +18,9 @@ pub trait Llm: Send + Sync {
 
     /// Submits the requests as one batch job, polls until a terminal state and returns the result
     /// of each id. One round: tool requests come back as they are. A failed or expired job is
-    /// `ModelError::Provider`; the status is reported through `events`.
+    /// `ModelError::Provider`; the status is reported through `events`. When `events` is closed, nobody waits for
+    /// the batch any more: a job is created only after `Creating` was told, and a job whose `Submitted` cannot be told
+    /// is cancelled at once (`crate::models::batch::{may_create, submitted}`).
     async fn invoke_batch(&self, requests: Vec<BatchRequest>, events: BatchEvents) -> BatchReturn;
 
     /// Asks the provider to stop the batch job `batch_id`, the id `invoke_batch` sent in `Submitted`. The run

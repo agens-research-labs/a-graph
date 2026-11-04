@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use serde_json::{Value, json};
 
 use super::Anthropic;
-use crate::models::batch::patiently;
+use crate::models::batch::{may_create, patiently, submitted};
 use crate::models::{BatchEvent, BatchEvents, BatchOutcome, BatchRequest, BatchResult, BatchReturn, ModelError};
 
 impl Anthropic {
@@ -34,7 +34,11 @@ impl Anthropic {
             return Ok(results);
         }
 
-        let _ = events.send(BatchEvent::Creating { requests: sent.len() });
+        if !may_create(&events, sent.len()) {
+            return Err(self
+                .who
+                .provider_error(None, "the run let go of the batch before its job was created"));
+        }
         let created = self
             .send(
                 self.client
@@ -49,10 +53,11 @@ impl Anthropic {
             .and_then(Value::as_str)
             .ok_or_else(|| self.invalid("the batch answer has no `id`"))?
             .to_string();
-        let _ = events.send(BatchEvent::Submitted {
-            batch_id: batch_id.clone(),
-            requests: sent.len(),
-        });
+        if !submitted(&events, &batch_id, sent.len(), self.cancel(&batch_id)).await {
+            return Err(self
+                .who
+                .provider_error(None, "the run let go of the batch: its job was cancelled"));
+        }
 
         // polled until Anthropic says `ended`: there is no maximum wait
         let counts = loop {
