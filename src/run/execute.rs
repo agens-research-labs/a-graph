@@ -16,7 +16,7 @@ use std::sync::Arc;
 use futures_util::future::{BoxFuture, FutureExt};
 use serde_json::{Value, json};
 use tokio::sync::Semaphore;
-use tokio::task::JoinHandle;
+use tokio::task::JoinSet;
 
 use super::events::{CTX, Where, here};
 use super::judge::Verdict;
@@ -123,7 +123,7 @@ impl Program {
             self.connect_mcp().await?;
             self.run_nodes(user_message).await
         };
-        // a stop drops the nodes halfway: the tasks of their branches are aborted (`Branches`)
+        // a stop drops the nodes halfway: the tasks of their branches are aborted (`spawn_branches`)
         let output = tokio::select! {
             output = nodes => output,
             e = stop => Err(e),
@@ -423,31 +423,29 @@ impl Program {
     }
 
     /// Every branch is a task of its own; a semaphore lets `limit` of them in at a time (`parallel`
-    /// without a limit lets them all in). The answers come back in the order of the fan.
+    /// without a limit lets them all in). The branches are taken as they end, so the first one that fails
+    /// ends the group at once; the answers come back in the order of the fan.
+    ///
+    /// The tasks are stopped when `tasks` is dropped: when a branch fails, and when the nodes of the run are
+    /// dropped (the service stops a run, see `run_until`), so no branch goes on alone.
     async fn spawn_branches(self: &Arc<Self>, g: &Group, input: &Carry, user: &str) -> Result<Vec<Branch>, Error> {
         let permits = g.limit.map_or(g.fan.len(), |l| l as usize).clamp(1, g.fan.len().max(1));
         let gate = Arc::new(Semaphore::new(permits));
-        let mut handles = Branches(Vec::with_capacity(g.fan.len()));
-        for step in g.fan.iter().cloned() {
+        let mut tasks = JoinSet::new();
+        for (i, step) in g.fan.iter().cloned().enumerate() {
             let (this, gate, input, user) = (self.clone(), gate.clone(), input.clone(), user.to_string());
-            handles.0.push(tokio::spawn(CTX.scope(here(), async move {
+            tasks.spawn(CTX.scope(here(), async move {
                 let _permit = gate.acquire_owned().await.map_err(|e| fail(Rule::Io, e.to_string()))?;
-                this.run_branch(step, input, user).await
-            })));
+                this.run_branch(step, input, user).await.map(|b| (i, b))
+            }));
         }
-        let mut done = Vec::with_capacity(handles.0.len());
-        for i in 0..handles.0.len() {
-            let result = (&mut handles.0[i])
-                .await
-                .map_err(|e| fail(Rule::Io, format!("a branch stopped: {e}")))
-                .and_then(|r| r);
-            match result {
-                Ok(b) => done.push(b),
-                // the first error ends the run: the branches still going are stopped when `handles` is dropped
-                Err(e) => return Err(e),
-            }
+        let mut done: Vec<Option<Branch>> = (0..g.fan.len()).map(|_| None).collect();
+        while let Some(joined) = tasks.join_next().await {
+            // the first error ends the run: the branches still going are stopped when `tasks` is dropped
+            let (i, b) = joined.map_err(|e| fail(Rule::Io, format!("a branch stopped: {e}")))??;
+            done[i] = Some(b);
         }
-        Ok(done)
+        Ok(done.into_iter().flatten().collect())
     }
 
     fn run_branch(
@@ -673,14 +671,4 @@ fn refuse(steps: &[Step], inside_react: bool) -> Result<(), Error> {
         }
     }
     Ok(())
-}
-
-/// The tasks of the branches of a group. They are stopped when it is dropped: when a branch fails, and when the
-/// nodes of the run are dropped (the service stops a run, see `run_until`), so no branch goes on alone.
-struct Branches(Vec<JoinHandle<Result<Branch, Error>>>);
-
-impl Drop for Branches {
-    fn drop(&mut self) {
-        self.0.iter().for_each(JoinHandle::abort);
-    }
 }
