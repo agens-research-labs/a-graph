@@ -174,3 +174,6 @@ mod live_own_error;
 
 #[path = "batch_cancel/batch_cancel.rs"]
 mod batch_cancel;
+
+#[path = "batch_retry/batch_retry.rs"]
+mod batch_retry;
