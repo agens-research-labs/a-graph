@@ -30,7 +30,8 @@ pub(super) type Cancels = Mutex<Vec<JoinHandle<()>>>;
 /// closes the channel first: from then on the provider cannot tell anything, so it does not create a job, and it
 /// cancels by itself a job whose id comes later. Then the guard reads all that was told before: a job submitted and
 /// not finished is cancelled here and the task is stopped; a job whose creation is on its way is left to the task,
-/// which is waited for; with nothing told, the task is stopped and no job exists. Dropping is synchronous, so what is
+/// which is waited for; with nothing told, the task is stopped and no job exists. When the call ended with a job
+/// submitted and not finished (its poll failed), that job is cancelled too. Dropping is synchronous, so what is
 /// waited for is a task of its own, kept in `cancels` for the end of the program to wait for.
 pub(super) struct OpenBatch<'a> {
     heard: UnboundedReceiver<BatchEvent>,
@@ -82,31 +83,35 @@ impl Drop for OpenBatch<'_> {
                 Err(TryRecvError::Disconnected) => break,
             }
         }
-        let Some(job) = self.job.take() else { return };
         // without a runtime (the process is ending) nothing can be sent or waited for any more
         let Ok(runtime) = tokio::runtime::Handle::try_current() else {
-            job.abort();
+            if let Some(job) = self.job.take() {
+                job.abort();
+            }
             return;
         };
         let mut cancels = self.cancels.lock().unwrap_or_else(PoisonError::into_inner);
-        if creating {
-            // the provider ends the creation, and cancels the job as soon as it has its id
-            cancels.push(runtime.spawn(async move {
-                let stop = job.abort_handle();
-                if tokio::time::timeout(Duration::from_secs(CANCEL_SECONDS), job)
-                    .await
-                    .is_err()
-                {
-                    stop.abort();
-                    eprintln!(
-                        "a-graph: a batch job was being created when the run stopped, and its id did not come within \
-                         {CANCEL_SECONDS} seconds: it may be left running at the provider"
-                    );
-                }
-            }));
-        } else {
+        match self.job.take() {
+            // the call ended, with an error when a job is still open: its poll failed
+            None => {}
+            Some(job) if creating => {
+                // the provider ends the creation, and cancels the job as soon as it has its id
+                cancels.push(runtime.spawn(async move {
+                    let stop = job.abort_handle();
+                    if tokio::time::timeout(Duration::from_secs(CANCEL_SECONDS), job)
+                        .await
+                        .is_err()
+                    {
+                        stop.abort();
+                        eprintln!(
+                            "a-graph: a batch job was being created when the run stopped, and its id did not come \
+                             within {CANCEL_SECONDS} seconds: it may be left running at the provider"
+                        );
+                    }
+                }));
+            }
             // nobody waits for the task any more: its poll stops here
-            job.abort();
+            Some(job) => job.abort(),
         }
         for id in open {
             let model = self.model.clone();
