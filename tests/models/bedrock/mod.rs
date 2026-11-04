@@ -194,3 +194,6 @@ mod failed_job;
 
 #[path = "no_batch_block/no_batch_block.rs"]
 mod no_batch_block;
+
+#[path = "batch_cancel/batch_cancel.rs"]
+mod batch_cancel;

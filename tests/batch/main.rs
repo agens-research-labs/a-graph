@@ -6,6 +6,9 @@ mod common;
 #[path = "batch_builds/batch_builds.rs"]
 mod batch_builds;
 
+#[path = "failed_branch_cancels/failed_branch_cancels.rs"]
+mod failed_branch_cancels;
+
 #[path = "group_in_batch/group_in_batch.rs"]
 mod group_in_batch;
 
@@ -23,3 +26,6 @@ mod request_refused;
 
 #[path = "same_model/same_model.rs"]
 mod same_model;
+
+#[path = "stopped_cancels/stopped_cancels.rs"]
+mod stopped_cancels;

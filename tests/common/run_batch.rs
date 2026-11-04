@@ -2,7 +2,9 @@
 //! an Anthropic one (it has batch) whose address is a mock server of the Anthropic batch API; the
 //! graphs are yml files in the folders of the tests.
 
-pub use super::http::{Req, Resp, serve};
+pub use super::http::{Req, Resp, listen_delayed, serve};
+
+pub const REFUSE_AFTER: Duration = Duration::from_millis(300);
 pub use super::run::{yml_in, yml_with};
 pub use a_graph::Path;
 pub use a_graph::models::{Anthropic, AnthropicModel, Common, Modality};
@@ -12,12 +14,16 @@ pub use std::collections::HashMap;
 pub use std::sync::{Arc, Mutex};
 pub use std::time::Duration;
 
-/// What the mock knows: the jobs it was given (id -> (custom_id, text) of each request) and the
-/// request that must fail, if any.
+/// What the mock knows: the jobs it was given (id -> (custom_id, text) of each request), the
+/// request of a batch that must fail, if any, whether the jobs never end, and the start of the
+/// question of a plain call that is refused with a 500, if any: that answer comes `REFUSE_AFTER`
+/// late, when the jobs created at once by the other branches exist.
 #[derive(Default)]
 pub struct Jobs {
     pub created: HashMap<String, Vec<(String, String)>>,
     pub fail: Option<String>,
+    pub endless: bool,
+    pub refuse_call: Option<String>,
 }
 
 /// The text of the question in the `params` of a request of the batch.
@@ -45,7 +51,14 @@ pub fn api(jobs: Arc<Mutex<Jobs>>) -> impl Fn(&Req) -> Resp + Send + Sync + 'sta
         match (req.method.as_str(), path) {
             ("POST", "/v1/messages") => {
                 let body: Value = serde_json::from_str(&req.body).unwrap();
-                Resp::ok(message(&question(&body)).to_string())
+                let q = question(&body);
+                match &jobs.refuse_call {
+                    Some(start) if q.starts_with(start.as_str()) => Resp::status(500, "refused"),
+                    _ => Resp::ok(message(&q).to_string()),
+                }
+            }
+            ("POST", p) if p.starts_with("/v1/messages/batches/") && p.ends_with("/cancel") => {
+                Resp::ok(json!({ "processing_status": "canceling" }).to_string())
             }
             ("POST", "/v1/messages/batches") => {
                 let body: Value = serde_json::from_str(&req.body).unwrap();
@@ -75,6 +88,9 @@ pub fn api(jobs: Arc<Mutex<Jobs>>) -> impl Fn(&Req) -> Resp + Send + Sync + 'sta
                     .collect();
                 Resp::ok(lines.join("\n"))
             }
+            ("GET", p) if p.starts_with("/v1/messages/batches/") && jobs.endless => {
+                Resp::ok(json!({ "processing_status": "in_progress" }).to_string())
+            }
             ("GET", p) if p.starts_with("/v1/messages/batches/") => {
                 Resp::ok(json!({ "processing_status": "ended", "request_counts": { "succeeded": 1 } }).to_string())
             }
@@ -89,16 +105,36 @@ pub async fn program(
     name: &str,
     fail: Option<&str>,
 ) -> (Arc<Program>, Arc<Mutex<Vec<Req>>>, Arc<Mutex<Jobs>>) {
+    program_on(
+        dir,
+        name,
+        Jobs {
+            fail: fail.map(str::to_string),
+            ..Jobs::default()
+        },
+    )
+    .await
+}
+
+/// Like `program`, on a mock that knows `jobs` from the start.
+pub async fn program_on(
+    dir: &std::path::Path,
+    name: &str,
+    jobs: Jobs,
+) -> (Arc<Program>, Arc<Mutex<Vec<Req>>>, Arc<Mutex<Jobs>>) {
     // SAFETY: the values are never used to call anything.
     unsafe {
         std::env::set_var("ANTHROPIC_API_KEY", "a");
         std::env::set_var("A_GRAPH_TEST_RUN_BATCH_KEY", "k");
     }
-    let jobs = Arc::new(Mutex::new(Jobs {
-        fail: fail.map(str::to_string),
-        ..Jobs::default()
-    }));
-    let (base, seen) = serve(api(jobs.clone())).await;
+    let refused = jobs.refuse_call.clone();
+    let delay = move |r: &Req| match &refused {
+        Some(start) if r.path == "/v1/messages" && r.body.contains(start.as_str()) => REFUSE_AFTER,
+        _ => Duration::ZERO,
+    };
+    let jobs = Arc::new(Mutex::new(jobs));
+    let (port, seen) = listen_delayed(delay, api(jobs.clone())).await;
+    let base = format!("http://127.0.0.1:{port}");
     let mut p = build(&yml_in(dir, name)).unwrap_or_else(|e| panic!("{e}"));
     let spec = AnthropicModel {
         common: Common {
@@ -134,5 +170,15 @@ pub fn job_sizes(seen: &Arc<Mutex<Vec<Req>>>) -> Vec<usize> {
                 .unwrap()
                 .len()
         })
+        .collect()
+}
+
+/// The paths of the cancels the mock was sent.
+pub fn cancels(seen: &Arc<Mutex<Vec<Req>>>) -> Vec<String> {
+    seen.lock()
+        .unwrap()
+        .iter()
+        .filter(|r| r.method == "POST" && r.path.ends_with("/cancel"))
+        .map(|r| r.path.clone())
         .collect()
 }

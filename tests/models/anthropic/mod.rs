@@ -171,3 +171,6 @@ mod live_tool_round;
 
 #[path = "live_own_error/live_own_error.rs"]
 mod live_own_error;
+
+#[path = "batch_cancel/batch_cancel.rs"]
+mod batch_cancel;

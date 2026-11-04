@@ -209,3 +209,6 @@ mod failed_batch;
 
 #[path = "unfit_alone/unfit_alone.rs"]
 mod unfit_alone;
+
+#[path = "batch_cancel/batch_cancel.rs"]
+mod batch_cancel;

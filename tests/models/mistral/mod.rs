@@ -149,3 +149,6 @@ mod batch_inline;
 
 #[path = "failed_batch/failed_batch.rs"]
 mod failed_batch;
+
+#[path = "batch_cancel/batch_cancel.rs"]
+mod batch_cancel;
