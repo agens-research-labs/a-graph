@@ -6,6 +6,9 @@ mod common;
 #[path = "ctrl_c_stops/ctrl_c_stops.rs"]
 mod ctrl_c_stops;
 
+#[path = "ctrl_c_twice/ctrl_c_twice.rs"]
+mod ctrl_c_twice;
+
 #[path = "check_invalid/check_invalid.rs"]
 mod check_invalid;
 

@@ -1,0 +1,40 @@
+# A tool that takes ten seconds, busy when the run is stopped (model on {{port:model}}, started by the test; the MCP server is the project tests/mcp_server, built by the tests).
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:{{port:model}}
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: p_q
+      content: { system: "", user: "Q({{user_message}})" }
+  mcp_servers:
+    - id: srv
+      transport: stdio
+      command: ./target/mcp-test-server/debug/mcp_test_server
+      args: []
+      max_iter: 3
+      timeout: 30
+graph:
+  nodes:
+    - id: n
+      model: { id: m }
+      resources: { prompt: p_q, mcp_servers: [srv] }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true }
+  edges:
+    - start: n
