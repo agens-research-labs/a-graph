@@ -33,6 +33,7 @@ impl Anthropic {
             return Ok(results);
         }
 
+        let _ = events.send(BatchEvent::Creating { requests: sent.len() });
         let created = self
             .send(
                 self.client

@@ -29,6 +29,11 @@ pub enum BatchOutcome {
 /// The client is always told the status; showing it is the job of the `verbose` reporter.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BatchEvent {
+    /// The request that creates the job is about to be sent: from here on a job may exist at the provider before
+    /// its id is known. Before it, nothing was sent that makes a job.
+    Creating {
+        requests: usize,
+    },
     Submitted {
         batch_id: String,
         requests: usize,

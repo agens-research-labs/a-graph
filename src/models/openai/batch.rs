@@ -64,6 +64,7 @@ impl OpenAi {
             .ok_or_else(|| self.who.invalid("the uploaded file has no `id`"))?
             .to_string();
 
+        let _ = events.send(BatchEvent::Creating { requests: sent.len() });
         let created = self
             .post_text(
                 "/batches",

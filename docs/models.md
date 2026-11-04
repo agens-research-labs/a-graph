@@ -86,9 +86,12 @@ one call each. The job is submitted, then polled until it ends.
 
 A job the run lets go of before it ended is cancelled at the provider: when the run is stopped (`run_timeout`, the
 service shutting down), when a branch beside the group fails, and when the poll of the job fails. The end of the
-program waits for each cancel, 3 seconds at most. A cancel that fails is written on the standard error, with the id
-of the job: `a-graph: cannot cancel the batch job <id> at the provider: <why>`. A process that is killed cancels
-nothing, nor does Ctrl-C on the command line, which ends the process at once.
+program waits for each cancel, 3 seconds at most. A run stopped while its batch is prepared (on `openai` and `bedrock`
+the requests are first uploaded as a file) sends nothing more, and no job is created. A job whose creation was on its
+way is still created, and cancelled as soon as its id comes, within the same 3 seconds. A cancel that fails is written on the standard error, with the id
+of the job: `a-graph: cannot cancel the batch job <id> at the provider: <why>`; a creation that did not answer in time
+is written too, without an id, since none came. A process that is killed cancels nothing, nor does Ctrl-C on the
+command line, which ends the process at once.
 
 - `bedrock` needs a `batch` block on the model: the S3 folder where the requests are written, the S3 folder where the
   answers are written, and the IAM role the job runs with. The batch reaches two more services, and their hosts must

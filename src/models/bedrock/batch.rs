@@ -86,6 +86,7 @@ impl Bedrock {
             .s3_uri(&cfg.output_s3_uri)
             .build()
             .map_err(build)?;
+        let _ = events.send(BatchEvent::Creating { requests: sent.len() });
         let job = control
             .create_model_invocation_job()
             .job_name(&name)

@@ -6,14 +6,14 @@ use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
 use tokio::sync::mpsc::UnboundedReceiver;
-use tokio::task::JoinHandle;
+use tokio::task::{AbortHandle, JoinHandle};
 
 use super::Program;
 use crate::models::{BatchEvent, Llm};
 
-/// The longest a cancel is waited for: a provider that does not answer must not hold the end of the run. It fits in
-/// the 5 seconds the service gives a run it stopped to close (`CLOSE_SECONDS`), with time left for the log and the
-/// trace.
+/// The longest a cancel is waited for, with the creation of the job when it was still going on: a provider that does
+/// not answer must not hold the end of the run. It fits in the 5 seconds the service gives a run it stopped to close
+/// (`CLOSE_SECONDS`), with time left for the log, which is closed after the cancels.
 const CANCEL_SECONDS: u64 = 3;
 
 /// How long the end of the program waits for the branches a run aborted to let go of it.
@@ -22,32 +22,51 @@ const BRANCHES_WAIT: Duration = Duration::from_secs(1);
 /// The cancels sent and not yet answered.
 pub(super) type Cancels = Mutex<Vec<JoinHandle<()>>>;
 
-/// The batch jobs of one call of `invoke_batch`, as long as they may run at the provider. The provider sends
-/// `Submitted` as soon as it has the id of a job, before it waits for it, and `Finished` when the job ended. When
-/// this guard is dropped, the events sent until then are all in the channel: a job submitted and not finished is
-/// cancelled, whatever dropped the guard. Dropping is synchronous, so the cancel is a task of its own, kept in
+/// The call of `invoke_batch` of one chunk, a task of its own (`job`), as long as its jobs may run at the provider.
+/// The provider sends `Creating` just before the request that creates a job, `Submitted` as soon as it has its id,
+/// and `Finished` when the job ended. When this guard is dropped, the events sent until then are all in the channel,
+/// and the task is stopped: a job submitted and not finished is cancelled, whatever dropped the guard; before
+/// `Creating` nothing was sent, and nothing is left. Between `Creating` and `Submitted` the request that creates the
+/// job is on its way, and its answer is the only way to know the id: the task is left to end that request, and the
+/// job is cancelled as soon as its id comes. Dropping is synchronous, so the cancel is a task of its own, kept in
 /// `cancels` for the end of the program to wait for.
 pub(super) struct OpenBatch<'a> {
     pub(super) heard: UnboundedReceiver<BatchEvent>,
+    pub(super) job: AbortHandle,
     pub(super) model: Arc<dyn Llm>,
     pub(super) cancels: &'a Cancels,
 }
 
 impl Drop for OpenBatch<'_> {
     fn drop(&mut self) {
-        let mut open: Vec<String> = Vec::new();
-        while let Ok(event) = self.heard.try_recv() {
+        let mut heard = std::mem::replace(&mut self.heard, tokio::sync::mpsc::unbounded_channel().1);
+        let (mut open, mut sending): (Vec<String>, bool) = (Vec::new(), false);
+        while let Ok(event) = heard.try_recv() {
             match event {
-                BatchEvent::Submitted { batch_id, .. } => open.push(batch_id),
+                BatchEvent::Creating { .. } => sending = true,
+                BatchEvent::Submitted { batch_id, .. } => {
+                    sending = false;
+                    open.push(batch_id);
+                }
                 BatchEvent::Finished { batch_id, .. } => open.retain(|id| *id != batch_id),
                 BatchEvent::Status { .. } => {}
             }
         }
+        let creating = sending && !self.job.is_finished();
+        if !creating {
+            // nobody waits for the task any more: its poll stops here
+            self.job.abort();
+        }
         // without a runtime (the process is ending) there is nothing left to send the cancel with
         let Ok(runtime) = tokio::runtime::Handle::try_current() else {
+            self.job.abort();
             return;
         };
         let mut cancels = self.cancels.lock().unwrap_or_else(PoisonError::into_inner);
+        if creating {
+            let (model, job) = (self.model.clone(), self.job.clone());
+            cancels.push(runtime.spawn(cancel_when_created(heard, job, model)));
+        }
         for id in open {
             let model = self.model.clone();
             cancels.push(runtime.spawn(async move {
@@ -60,6 +79,36 @@ impl Drop for OpenBatch<'_> {
                 eprintln!("a-graph: cannot cancel the batch job {id} at the provider: {why}");
             }));
         }
+    }
+}
+
+/// Waits for the id of the job whose creation was going on, stops the task as soon as it comes, and cancels the job;
+/// all within `CANCEL_SECONDS`. A task that ends without a job (its creation was refused) leaves nothing to cancel.
+async fn cancel_when_created(mut heard: UnboundedReceiver<BatchEvent>, job: AbortHandle, model: Arc<dyn Llm>) {
+    let mut id: Option<String> = None;
+    let within = tokio::time::timeout(Duration::from_secs(CANCEL_SECONDS), async {
+        while let Some(event) = heard.recv().await {
+            if let BatchEvent::Submitted { batch_id, .. } = event {
+                job.abort();
+                id = Some(batch_id.clone());
+                return model.cancel_batch(&batch_id).await;
+            }
+        }
+        Ok(())
+    })
+    .await;
+    job.abort();
+    match (within, id) {
+        (Ok(Ok(())), _) => {}
+        (Ok(Err(e)), Some(id)) => eprintln!("a-graph: cannot cancel the batch job {id} at the provider: {e}"),
+        (Ok(Err(_)), None) => {}
+        (Err(_), Some(id)) => eprintln!(
+            "a-graph: cannot cancel the batch job {id} at the provider: no answer within {CANCEL_SECONDS} seconds"
+        ),
+        (Err(_), None) => eprintln!(
+            "a-graph: a batch job was being created when the run stopped, and its id did not come within \
+             {CANCEL_SECONDS} seconds: it may be left running at the provider"
+        ),
     }
 }
 

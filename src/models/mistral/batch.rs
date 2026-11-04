@@ -36,6 +36,7 @@ impl Mistral {
             return Ok(results);
         }
 
+        let _ = events.send(BatchEvent::Creating { requests: sent.len() });
         let created = self
             .post_text(
                 "/v1/batch/jobs",

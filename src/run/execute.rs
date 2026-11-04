@@ -394,16 +394,22 @@ impl Program {
                 })
                 .collect();
             // the state of the job is told through this channel: until the job has ended, letting go of it here
-            // cancels it at the provider
+            // cancels it at the provider. The call is a task of its own, so that a job being created when the run
+            // lets go of it is still created, and then cancelled (`OpenBatch`)
             let (events, heard) = tokio::sync::mpsc::unbounded_channel();
+            let call = tokio::spawn({
+                let llm = llm.clone();
+                async move { llm.invoke_batch(requests, events).await }
+            });
             let _open = super::batch::OpenBatch {
                 heard,
+                job: call.abort_handle(),
                 model: llm.clone(),
                 cancels: &self.cancels,
             };
-            let results = llm
-                .invoke_batch(requests, events)
+            let results = call
                 .await
+                .map_err(|e| node_error(chunk[0], format!("the batch stopped: {e}")))?
                 .map_err(|e| node_error(chunk[0], e.to_string()))?;
             for r in results {
                 let i: usize = r
