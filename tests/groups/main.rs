@@ -75,6 +75,9 @@ mod one_node_graph;
 #[path = "one_start_one_end/one_start_one_end.rs"]
 mod one_start_one_end;
 
+#[path = "parallel_fails_fast/parallel_fails_fast.rs"]
+mod parallel_fails_fast;
+
 #[path = "parallel_packs/parallel_packs.rs"]
 mod parallel_packs;
 
