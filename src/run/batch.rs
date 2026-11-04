@@ -11,8 +11,10 @@ use tokio::task::JoinHandle;
 use super::Program;
 use crate::models::{BatchEvent, Llm};
 
-/// The longest a cancel is waited for: a provider that does not answer must not hold the end of the run.
-const CANCEL_SECONDS: u64 = 10;
+/// The longest a cancel is waited for: a provider that does not answer must not hold the end of the run. It fits in
+/// the 5 seconds the service gives a run it stopped to close (`CLOSE_SECONDS`), with time left for the log and the
+/// trace.
+const CANCEL_SECONDS: u64 = 3;
 
 /// How long the end of the program waits for the branches a run aborted to let go of it.
 const BRANCHES_WAIT: Duration = Duration::from_secs(1);

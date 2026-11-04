@@ -86,7 +86,7 @@ one call each. The job is submitted, then polled until it ends.
 
 A job the run lets go of before it ended is cancelled at the provider: when the run is stopped (`run_timeout`, the
 service shutting down), when a branch beside the group fails, and when the poll of the job fails. The end of the
-program waits for each cancel, 10 seconds at most. A cancel that fails is written on the standard error, with the id
+program waits for each cancel, 3 seconds at most. A cancel that fails is written on the standard error, with the id
 of the job: `a-graph: cannot cancel the batch job <id> at the provider: <why>`. A process that is killed cancels
 nothing, nor does Ctrl-C on the command line, which ends the process at once.
 
