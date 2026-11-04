@@ -3,6 +3,9 @@
 #[path = "../common/mod.rs"]
 mod common;
 
+#[path = "ctrl_c_stops/ctrl_c_stops.rs"]
+mod ctrl_c_stops;
+
 #[path = "check_invalid/check_invalid.rs"]
 mod check_invalid;
 
