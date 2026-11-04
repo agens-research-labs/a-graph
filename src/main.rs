@@ -130,10 +130,9 @@ async fn main() -> ExitCode {
 
     let program = Arc::new(program);
     let outcome = program.run(&message).await;
-    // the log of a network output delivers what is still queued before the program ends
-    if let Some(p) = Arc::into_inner(program) {
-        p.logger.close().await;
-    }
+    // the batch jobs the run let go of are cancelled, and the log of a network output delivers what is still queued,
+    // before the program ends
+    a_graph::run::close(program).await;
     match outcome {
         Ok(output) => {
             if cli.chat_mode {

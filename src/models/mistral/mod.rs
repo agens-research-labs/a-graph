@@ -180,4 +180,8 @@ impl Llm for Mistral {
     async fn invoke_batch(&self, requests: Vec<BatchRequest>, events: BatchEvents) -> BatchReturn {
         self.run_batch(requests, events).await
     }
+
+    async fn cancel_batch(&self, batch_id: &str) -> Result<(), ModelError> {
+        self.cancel(batch_id).await
+    }
 }

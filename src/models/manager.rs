@@ -1,6 +1,7 @@
 //! The models of a graph, by id: a node calls a model ONLY by id.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use serde_norway::Value;
 
@@ -14,7 +15,8 @@ use crate::schema::key;
 
 #[derive(Default)]
 pub struct ModelManager {
-    models: HashMap<String, Box<dyn Llm>>,
+    /// Shared, so that the cancel of a batch job can outlive the node that let go of it.
+    models: HashMap<String, Arc<dyn Llm>>,
     /// What the yml says about each model: the node needs it to know the family of the media
     /// `provider`, whether `max_tokens` is mandatory, and the host for the allow-list.
     specs: HashMap<String, Model>,
@@ -52,12 +54,17 @@ impl ModelManager {
 
     /// Registers a model. Ids are unique (the Loader rejects duplicates): a second one with
     /// the same id replaces the first and the replaced model is returned.
-    pub fn insert(&mut self, id: impl Into<String>, model: Box<dyn Llm>) -> Option<Box<dyn Llm>> {
-        self.models.insert(id.into(), model)
+    pub fn insert(&mut self, id: impl Into<String>, model: Box<dyn Llm>) -> Option<Arc<dyn Llm>> {
+        self.models.insert(id.into(), Arc::from(model))
     }
 
     pub fn get(&self, id: &str) -> Option<&dyn Llm> {
         self.models.get(id).map(|m| m.as_ref())
+    }
+
+    /// The model, to be held after the program is gone.
+    pub(crate) fn shared(&self, id: &str) -> Option<Arc<dyn Llm>> {
+        self.models.get(id).cloned()
     }
 
     /// What the yml says about the model.

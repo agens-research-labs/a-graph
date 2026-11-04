@@ -116,6 +116,16 @@ impl Anthropic {
         Ok(results)
     }
 
+    /// `POST /v1/messages/batches/{id}/cancel`: the requests not yet processed are canceled.
+    pub(super) async fn cancel(&self, batch_id: &str) -> Result<(), ModelError> {
+        self.send(
+            self.client
+                .post(format!("{}/v1/messages/batches/{batch_id}/cancel", self.base_url)),
+        )
+        .await
+        .map(drop)
+    }
+
     fn batch_result(&self, schema: bool, result: &Value) -> Result<crate::models::ModelResponse, ModelError> {
         match result.get("type").and_then(Value::as_str) {
             // the time of one request inside a batch is not measurable: 0

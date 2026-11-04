@@ -428,20 +428,8 @@ pub(super) async fn run_within(
         }
     };
     let outcome = program.run_until(message, stop).await;
-    // the branches of a stopped run are aborted and let go of the program a moment later: wait for them, at most a second
-    let mut program = program;
-    for _ in 0..100 {
-        match Arc::try_unwrap(program) {
-            Ok(p) => {
-                p.logger.close().await;
-                break;
-            }
-            Err(still) => {
-                program = still;
-                tokio::time::sleep(Duration::from_millis(10)).await;
-            }
-        }
-    }
+    // the run holds its permit until the batch jobs it let go of are cancelled
+    crate::run::close(program).await;
     outcome
 }
 

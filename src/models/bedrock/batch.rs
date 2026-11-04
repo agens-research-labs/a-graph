@@ -198,6 +198,17 @@ impl Bedrock {
         Ok(results)
     }
 
+    /// `StopModelInvocationJob`, with the id of the job: the API takes it with or without the rest of the ARN.
+    pub(super) async fn cancel(&self, job_id: &str) -> Result<(), ModelError> {
+        aws_sdk_bedrock::Client::new(self.sdk_config().await)
+            .stop_model_invocation_job()
+            .job_identifier(job_id)
+            .send()
+            .await
+            .map(drop)
+            .map_err(|e| self.sdk_error(e))
+    }
+
     fn batch_result(&self, line: &Value) -> Result<ModelResponse, ModelError> {
         if let Some(err) = line.get("error").filter(|e| !e.is_null()) {
             let msg = err

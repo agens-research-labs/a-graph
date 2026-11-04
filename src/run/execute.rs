@@ -380,7 +380,7 @@ impl Program {
         };
         let llm = self
             .models
-            .get(&first.model)
+            .shared(&first.model)
             .ok_or_else(|| node_error(0, format!("model `{}` is not built", first.model)))?;
         let size = g.limit.map_or(nodes.len(), |l| (l as usize).max(1));
         let mut answers: Vec<Option<crate::models::ModelResponse>> = (0..nodes.len()).map(|_| None).collect();
@@ -393,8 +393,14 @@ impl Program {
                     invocation: prepared[i].call.clone(),
                 })
                 .collect();
-            // the state of the job is told through this channel; nobody listens to it yet
-            let (events, _unheard) = tokio::sync::mpsc::unbounded_channel();
+            // the state of the job is told through this channel: until the job has ended, letting go of it here
+            // cancels it at the provider
+            let (events, heard) = tokio::sync::mpsc::unbounded_channel();
+            let _open = super::batch::OpenBatch {
+                heard,
+                model: llm.clone(),
+                cancels: &self.cancels,
+            };
             let results = llm
                 .invoke_batch(requests, events)
                 .await

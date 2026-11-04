@@ -320,6 +320,10 @@ impl Llm for Anthropic {
         }
         self.run_batch(requests, events).await
     }
+
+    async fn cancel_batch(&self, batch_id: &str) -> Result<(), ModelError> {
+        self.cancel(batch_id).await
+    }
 }
 
 fn env_key(var: &str, at: &Path) -> Result<String, Error> {

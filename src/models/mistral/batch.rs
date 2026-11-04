@@ -141,6 +141,13 @@ impl Mistral {
         self.parse_completion(schema, body, 0.0)
     }
 
+    /// `POST /v1/batch/jobs/{id}/cancel`: the job goes to `CANCELLATION_REQUESTED`, then `CANCELLED`.
+    pub(super) async fn cancel(&self, job_id: &str) -> Result<(), ModelError> {
+        self.post_text(&format!("/v1/batch/jobs/{job_id}/cancel"), &json!({}))
+            .await
+            .map(drop)
+    }
+
     fn parse_json(&self, text: String) -> Result<Value, ModelError> {
         serde_json::from_str(&text).map_err(|e| self.who.invalid(format!("the answer is not JSON: {e}")))
     }

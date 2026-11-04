@@ -1,6 +1,7 @@
 //! The point that connects everything: reads the yml with the Loader, builds the logger, the
 //! managers, the nodes and the edges, checks the network permission and sends what happened to the log.
 
+mod batch;
 mod events;
 mod execute;
 mod judge;
@@ -12,6 +13,7 @@ mod tools;
 mod utility;
 mod vectordb;
 
+pub use batch::close;
 pub use execute::{OutputItem, RunOutput};
 pub use node::{Content, Delivery, NodeInput, NodeOutput};
 
@@ -50,6 +52,8 @@ pub struct Program {
     pub warnings: Vec<Warning>,
     /// The MCP servers of the run in progress: connected when `run` starts, closed when it ends.
     mcp: std::sync::Mutex<Option<std::sync::Arc<crate::gate::McpPool>>>,
+    /// The cancels of the batch jobs the run let go of before they ended, waited for by `close`.
+    cancels: batch::Cancels,
 }
 
 /// Builds the program from the text of a yml. The errors of the Loader come back alone: nothing
@@ -142,6 +146,7 @@ pub fn build(src: &str) -> Result<Program, Errors> {
         edges,
         warnings,
         mcp: Default::default(),
+        cancels: Default::default(),
     })
 }
 

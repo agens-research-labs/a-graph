@@ -84,6 +84,12 @@ How a produced media is described is explained in [media](media.md).
 A `batch` group (see [edges](edges.md)) sends the requests of its branches to the provider as one batch job instead of
 one call each. The job is submitted, then polled until it ends.
 
+A job the run lets go of before it ended is cancelled at the provider: when the run is stopped (`run_timeout`, the
+service shutting down), when a branch beside the group fails, and when the poll of the job fails. The end of the
+program waits for each cancel, 10 seconds at most. A cancel that fails is written on the standard error, with the id
+of the job: `a-graph: cannot cancel the batch job <id> at the provider: <why>`. A process that is killed cancels
+nothing, nor does Ctrl-C on the command line, which ends the process at once.
+
 - `bedrock` needs a `batch` block on the model: the S3 folder where the requests are written, the S3 folder where the
   answers are written, and the IAM role the job runs with. The batch reaches two more services, and their hosts must
   be in `allowed_hosts` too: the Bedrock control API (`bedrock.<region>.amazonaws.com`), where the job is created and

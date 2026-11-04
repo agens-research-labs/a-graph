@@ -170,6 +170,13 @@ impl OpenAi {
         self.parse_response(schema, body, 0.0)
     }
 
+    /// `POST /batches/{id}/cancel`: the batch goes to `cancelling`, then `cancelled`.
+    pub(super) async fn cancel(&self, batch_id: &str) -> Result<(), ModelError> {
+        self.post_text(&format!("/batches/{batch_id}/cancel"), &json!({}))
+            .await
+            .map(drop)
+    }
+
     fn parse_json(&self, text: String) -> Result<Value, ModelError> {
         serde_json::from_str(&text).map_err(|e| self.who.invalid(format!("the answer is not JSON: {e}")))
     }

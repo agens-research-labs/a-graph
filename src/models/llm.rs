@@ -20,4 +20,11 @@ pub trait Llm: Send + Sync {
     /// of each id. One round: tool requests come back as they are. A failed or expired job is
     /// `ModelError::Provider`; the status is reported through `events`.
     async fn invoke_batch(&self, requests: Vec<BatchRequest>, events: BatchEvents) -> BatchReturn;
+
+    /// Asks the provider to stop the batch job `batch_id`, the id `invoke_batch` sent in `Submitted`. The run
+    /// calls it when it lets go of a job before the job ended. A provider without batch never sends `Submitted`,
+    /// so it is never asked.
+    async fn cancel_batch(&self, _batch_id: &str) -> Result<(), ModelError> {
+        Ok(())
+    }
 }
