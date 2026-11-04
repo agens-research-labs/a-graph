@@ -1,0 +1,46 @@
+# Two runs at once reach `synt.length` 2 exchanges: the summary of the first comes after the one of the second (model mock {{port:model}}; the summaries come from the same mock).
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:{{port:model}}
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: pr
+      content:
+        system: "Be brief."
+        user: "Summary: {{session}} / Question: {{user_message}}"
+external:
+  memory:
+    - id: session
+      provider: json_file
+      path: ./target/test-memory/summaries_overlap.json
+      synt: { length: 2, model: m }
+      chat: { length: 5 }
+graph:
+  nodes:
+    - id: n
+      model: { id: m, max_tokens: 50 }
+      resources: { prompt: pr }
+      external:
+        memory:
+          - { id: session, read: { user: true, assistant: true }, write: { user: true, assistant: true } }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true }
+  edges:
+    - start: n
+    - end: n

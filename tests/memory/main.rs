@@ -66,6 +66,9 @@ mod reasoning_not_saved;
 #[path = "saves_vector/saves_vector.rs"]
 mod saves_vector;
 
+#[path = "summaries_overlap/summaries_overlap.rs"]
+mod summaries_overlap;
+
 #[path = "summary_own_prompt/summary_own_prompt.rs"]
 mod summary_own_prompt;
 

@@ -1,0 +1,17 @@
+[
+  {
+    "id": "n",
+    "timestamp": "old",
+    "synt": "EARLIER",
+    "chat": [
+      {
+        "role": "user",
+        "content": "q1"
+      },
+      {
+        "role": "assistant",
+        "content": "a1"
+      }
+    ]
+  }
+]

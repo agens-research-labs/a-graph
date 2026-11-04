@@ -3,6 +3,7 @@
 use std::sync::{Arc, Mutex};
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::sync::Notify;
 
 #[derive(Debug, Clone)]
 pub struct Req {
@@ -69,16 +70,44 @@ pub async fn listen_delayed(
     delay: impl Fn(&Req) -> std::time::Duration + Send + Sync + 'static,
     handler: impl Fn(&Req) -> Resp + Send + Sync + 'static,
 ) -> (u16, Arc<Mutex<Vec<Req>>>) {
+    start(delay, |_| false, Arc::new(Notify::new()), handler).await
+}
+
+/// Like `listen`, and the answer to a request for which `hold(request)` is true is held until the test calls
+/// `notify_one` on the `Notify` given back: the test decides when it comes, whatever the speed of the machine.
+/// The request is recorded before it is held.
+pub async fn listen_held(
+    hold: impl Fn(&Req) -> bool + Send + Sync + 'static,
+    handler: impl Fn(&Req) -> Resp + Send + Sync + 'static,
+) -> (u16, Arc<Mutex<Vec<Req>>>, Arc<Notify>) {
+    let release = Arc::new(Notify::new());
+    let (port, seen) = start(|_| std::time::Duration::ZERO, hold, release.clone(), handler).await;
+    (port, seen, release)
+}
+
+async fn start(
+    delay: impl Fn(&Req) -> std::time::Duration + Send + Sync + 'static,
+    hold: impl Fn(&Req) -> bool + Send + Sync + 'static,
+    release: Arc<Notify>,
+    handler: impl Fn(&Req) -> Resp + Send + Sync + 'static,
+) -> (u16, Arc<Mutex<Vec<Req>>>) {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
     let seen = Arc::new(Mutex::new(Vec::new()));
     let handler = Arc::new(handler);
     let delay = Arc::new(delay);
+    let hold = Arc::new(hold);
     let log = seen.clone();
     tokio::spawn(async move {
         loop {
             let (mut sock, _) = listener.accept().await.unwrap();
-            let (handler, log, delay) = (handler.clone(), log.clone(), delay.clone());
+            let (handler, log, delay, hold, release) = (
+                handler.clone(),
+                log.clone(),
+                delay.clone(),
+                hold.clone(),
+                release.clone(),
+            );
             tokio::spawn(async move {
                 let mut buf = Vec::new();
                 let mut chunk = [0u8; 8192];
@@ -110,9 +139,13 @@ pub async fn listen_delayed(
                         };
                         let resp = handler(&req);
                         let wait = delay(&req);
+                        let held = hold(&req);
                         log.lock().unwrap().push(req);
                         if !wait.is_zero() {
                             tokio::time::sleep(wait).await;
+                        }
+                        if held {
+                            release.notified().await;
                         }
                         let location = resp.location.map(|l| format!("location: {l}\r\n")).unwrap_or_default();
                         let out = format!(
