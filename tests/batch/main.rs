@@ -24,6 +24,9 @@ mod model_no_batch;
 #[path = "one_job/one_job.rs"]
 mod one_job;
 
+#[path = "poll_fails_cancels/poll_fails_cancels.rs"]
+mod poll_fails_cancels;
+
 #[path = "preparing_no_job/preparing_no_job.rs"]
 mod preparing_no_job;
 

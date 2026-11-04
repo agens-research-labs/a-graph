@@ -18,7 +18,7 @@ pub use std::time::Duration;
 /// request of a batch that must fail, if any, whether the jobs never end, and the start of the
 /// question of a plain call that is refused with a 500, if any: that answer comes `REFUSE_AFTER`
 /// late, when the jobs created at once by the other branches exist. The answer that creates a job
-/// comes `create_after` late.
+/// comes `create_after` late. With `poll_fails`, every poll of a job is answered 529.
 #[derive(Default)]
 pub struct Jobs {
     pub created: HashMap<String, Vec<(String, String)>>,
@@ -26,6 +26,7 @@ pub struct Jobs {
     pub endless: bool,
     pub refuse_call: Option<String>,
     pub create_after: Duration,
+    pub poll_fails: bool,
 }
 
 /// The text of the question in the `params` of a request of the batch.
@@ -89,6 +90,9 @@ pub fn api(jobs: Arc<Mutex<Jobs>>) -> impl Fn(&Req) -> Resp + Send + Sync + 'sta
                     })
                     .collect();
                 Resp::ok(lines.join("\n"))
+            }
+            ("GET", p) if p.starts_with("/v1/messages/batches/") && jobs.poll_fails => {
+                Resp::status(529, json!({ "error": { "message": "overloaded" } }).to_string())
             }
             ("GET", p) if p.starts_with("/v1/messages/batches/") && jobs.endless => {
                 Resp::ok(json!({ "processing_status": "in_progress" }).to_string())
