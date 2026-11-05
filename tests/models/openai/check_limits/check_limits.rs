@@ -68,4 +68,24 @@ async fn check_limits() {
         })
         .is_err()
     );
+    // the GPT image models take the style from the prompt
+    let styled = image(
+        "png",
+        generate(),
+        Some(MediaProvider::Openai(OpenaiMedia {
+            moderation: None,
+            output_compression: None,
+            style: Some(ImageStyle::Vivid),
+        })),
+    );
+    let ModelError::Unsupported { problems, .. } = m
+        .check(&ModelRequirements {
+            output_media: vec![styled],
+            ..Default::default()
+        })
+        .unwrap_err()
+    else {
+        panic!("not Unsupported")
+    };
+    assert!(problems.join(" | ").contains("`style`"), "{problems:?}");
 }
