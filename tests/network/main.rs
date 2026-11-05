@@ -27,6 +27,9 @@ mod model_hosts;
 #[path = "no_permissions/no_permissions.rs"]
 mod no_permissions;
 
+#[path = "refused_log_url/refused_log_url.rs"]
+mod refused_log_url;
+
 #[path = "resource_hosts/resource_hosts.rs"]
 mod resource_hosts;
 
