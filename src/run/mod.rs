@@ -19,7 +19,7 @@ pub use node::{Content, Delivery, NodeInput, NodeOutput};
 
 use crate::blackboards::BlackboardManager;
 use crate::embeddings::EmbeddingManager;
-use crate::error::{Error, Errors, Warning};
+use crate::error::{Error, Errors, Path, Warning};
 use crate::external::External;
 use crate::graph::{self, Edges, Nodes};
 use crate::loader::{self, Document};
@@ -59,7 +59,8 @@ pub struct Program {
 /// Builds the program from the text of a yml. The errors of the Loader come back alone: nothing
 /// is built from a yml that is not coherent. After that the first block is read in order (the
 /// logger, the first consumer); every manager then reports ALL its errors, and they are sent to
-/// the log as well as returned.
+/// the log as well as returned. A log url whose host is not allowed comes back alone, before the
+/// logger is built: the logger sends from its build on, so that url is never called.
 pub fn build(src: &str) -> Result<Program, Errors> {
     let mut doc: Document = loader::load(src)?;
 
@@ -69,6 +70,11 @@ pub fn build(src: &str) -> Result<Program, Errors> {
     let trace = doc.take(key::TRACE);
     let allowed = network::allowed_hosts(passport.clone())?;
     let mut destinations = network::logging_destinations(observability.clone(), trace.clone())?;
+    let log_url = Path::root().key(key::OBSERVABILITY).key(key::OUTPUT).key(key::URL);
+    let refused = network::check(&allowed, destinations.iter().filter(|d| d.path == log_url).cloned());
+    if !refused.is_empty() {
+        return Err(Errors(refused));
+    }
     let verbose = Verbose::build(doc.take(key::VERBOSE), Redaction::from_passport(passport.clone())?)?;
     let tracer = Tracer::build(trace, passport.clone(), Redaction::from_passport(passport.clone())?)?;
     let logger = Logger::build(passport, observability)?;

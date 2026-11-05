@@ -87,5 +87,8 @@ Every destination written in the file is checked, before anything runs:
 A destination whose host and port are not allowed by the list is an error (`network_not_allowed`). The standard
 output, files and the verbose display are not network.
 
+The errors of the check are also written in the log. An `observability.output.url` that is not allowed is checked
+first, alone: the check stops there and reports only that error, so the url is never called, not even to log it.
+
 The check covers the destinations the file names. It does not cover the traffic that the SDKs of the cloud
 providers make to resolve `credentials: ambient` (metadata servers, token endpoints).
