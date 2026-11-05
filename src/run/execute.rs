@@ -519,12 +519,16 @@ impl Program {
             let remembered = call.history.clone();
 
             let (mut turns, mut items, mut dispatched) = (Vec::new(), Vec::new(), 0u32);
+            // the controller ends with the usage and the time of all its turns, as a node with tools does
+            let (mut usage, mut time) = (Default::default(), 0.0);
             loop {
                 let response = llm
                     .invoke(&call)
                     .await
                     .map_err(|e| error(Rule::ModelFailed, e.to_string()))?;
                 self.model_called(&cid, &prepared.model, &call, &response);
+                usage += response.info.usage;
+                time += response.info.execution_time;
                 let routing = response.structured.clone().filter(Value::is_object).ok_or_else(|| {
                     error(
                         Rule::BadValue,
@@ -544,6 +548,7 @@ impl Program {
                     })?;
                     let mut last = response;
                     (last.message, last.structured) = (Some(answer.to_string()), None);
+                    (last.info.usage, last.info.execution_time) = (usage, time);
                     let (delivery, item) =
                         self.parts(controller, self.finish_node(controller, &prepared.input, last).await?);
                     items.extend(item);

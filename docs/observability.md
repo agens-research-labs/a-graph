@@ -37,6 +37,9 @@ content is left out: the log writes `"content_redacted": true`, the trace writes
 | `read.vectordb` | debug | `id`, `chunks`, `duration` | |
 | `read.memory` | debug | `id`, `messages`, `summary`, `duration` | |
 
+The tokens and the `duration` of `node.end` are the sum of all the model calls of the node: every round of its
+tools, or every turn of a react controller. Each call is a `model.call` of its own.
+
 An error is an event too, of level `error`, with the code of its rule and the fields `phase`, `path` and `message`. A
 run that fails ends with its error instead of `run.end`. A warning is an event of level `warn`.
 

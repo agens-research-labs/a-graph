@@ -9,6 +9,9 @@ mod controller_limits;
 #[path = "controller_memory/controller_memory.rs"]
 mod controller_memory;
 
+#[path = "controller_tokens/controller_tokens.rs"]
+mod controller_tokens;
+
 #[path = "duplicate_workers/duplicate_workers.rs"]
 mod duplicate_workers;
 
