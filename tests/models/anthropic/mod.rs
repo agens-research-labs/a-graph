@@ -180,3 +180,6 @@ mod batch_retry;
 
 #[path = "batch_let_go/batch_let_go.rs"]
 mod batch_let_go;
+
+#[path = "structured_refusal/structured_refusal.rs"]
+mod structured_refusal;
