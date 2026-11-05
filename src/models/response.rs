@@ -27,7 +27,7 @@ pub struct ModelResponse {
 #[derive(Debug, Clone)]
 pub struct MediaOutput {
     pub mime_type: String,
-    /// Base64. A provider that returns an address is downloaded by its trait.
+    /// Base64.
     pub data: String,
     /// The id of the media resource it is, put by the node that made it; a provider leaves it empty.
     pub id: Option<String>,
