@@ -8,7 +8,7 @@ use super::invocation::ToolCall;
 
 #[derive(Debug, Clone)]
 pub struct ModelResponse {
-    /// The text, when the node has no schema.
+    /// The text, when the node has no schema or the model refused.
     pub message: Option<String>,
     /// The JSON, when the node has a schema.
     pub structured: Option<Value>,

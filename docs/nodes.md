@@ -50,8 +50,8 @@ goes to every destination:
 `reasoning: true` adds the reasoning of the model to the final output. The reasoning never goes to another node.
 
 With an output `schema` (a JSON Schema written on the node), the model answers in that shape and the answer is a JSON
-value instead of a text. A node that has a `schema` and goes through output utilities gives them the JSON as a text,
-and what they give back is a text.
+value instead of a text. When the model refuses, the answer is the text of the refusal instead. A node that has a
+`schema` and goes through output utilities gives them the JSON as a text, and what they give back is a text.
 
 Each produced media decides its own destinations with its `assistant` and `node`.
 

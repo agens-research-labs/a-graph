@@ -67,11 +67,12 @@ impl Bedrock {
         }
 
         let (mut message, mut structured) = (None, None);
-        if schema {
+        // a refusal is a text, schema or not: the message of the guardrail
+        if schema && stop_reason != StopReason::Refused {
             if stop_reason == StopReason::MaxTokens {
                 return Err(self.who.truncated());
             }
-            if tools_call.is_empty() && stop_reason != StopReason::Refused {
+            if tools_call.is_empty() {
                 structured = Some(
                     serde_json::from_str(&text)
                         .map_err(|e| self.who.invalid(format!("the output is not the JSON asked for: {e}")))?,

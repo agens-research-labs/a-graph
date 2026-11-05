@@ -72,12 +72,13 @@ impl Anthropic {
         }
 
         let (mut message, mut structured) = (None, None);
-        if schema {
+        // a refusal is a text, schema or not
+        if schema && stop_reason != StopReason::Refused {
             if stop_reason == StopReason::MaxTokens {
                 return Err(self.who.truncated());
             }
-            // a model that asks for a tool first has no JSON yet; so does a refusal
-            if tools_call.is_empty() && stop_reason != StopReason::Refused {
+            // a model that asks for a tool first has no JSON yet
+            if tools_call.is_empty() {
                 structured = Some(
                     serde_json::from_str(&text)
                         .map_err(|e| self.invalid(format!("the output is not the JSON asked for: {e}")))?,
