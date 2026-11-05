@@ -3,6 +3,12 @@
 #[path = "../common/mod.rs"]
 mod common;
 
+#[path = "ambient_config/ambient_config.rs"]
+mod ambient_config;
+
+#[path = "ambient_refused/ambient_refused.rs"]
+mod ambient_refused;
+
 #[path = "bad_request/bad_request.rs"]
 mod bad_request;
 

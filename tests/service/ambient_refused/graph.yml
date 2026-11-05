@@ -1,0 +1,53 @@
+# Three cloud models: bedrock and vertex_ai with the credentials of the service, azure_foundry with a key.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: aws
+    provider: bedrock
+    model: anthropic.claude-sonnet-4-5
+    input: [text]
+    output: [text]
+    region: eu-west-1
+    credentials: ambient
+  - id: gcp
+    provider: vertex_ai
+    publisher: anthropic
+    model: claude-sonnet-5-5
+    input: [text]
+    output: [text]
+    project: p
+    location: global
+    credentials: ambient
+  - id: azure
+    provider: azure_foundry
+    publisher: anthropic
+    model: claude-sonnet-5-5
+    input: [text]
+    output: [text]
+    resource: my-res
+    credentials: { api_key: { env: A_GRAPH_AMBIENT_REFUSED_KEY } }
+resources:
+  prompts:
+    - id: p
+      content:
+        system: "Be brief."
+        user: "Q: {{user_message}}"
+graph:
+  nodes:
+    - id: a
+      model: { id: aws }
+      resources: { prompt: p }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true }
+  edges:
+    - start: a
