@@ -18,6 +18,9 @@ mod host_ports;
 #[path = "hosts_lowercase/hosts_lowercase.rs"]
 mod hosts_lowercase;
 
+#[path = "hosts_before_env/hosts_before_env.rs"]
+mod hosts_before_env;
+
 #[path = "logging_hosts/logging_hosts.rs"]
 mod logging_hosts;
 

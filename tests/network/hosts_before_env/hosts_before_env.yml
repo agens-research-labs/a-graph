@@ -1,0 +1,35 @@
+# The model goes to a host the passport does not allow, and its key names a variable that is not set.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: hosts_before_env
+    description: a refused host and a missing variable in the same graph
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [localhost:11434] } }
+observability: { level: warn }
+verbose: { level: off }
+models:
+  - id: claude
+    provider: anthropic
+    model: claude-haiku-4-5
+    input: [text]
+    output: [text]
+    api_key: { env: A_GRAPH_HOSTS_BEFORE_ENV_UNSET }
+resources:
+  prompts:
+    - id: answer
+      content:
+        system: "Answer in one short sentence."
+        user: "{{user_message}}"
+graph:
+  nodes:
+    - id: assistant
+      model: { id: claude, max_tokens: 300 }
+      resources: { prompt: answer }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true }
+  edges:
+    - start: assistant
