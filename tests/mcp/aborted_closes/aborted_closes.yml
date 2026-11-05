@@ -1,0 +1,84 @@
+# A `parallel` group (in i, out o) whose branch a calls a tool of the server busy that takes ten seconds, while the run is stopped. The server idle, of the node z which is never reached, writes its process id in target/test-output/aborted_closes.pid (model on {{port:model}}, started by the test; the MCP server is the project tests/mcp_server, built by the tests).
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error, output: { file: ./target/test-output/aborted_closes.log } }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:{{port:model}}
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: p_s
+      content: { system: "", user: "S({{user_message}})" }
+    - id: p_i
+      content: { system: "", user: "I({{agent_message}})" }
+    - id: p_a
+      content: { system: "", user: "A({{agent_message}})" }
+    - id: p_o
+      content: { system: "", user: "O({{agent_message}})" }
+    - id: p_z
+      content: { system: "", user: "Z({{agent_message}})" }
+  mcp_servers:
+    - id: busy
+      transport: stdio
+      command: ./target/mcp-test-server/debug/mcp_test_server
+      args: []
+      max_iter: 3
+      timeout: 30
+    - id: idle
+      transport: stdio
+      command: ./target/mcp-test-server/debug/mcp_test_server
+      args: [pid=target/test-output/aborted_closes.pid]
+      max_iter: 3
+      timeout: 30
+graph:
+  nodes:
+    - id: s
+      model: { id: m }
+      resources: { prompt: p_s }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true, node: true }
+    - id: i
+      model: { id: m }
+      resources: { prompt: p_i }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: a
+      model: { id: m }
+      resources: { prompt: p_a, mcp_servers: [busy] }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: o
+      model: { id: m }
+      resources: { prompt: p_o }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: z
+      model: { id: m }
+      resources: { prompt: p_z, mcp_servers: [idle] }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true }
+  edges:
+    - start: s
+    - parallel:
+        - in: i
+        - fan:
+            - next: a
+        - out: o
+    - end: z

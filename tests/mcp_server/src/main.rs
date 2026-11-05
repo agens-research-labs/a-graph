@@ -1,6 +1,6 @@
-//! A small MCP server for the tests: `mcp_test_server [legacy]`, speaking on its standard streams.
-//! Without an argument it speaks the current revision of the protocol; with `legacy` only the
-//! older revision that begins with `initialize`. Its tools:
+//! A small MCP server for the tests: `mcp_test_server [legacy] [pid=<file>]`, speaking on its standard
+//! streams. Without `legacy` it speaks the current revision of the protocol; with it only the older
+//! revision that begins with `initialize`. With `pid=<file>` it writes its process id in the file. Its tools:
 //!   say   {text}   answers "said: <text>"
 //!   count {}       answers a structured result { "calls": <how many calls this process had> }
 //!   boom  {}       answers a result marked as an error
@@ -110,7 +110,10 @@ impl ServerHandler for Server {
 
 #[tokio::main]
 async fn main() {
-    let legacy = std::env::args().nth(1).as_deref() == Some("legacy");
+    let legacy = std::env::args().any(|a| a == "legacy");
+    if let Some(file) = std::env::args().find_map(|a| a.strip_prefix("pid=").map(str::to_string)) {
+        std::fs::write(file, std::process::id().to_string()).expect("cannot write the pid");
+    }
     let service = Server {
         legacy,
         calls: AtomicU64::new(0),

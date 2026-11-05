@@ -3,6 +3,9 @@
 #[path = "../common/mod.rs"]
 mod common;
 
+#[path = "aborted_closes/aborted_closes.rs"]
+mod aborted_closes;
+
 #[path = "call_timeout/call_timeout.rs"]
 mod call_timeout;
 
