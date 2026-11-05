@@ -26,7 +26,8 @@ put `a-graph` in `~/.cargo/bin`, which `rustup` already adds to the `PATH`:
 cargo install --path . --locked
 ```
 
-The code uses nothing that is specific to Linux, but it has been built and tested **only on Linux**.
+The code has been built and tested on Linux and on macOS: the CI runs the tests on Linux for every pull request,
+and on macOS too after every push to `main`.
 
 The builds of development and the tests are kept in `target/`, which takes about 9 GB after the whole suite and grows
 with every build, since Cargo does not remove the old ones: `cargo clean` empties it. To keep it smaller, `Cargo.toml`
