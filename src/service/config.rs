@@ -1,8 +1,8 @@
 //! The file that starts the service: its port, where the sessions keep their files, the hosts a
 //! graph may reach, how long a run is kept, how many go on at once and how long one lasts, and how
-//! long a session is kept and how much it may weigh, and the environment variables a graph may use.
-//! Its keys are those of `schema::SERVICE`; the first four are mandatory: the service starts only
-//! if its owner chose them.
+//! long a session is kept and how much it may weigh, the environment variables a graph may use and
+//! the providers that may use the credentials of the service. Its keys are those of
+//! `schema::SERVICE`; the first five are mandatory: the service starts only if its owner chose them.
 
 use std::collections::{BTreeMap, HashSet};
 use std::path::PathBuf;
@@ -32,6 +32,8 @@ pub struct ServiceConfig {
     pub allowed_hosts: Vec<String>,
     /// The environment variables a graph may use, each with the hosts its value may go to.
     pub allowed_env: AllowedEnv,
+    /// The providers whose models may use the credentials of the service (`credentials: ambient`).
+    pub allowed_ambient: Vec<String>,
     /// Seconds a run is kept after it ends (so it can still be watched and asked for).
     pub retention_seconds: u64,
     /// The most runs going on at once; a request beyond it is refused.
@@ -78,6 +80,7 @@ impl ServiceConfig {
         let env = o
             .req::<BTreeMap<String, Vec<String>>>(key::ALLOWED_ENV, &mut errs)
             .map(|env| allowed_env(env, hosts.as_deref().unwrap_or_default(), &mut errs));
+        let ambient = o.req::<Vec<String>>(key::ALLOWED_AMBIENT, &mut errs);
         let retention = o.opt::<u64>(key::RETENTION_SECONDS, &mut errs);
         if retention == Some(0) {
             errs.add(
@@ -119,12 +122,13 @@ impl ServiceConfig {
                 "`session_max_bytes` is at least 1",
             );
         }
-        match (port, data_dir, hosts, env, errs.0.is_empty()) {
-            (Some(port), Some(dir), Some(hosts), Some(env), true) => Ok(ServiceConfig {
+        match (port, data_dir, hosts, env, ambient, errs.0.is_empty()) {
+            (Some(port), Some(dir), Some(hosts), Some(env), Some(ambient), true) => Ok(ServiceConfig {
                 port,
                 data_dir: PathBuf::from(dir),
                 allowed_hosts: hosts,
                 allowed_env: env,
+                allowed_ambient: ambient,
                 retention_seconds: retention.unwrap_or(DEFAULT_RETENTION_SECONDS),
                 max_runs: max_runs.map_or(DEFAULT_MAX_RUNS, |n| n as usize),
                 run_timeout_seconds: run_timeout.unwrap_or(DEFAULT_RUN_TIMEOUT_SECONDS),

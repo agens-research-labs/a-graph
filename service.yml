@@ -14,3 +14,4 @@ allowed_hosts:                       # the only hosts a graph sent to the servic
 allowed_env:                         # the only variables a graph may name with { env: ... }, and where each may go
   ANTHROPIC_API_KEY: [api.anthropic.com]
   OPENAI_API_KEY: [api.openai.com]
+allowed_ambient: []                  # no graph may use the cloud credentials of the container (credentials: ambient)

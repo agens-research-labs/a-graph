@@ -3,6 +3,17 @@
   "additionalProperties": false,
   "description": "The configuration of the service, `a-graph --serve service.yml`. Generated from the code by `a-graph --print-service-schema`: do not edit it by hand.",
   "properties": {
+    "allowed_ambient": {
+      "description": "The providers whose models a graph may run with `credentials: ambient`: the credentials of the service itself (its AWS role or variables, its Google Application Default Credentials, its Azure managed identity or CLI login), resolved by the SDK, not named by the graph. A graph with an `ambient` model of another provider is refused (`ambient_not_allowed`); a `vertex_ai` model is always `ambient`. With `azure_foundry` the service may start the programs `az` and `azd` to get a token. `[]` allows none.",
+      "items": {
+        "enum": [
+          "bedrock",
+          "vertex_ai",
+          "azure_foundry"
+        ]
+      },
+      "type": "array"
+    },
     "allowed_env": {
       "additionalProperties": {
         "items": {
@@ -53,7 +64,8 @@
     "port",
     "data_dir",
     "allowed_hosts",
-    "allowed_env"
+    "allowed_env",
+    "allowed_ambient"
   ],
   "title": "a-graph service file",
   "type": "object"

@@ -13,7 +13,7 @@ fn errors(text: &str) -> Vec<(String, String)> {
 /// `allowed_hosts` is, and the ports follow the same rule.
 #[test]
 fn env_config() {
-    let base = "port: 1\ndata_dir: d\nallowed_hosts: [api.example.com, \"localhost:11434\"]\n";
+    let base = "port: 1\ndata_dir: d\nallowed_hosts: [api.example.com, \"localhost:11434\"]\nallowed_ambient: []\n";
     assert_eq!(
         errors(&format!(
             "{base}allowed_env: {{ A: [], B: [other.example.com], C: [localhost], D: [\"https://api.example.com\"] }}"

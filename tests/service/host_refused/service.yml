@@ -3,3 +3,4 @@ port: {{port:service}}
 data_dir: target/test-service/host_refused
 allowed_hosts: [127.0.0.1]
 allowed_env: {}
+allowed_ambient: []

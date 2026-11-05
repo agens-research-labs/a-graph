@@ -3,4 +3,5 @@ port: 17406
 data_dir: target/test-service/config_limits
 allowed_hosts: [127.0.0.1]
 allowed_env: {}
+allowed_ambient: []
 run_timeout_seconds: 0

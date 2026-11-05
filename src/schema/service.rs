@@ -16,6 +16,9 @@ pub const SERVICE: &[Field] = &[
     Field::req(ALLOWED_ENV, Shape::MapOf(&Shape::List(&Shape::Text))).doc(
         "The only environment variables of the service a graph may name with `{ env: VAR }`, each with the hosts its value may be sent to, written as the entries of `allowed_hosts` and allowed by it. A graph that names another variable, or sends a variable to a host not in its list, is refused (`env_not_allowed`), and the variable is not read: whether it is set is never told. `{}` allows none. A variable without hosts, or with a host that `allowed_hosts` does not allow, keeps the service from starting.",
     ),
+    Field::req(ALLOWED_AMBIENT, Shape::List(&Shape::Words(&["bedrock", "vertex_ai", "azure_foundry"]))).doc(
+        "The providers whose models a graph may run with `credentials: ambient`: the credentials of the service itself (its AWS role or variables, its Google Application Default Credentials, its Azure managed identity or CLI login), resolved by the SDK, not named by the graph. A graph with an `ambient` model of another provider is refused (`ambient_not_allowed`); a `vertex_ai` model is always `ambient`. With `azure_foundry` the service may start the programs `az` and `azd` to get a token. `[]` allows none.",
+    ),
     Field::opt(RETENTION_SECONDS, Shape::Int).doc("How long a run is kept after it ends, so that it can still be watched and asked for; then it is forgotten. The default is 600, at least 1."),
     Field::opt(MAX_RUNS, Shape::Int).doc("The most runs going on at once, those of `POST /run` and of `POST /runs` together. A request beyond it is refused with 503 (`too_many_runs`) before it is checked, not queued. The default is 8, at least 1."),
     Field::opt(RUN_TIMEOUT_SECONDS, Shape::Int).doc("The longest a run may last. Then it is stopped and ends as failed (`run_timeout`). The default is 3600, at least 1."),

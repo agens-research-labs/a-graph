@@ -1,3 +1,3 @@
-# A configuration with no `data_dir`, no `allowed_hosts`, no `allowed_env` and a key that does not exist.
+# A configuration with no `data_dir`, no `allowed_hosts`, no `allowed_env`, no `allowed_ambient` and a key that does not exist.
 port: 19980
 colour: blue

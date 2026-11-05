@@ -52,6 +52,7 @@ pub fn prepare(yml: &str, config: &ServiceConfig, session: &str) -> Result<Strin
 
     no_programs(&root, &mut errs);
     only_allowed_hosts(&root, config, &mut errs);
+    only_allowed_ambient(&root, config, &mut errs);
     // the places where a file is named: a list of keys leading to the path, with the list they sit in
     for (list, item_path) in [
         (&["resources", "prompts"][..], &["source", "path"][..]),
@@ -226,6 +227,27 @@ fn only_allowed_hosts(root: &Value, config: &ServiceConfig, errs: &mut Vec<Error
                 }
                 Ok(_) => {}
             }
+        }
+    }
+}
+
+/// A model with `credentials: ambient` uses the credentials of the service itself: only the
+/// providers of `allowed_ambient` may. The values are compared as the Loader compares them, exactly.
+fn only_allowed_ambient(root: &Value, config: &ServiceConfig, errs: &mut Vec<Error>) {
+    let Some(Value::Sequence(models)) = get(root, &["models"]) else {
+        return;
+    };
+    for (i, m) in models.iter().enumerate() {
+        let provider = m.get("provider").and_then(Value::as_str);
+        if m.get("credentials").and_then(Value::as_str) == Some("ambient")
+            && let Some(provider) = provider
+            && !config.allowed_ambient.iter().any(|p| p == provider)
+        {
+            errs.push(refuse(
+                path_of(&["models"]).idx(i).key("credentials"),
+                Rule::AmbientNotAllowed,
+                format!("this service does not let `{provider}` models use its own credentials: `{provider}` is not in its allowed_ambient"),
+            ));
         }
     }
 }

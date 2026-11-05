@@ -153,6 +153,11 @@ if it breaks one of these rules:
   service (`network_not_allowed`): a graph can only restrict the hosts of the service. An entry of the graph,
   `host` or `host:port`, is accepted when the service lists the same entry or the host alone. An entry `host` is
   refused when the service lists the host only with a port, because the graph would allow every port.
+- **Credentials of the service.** A model with `credentials: ambient` runs with the credentials of the service
+  itself, found by the SDK of the provider: its AWS role or variables, its Google Application Default Credentials,
+  its Azure managed identity or CLI login. It is refused unless its provider is in the `allowed_ambient` of the
+  service (`ambient_not_allowed`). A `vertex_ai` model is always `ambient`. With `azure_foundry` the service may start
+  the programs `az` and `azd` to get a token.
 
 Then the graph is checked as by `--check`: a graph that is not valid is refused (422) with all its errors, in the form
 `{ "errors": [ { "phase", "path", "rule", "message" } ] }`. One more rule is checked there, with the hosts of the
@@ -217,6 +222,7 @@ What `compose.yml` does, and what to change:
   your shell or from a `.env` file next to it: `ANTHROPIC_API_KEY=sk-... docker compose up -d`. The `allowed_env`
   of `service.yml` lets a graph send `ANTHROPIC_API_KEY` to `api.anthropic.com` and `OPENAI_API_KEY` to
   `api.openai.com` only: a variable you add to the container is out of reach of the graphs until you list it there.
+  Its `allowed_ambient` is empty: no graph may use the cloud credentials of the container.
 - **The sessions** live in the named volume `a-graph-data`. Do not replace it with a folder of yours: the container
   writes as user 10001 and, on Linux, the folder would refuse it. The `service.yml` of the repository deletes a
   session nobody used for 7 days and refuses one over 100 MB (`session_retention_seconds`, `session_max_bytes`):

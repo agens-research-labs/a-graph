@@ -3,4 +3,5 @@ port: 19949
 data_dir: target/test-service/config_retention
 allowed_hosts: [127.0.0.1]
 allowed_env: {}
+allowed_ambient: []
 retention_seconds: 0

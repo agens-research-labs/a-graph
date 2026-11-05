@@ -37,6 +37,7 @@ keys! {
     NETWORK = "network",
     ALLOWED_HOSTS = "allowed_hosts",
     ALLOWED_ENV = "allowed_env",
+    ALLOWED_AMBIENT = "allowed_ambient",
     PORT = "port",
     DATA_DIR = "data_dir",
     RETENTION_SECONDS = "retention_seconds",
