@@ -63,9 +63,24 @@ struct Cli {
     print_service_api: bool,
 }
 
-#[tokio::main(flavor = "multi_thread")]
-async fn main() -> ExitCode {
+fn main() -> ExitCode {
     let cli = Cli::parse();
+    let serving = cli.serve;
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("cannot start the runtime");
+    let code = runtime.block_on(start(cli));
+    // dropping the runtime waits with no limit for the blocking work still going on (the setup of a request, the
+    // sweep of the sessions, the write of a board waiting for its lock): the service exits in the time it promises
+    if serving {
+        runtime.shutdown_timeout(std::time::Duration::from_secs(1));
+    }
+    code
+}
+
+/// The command line, once parsed, on the runtime of `main`.
+async fn start(cli: Cli) -> ExitCode {
     if cli.print_schema {
         print!("{}", a_graph::schema::json_schema());
         return ExitCode::SUCCESS;

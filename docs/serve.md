@@ -38,8 +38,9 @@ It waits at most 30 seconds. Then the runs still going on are stopped: each ends
 `service_stopped`, and still ends as any run does (its batch jobs still going on are cancelled at the provider, its
 last event is logged and its trace is sent). The service waits at most 5 more seconds for that, with the connections
 open: a caller still waiting on `POST /run` gets its 502 with `service_stopped`, a watcher of `GET /runs/{id}/events`
-gets the `error` event. Then it exits. A run that did not close in time is cut, with the connections still open: the
-service writes how many, `a-graph: N runs cut`. Either way it ends with 0.
+gets the `error` event. Then it exits, one second later at most: work still going on in the background (a request
+being prepared, a write of a blackboard waiting for its lock) is left behind. A run that did not close in time is cut,
+with the connections still open: the service writes how many, `a-graph: N runs cut`. Either way it ends with 0.
 
 Docker kills a container 10 seconds after `docker stop` by default. To give the runs their 30 seconds, and 5 more
 to close, `compose.yml` sets `stop_grace_period` higher; set it in your own compose file too:
