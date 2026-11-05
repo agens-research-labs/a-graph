@@ -28,6 +28,7 @@ use crate::models::ModelManager;
 use crate::network;
 use crate::resources::Resources;
 use crate::schema::key;
+use crate::secrets::{self, AllowedEnv};
 use crate::utilities::UtilityManager;
 
 /// Everything built from a yml that passed every check.
@@ -64,11 +65,27 @@ pub struct Program {
 /// log as well as returned:
 ///
 /// 1. every manager reads its block, and no environment variable is read;
-/// 2. every destination is checked against the passport;
+/// 2. every destination is checked against the passport, and, in the service, every environment
+///    variable against `allowed_env` (see `secrets`);
 /// 3. the environment variables are read: the models are made ready to be called, and so is the
 ///    tracer;
 /// 4. the graph is checked against what the models and the other managers can do.
+///
+/// From the command line every environment variable may be used: the one who writes the graph
+/// runs it, with their own variables.
 pub fn build(src: &str) -> Result<Program, Errors> {
+    build_with(src, None)
+}
+
+/// Like `build`, for a graph sent to the service: every environment variable the graph names, and
+/// every host its value goes to, must be in `allowed_env`. The variables of the log are checked
+/// with its url, before it is built; the others with the destinations. A variable refused is
+/// never read, so whether it is set is never told.
+pub fn build_with_env(src: &str, allowed_env: &AllowedEnv) -> Result<Program, Errors> {
+    build_with(src, Some(allowed_env))
+}
+
+fn build_with(src: &str, allowed_env: Option<&AllowedEnv>) -> Result<Program, Errors> {
     let mut doc: Document = loader::load(src)?;
 
     // the first block: the passport and the logging, before anything else
@@ -78,7 +95,10 @@ pub fn build(src: &str) -> Result<Program, Errors> {
     let allowed = network::allowed_hosts(passport.clone())?;
     let mut destinations = network::logging_destinations(observability.clone(), trace.clone())?;
     let log_url = Path::root().key(key::OBSERVABILITY).key(key::OUTPUT).key(key::URL);
-    let refused = network::check(&allowed, destinations.iter().filter(|d| d.path == log_url).cloned());
+    let mut refused = network::check(&allowed, destinations.iter().filter(|d| d.path == log_url).cloned());
+    if let Some(env) = allowed_env {
+        refused.extend(secrets::check(env, secrets::log_secrets(observability.clone())?));
+    }
     if !refused.is_empty() {
         return Err(Errors(refused));
     }
@@ -129,7 +149,15 @@ pub fn build(src: &str) -> Result<Program, Errors> {
     destinations.extend(resources.destinations());
     destinations.extend(external.destinations());
     destinations.extend(blackboards.destinations());
-    let refused = network::check(&allowed, destinations);
+    let mut refused = network::check(&allowed, destinations);
+    if let Some(env) = allowed_env {
+        let mut used = secrets::trace_secrets(trace.clone())?;
+        used.extend(models.secrets());
+        used.extend(utilities.secrets());
+        used.extend(resources.secrets());
+        used.extend(external.secrets());
+        refused.extend(secrets::check(env, used));
+    }
     if !refused.is_empty() {
         return Err(report(&logger, refused));
     }

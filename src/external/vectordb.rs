@@ -7,6 +7,7 @@ use crate::build::{Errs, Obj};
 use crate::error::{Errors, Path, Rule};
 use crate::network::Destination;
 use crate::schema::key;
+use crate::secrets::Secret;
 
 /// The tenant and the database that a Chroma server has when nobody created others.
 pub const DEFAULT_CHROMA_TENANT: &str = "default_tenant";
@@ -164,6 +165,24 @@ impl VectordbManager {
                 VectorBackend::Qdrant { url, .. } | VectorBackend::Chromadb { url, .. } => {
                     Destination::url(base.idx(i).key(key::URL), url)
                 }
+            })
+            .collect()
+    }
+
+    /// The keys of the databases and the url each goes to, for `allowed_env`.
+    pub fn secrets(&self) -> Vec<Secret> {
+        let base = Path::root().key(key::EXTERNAL).key(key::VECTORDB);
+        self.databases
+            .iter()
+            .enumerate()
+            .filter_map(|(i, d)| {
+                let var = d.api_key.as_ref()?;
+                let (VectorBackend::Qdrant { url, .. } | VectorBackend::Chromadb { url, .. }) = &d.backend;
+                Some(Secret {
+                    path: base.idx(i).key(key::API_KEY),
+                    var: var.clone(),
+                    destinations: vec![Destination::url(base.idx(i).key(key::URL), url)],
+                })
             })
             .collect()
     }

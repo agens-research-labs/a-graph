@@ -15,6 +15,7 @@ pub mod network;
 pub mod resources;
 pub mod run;
 pub mod schema;
+pub mod secrets;
 pub mod service;
 pub mod utilities;
 

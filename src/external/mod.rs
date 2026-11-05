@@ -17,6 +17,7 @@ use serde_norway::Value;
 use crate::error::Errors;
 use crate::network::Destination;
 use crate::schema::key;
+use crate::secrets::Secret;
 
 /// The three managers, built from the value of the `external` block.
 #[derive(Debug, Default)]
@@ -30,6 +31,12 @@ impl External {
     /// Every network destination of `external`, for the network permission.
     pub fn destinations(&self) -> Vec<Destination> {
         [self.vectordb.destinations(), self.search.destinations()].concat()
+    }
+
+    /// The environment variables of the external services and where their values go, for
+    /// `allowed_env`: only the vector databases have one.
+    pub fn secrets(&self) -> Vec<Secret> {
+        self.vectordb.secrets()
     }
 
     /// Builds all three. On failure returns the errors of every manager, not only the first.

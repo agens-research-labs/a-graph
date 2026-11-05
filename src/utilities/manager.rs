@@ -9,6 +9,7 @@ use crate::build::{Errs, Obj};
 use crate::error::{Error, Errors, Path, Rule};
 use crate::network::Destination;
 use crate::schema::key;
+use crate::secrets::{self, Secret};
 
 /// The value of `transport`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
@@ -97,6 +98,21 @@ impl UtilityManager {
             .filter_map(|(i, u)| match &u.transport {
                 UtilityTransport::Http { url, .. } => Some(Destination::url(base.idx(i).key(key::URL), url)),
                 UtilityTransport::Stdio { .. } => None,
+            })
+            .collect()
+    }
+
+    /// The headers of the http utilities and the url each goes to, for `allowed_env`.
+    pub fn secrets(&self) -> Vec<Secret> {
+        let base = Path::root().key(key::UTILITIES);
+        self.utilities
+            .iter()
+            .enumerate()
+            .flat_map(|(i, u)| match &u.transport {
+                UtilityTransport::Http { url, headers } => {
+                    secrets::headers(headers, &base.idx(i), &Destination::url(base.idx(i).key(key::URL), url))
+                }
+                UtilityTransport::Stdio { .. } => vec![],
             })
             .collect()
     }

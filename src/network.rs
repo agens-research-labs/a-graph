@@ -81,27 +81,32 @@ pub fn check(allowed: &HashSet<String>, destinations: impl IntoIterator<Item = D
     let not_allowed = "is not in passport.adl.permissions.network.allowed_hosts";
     let mut errors = Vec::new();
     for d in destinations {
-        let host = match &d.target {
-            Target::Url(url) => host_port_of(url).ok_or_else(|| format!("`{url}` is not a URL with a host")),
-            Target::Host(h) => h.clone().map(|h| (h, Some(443))),
-        };
-        match host {
+        match host_port(&d.target) {
             Err(why) => errors.push(Error::new(Phase::Interpretation, d.path, Rule::BadValue, why)),
-            // an entry without a port allows every port
-            Ok((h, port))
-                if !allowed.contains(&h) && !port.is_some_and(|p| allowed.contains(&entry_text(&h, Some(p)))) =>
-            {
-                errors.push(Error::new(
-                    Phase::Interpretation,
-                    d.path,
-                    Rule::NetworkNotAllowed,
-                    format!("host `{}` {not_allowed}", entry_text(&h, port)),
-                ))
-            }
+            Ok((h, port)) if !allows(allowed, &h, port) => errors.push(Error::new(
+                Phase::Interpretation,
+                d.path,
+                Rule::NetworkNotAllowed,
+                format!("host `{}` {not_allowed}", entry_text(&h, port)),
+            )),
             Ok(_) => {}
         }
     }
     errors
+}
+
+/// The host and port a target is reached at. A provider host is reached on https, port 443.
+pub(crate) fn host_port(target: &Target) -> Result<(String, Option<u16>), String> {
+    match target {
+        Target::Url(url) => host_port_of(url).ok_or_else(|| format!("`{url}` is not a URL with a host")),
+        Target::Host(h) => h.clone().map(|h| (h, Some(443))),
+    }
+}
+
+/// Whether a list of entries (`host` or `host:port`, as `entry_text` writes them) allows the host
+/// on the port: an entry without a port allows every port.
+pub(crate) fn allows(entries: &HashSet<String>, host: &str, port: Option<u16>) -> bool {
+    entries.contains(host) || port.is_some_and(|p| entries.contains(&entry_text(host, Some(p))))
 }
 
 /// The destinations of the logging: `observability.output.url` and `trace.endpoint`.

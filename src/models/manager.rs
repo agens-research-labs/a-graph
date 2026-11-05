@@ -12,6 +12,7 @@ use crate::build::{Errs, Obj};
 use crate::error::{Error, Errors, Path};
 use crate::network::Destination;
 use crate::schema::key;
+use crate::secrets::Secret;
 
 #[derive(Default)]
 pub struct ModelManager {
@@ -90,6 +91,16 @@ impl ModelManager {
             .iter()
             .enumerate()
             .flat_map(|(i, id)| self.specs[id].destinations(&base.idx(i)))
+            .collect()
+    }
+
+    /// The environment variables of the models and where their values go, for `allowed_env`.
+    pub fn secrets(&self) -> Vec<Secret> {
+        let base = Path::root().key(key::MODELS);
+        self.order
+            .iter()
+            .enumerate()
+            .flat_map(|(i, id)| self.specs[id].secrets(&base.idx(i)))
             .collect()
     }
 

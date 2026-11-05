@@ -118,8 +118,9 @@ both are generated from the code.
 
 `a-graph --serve service.yml` starts an HTTP service: a caller sends the text of a graph and a message, and gets the
 same JSON as the command line. Since the graph comes from outside, the service refuses, before it builds anything,
-what could start a program, touch a file outside the folder of the session, or reach a host it does not allow. It has
-no authentication of its own. See [the HTTP service](docs/serve.md), which also says how to run it with Docker
+what could start a program, touch a file outside the folder of the session, or reach a host it does not allow; and
+it refuses a graph that names an environment variable it does not list, or sends one where it may not go. It has no
+authentication of its own. See [the HTTP service](docs/serve.md), which also says how to run it with Docker
 (`docker compose up -d`); the routes are described, in OpenAPI 3.1, in [`spec/service.openapi.json`](spec/service.openapi.json).
 
 ## Documentation

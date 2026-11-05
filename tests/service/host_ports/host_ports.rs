@@ -47,9 +47,10 @@ async fn host_ports() {
 /// A port of the service file that is not a number from 1 to 65535, or an entry that is a URL, is a bad value.
 #[test]
 fn host_ports_bad() {
-    let errs =
-        a_graph::service::ServiceConfig::read("port: 1\ndata_dir: d\nallowed_hosts: [\"h:0\", h, \"https://h\"]")
-            .unwrap_err();
+    let errs = a_graph::service::ServiceConfig::read(
+        "port: 1\ndata_dir: d\nallowed_hosts: [\"h:0\", h, \"https://h\"]\nallowed_env: {}",
+    )
+    .unwrap_err();
     let got: Vec<(&str, String)> = errs.0.iter().map(|e| (e.rule.code(), e.path.to_string())).collect();
     assert_eq!(
         got,
@@ -67,7 +68,7 @@ fn host_ports_bad() {
 #[test]
 fn host_ports_normalized() {
     let config = a_graph::service::ServiceConfig::read(
-        "port: 1\ndata_dir: d\nallowed_hosts: [\"127.1\", \"[0:0:0:0:0:0:0:1]:11434\", Api.Example.COM]",
+        "port: 1\ndata_dir: d\nallowed_hosts: [\"127.1\", \"[0:0:0:0:0:0:0:1]:11434\", Api.Example.COM]\nallowed_env: {}",
     )
     .unwrap();
     assert_eq!(

@@ -47,6 +47,9 @@ api_key: { env: ANTHROPIC_API_KEY }
 A secret written as text, `"${ANTHROPIC_API_KEY}"` included, is an error (`bad_value`): there is no substitution of
 variables inside texts.
 
+A graph sent to [the service](serve.md#a-graph-from-outside) may name only the variables its `allowed_env` lists,
+and send each only to the hosts listed for it (`env_not_allowed`). The command line has no such list.
+
 A variable that is not set is an error (`env_missing`). When it is reported depends on what uses it:
 
 - the keys of the models, and the headers of tools, utilities, the log and the trace: when the file is checked,

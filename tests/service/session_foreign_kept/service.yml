@@ -2,4 +2,5 @@
 port: {{port:service}}
 data_dir: target/test-service/session_foreign_kept
 allowed_hosts: [127.0.0.1]
+allowed_env: {}
 session_retention_seconds: 1

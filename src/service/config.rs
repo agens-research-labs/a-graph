@@ -1,8 +1,10 @@
 //! The file that starts the service: its port, where the sessions keep their files, the hosts a
 //! graph may reach, how long a run is kept, how many go on at once and how long one lasts, and how
-//! long a session is kept and how much it may weigh. Its keys are those of `schema::SERVICE`; the
-//! first three are mandatory: the service starts only if its owner chose them.
+//! long a session is kept and how much it may weigh, and the environment variables a graph may use.
+//! Its keys are those of `schema::SERVICE`; the first four are mandatory: the service starts only
+//! if its owner chose them.
 
+use std::collections::{BTreeMap, HashSet};
 use std::path::PathBuf;
 
 use serde_norway::Value;
@@ -10,7 +12,9 @@ use serde_norway::Value;
 use crate::build::{Errs, Obj};
 use crate::error::{Errors, Path, Rule};
 use crate::net::{allowed_entry, entry_text};
+use crate::network::allows;
 use crate::schema::{SERVICE, key};
+use crate::secrets::AllowedEnv;
 
 /// How long a run is kept after its end when the file does not say.
 pub const DEFAULT_RETENTION_SECONDS: u64 = 600;
@@ -26,6 +30,8 @@ pub struct ServiceConfig {
     pub data_dir: PathBuf,
     /// The only hosts a graph may reach, lowercase, each `host` or `host:port`.
     pub allowed_hosts: Vec<String>,
+    /// The environment variables a graph may use, each with the hosts its value may go to.
+    pub allowed_env: AllowedEnv,
     /// Seconds a run is kept after it ends (so it can still be watched and asked for).
     pub retention_seconds: u64,
     /// The most runs going on at once; a request beyond it is refused.
@@ -69,6 +75,9 @@ impl ServiceConfig {
             }
             out
         });
+        let env = o
+            .req::<BTreeMap<String, Vec<String>>>(key::ALLOWED_ENV, &mut errs)
+            .map(|env| allowed_env(env, hosts.as_deref().unwrap_or_default(), &mut errs));
         let retention = o.opt::<u64>(key::RETENTION_SECONDS, &mut errs);
         if retention == Some(0) {
             errs.add(
@@ -110,11 +119,12 @@ impl ServiceConfig {
                 "`session_max_bytes` is at least 1",
             );
         }
-        match (port, data_dir, hosts, errs.0.is_empty()) {
-            (Some(port), Some(dir), Some(hosts), true) => Ok(ServiceConfig {
+        match (port, data_dir, hosts, env, errs.0.is_empty()) {
+            (Some(port), Some(dir), Some(hosts), Some(env), true) => Ok(ServiceConfig {
                 port,
                 data_dir: PathBuf::from(dir),
                 allowed_hosts: hosts,
+                allowed_env: env,
                 retention_seconds: retention.unwrap_or(DEFAULT_RETENTION_SECONDS),
                 max_runs: max_runs.map_or(DEFAULT_MAX_RUNS, |n| n as usize),
                 run_timeout_seconds: run_timeout.unwrap_or(DEFAULT_RUN_TIMEOUT_SECONDS),
@@ -124,4 +134,35 @@ impl ServiceConfig {
             _ => Err(Errors(errs.0)),
         }
     }
+}
+
+/// `allowed_env`, each host read as an entry of `allowed_hosts` is. A variable without hosts, or
+/// with a host that `allowed_hosts` does not allow, is an error: no graph could send its value.
+fn allowed_env(env: BTreeMap<String, Vec<String>>, allowed_hosts: &[String], errs: &mut Errs) -> AllowedEnv {
+    let service: HashSet<String> = allowed_hosts.iter().cloned().collect();
+    let mut out = BTreeMap::new();
+    for (var, hosts) in env {
+        let at = Path::root().key(key::ALLOWED_ENV).key(&var);
+        if hosts.is_empty() {
+            errs.add(
+                &at,
+                Rule::BadValue,
+                format!("`{var}` lists no host: no graph could use it"),
+            );
+        }
+        let mut entries = HashSet::new();
+        for (i, entry) in hosts.iter().enumerate() {
+            match allowed_entry(entry) {
+                Err(why) => errs.add(&at.idx(i), Rule::BadValue, why),
+                Ok((host, port)) if !allows(&service, &host, port) => errs.add(
+                    &at.idx(i),
+                    Rule::NetworkNotAllowed,
+                    format!("host `{entry}` is not in allowed_hosts: no graph could send `{var}` there"),
+                ),
+                Ok((host, port)) => _ = entries.insert(entry_text(&host, port)),
+            }
+        }
+        out.insert(var, entries);
+    }
+    AllowedEnv(out)
 }

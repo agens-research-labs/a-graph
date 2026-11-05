@@ -1,11 +1,14 @@
 //! The hosts each model is reached at: what the network allow-list checks.
 
 use super::bedrock::hosts as bedrock;
-use super::spec::{AzurePublisher, BedrockModel, Model};
+use super::spec::{
+    AnthropicModel, ApiModel, AzureCredentials, AzureModel, AzurePublisher, BedrockCredentials, BedrockModel, Model,
+};
 use crate::error::Path;
 use crate::net::host_of;
 use crate::network::Destination;
 use crate::schema::key;
+use crate::secrets::Secret;
 
 impl Model {
     /// The host of the model endpoint, lowercase. `Err` carries the reason when it cannot be known.
@@ -55,5 +58,48 @@ impl Model {
             ));
         }
         out
+    }
+
+    /// The `{ env }` of the model, `at` being where it is in the yml: each key goes to every
+    /// destination of the model. `ambient` credentials name no variable.
+    pub fn secrets(&self, at: &Path) -> Vec<Secret> {
+        let to = self.destinations(at);
+        let secret = |path: Path, var: &str| Secret {
+            path,
+            var: var.to_string(),
+            destinations: to.clone(),
+        };
+        match self {
+            Model::Anthropic(AnthropicModel { api_key, .. })
+            | Model::Openai(ApiModel { api_key, .. })
+            | Model::Gemini(ApiModel { api_key, .. })
+            | Model::Mistral(ApiModel { api_key, .. }) => vec![secret(at.key(key::API_KEY), api_key)],
+            Model::AzureFoundry(AzureModel {
+                credentials: AzureCredentials::ApiKey(var),
+                ..
+            }) => vec![secret(at.key(key::CREDENTIALS).key(key::API_KEY), var)],
+            Model::Bedrock(BedrockModel {
+                credentials:
+                    BedrockCredentials::Keys {
+                        access_key,
+                        secret_key,
+                        session_token,
+                    },
+                ..
+            }) => {
+                let c = at.key(key::CREDENTIALS);
+                let mut out = vec![
+                    secret(c.key(key::ACCESS_KEY).key(key::ENV), access_key),
+                    secret(c.key(key::SECRET_KEY).key(key::ENV), secret_key),
+                ];
+                if let Some(t) = session_token {
+                    out.push(secret(c.key(key::SESSION_TOKEN).key(key::ENV), t));
+                }
+                out
+            }
+            Model::AzureFoundry(_) | Model::Bedrock(_) | Model::VertexAi(_) | Model::Ollama(_) | Model::Custom(_) => {
+                vec![]
+            }
+        }
     }
 }

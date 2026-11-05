@@ -2,4 +2,5 @@
 port: {{port:service}}
 data_dir: target/test-service/runs_capped
 allowed_hosts: [127.0.0.1]
+allowed_env: {}
 max_runs: 1

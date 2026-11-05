@@ -8,6 +8,7 @@ use super::common::{Errs, Obj, RawTransport, list_path};
 use crate::error::{Error, Errors, Rule};
 use crate::network::Destination;
 use crate::schema::key;
+use crate::secrets::{self, Secret};
 
 #[derive(Debug, Clone)]
 pub enum ToolTransport {
@@ -153,6 +154,21 @@ impl ToolsManager {
             .filter_map(|(i, t)| match &t.transport {
                 ToolTransport::Http { url, .. } => Some(Destination::url(base.idx(i).key(key::URL), url)),
                 ToolTransport::Stdio { .. } => None,
+            })
+            .collect()
+    }
+
+    /// The headers of the http tools and the url each goes to, for `allowed_env`.
+    pub fn secrets(&self) -> Vec<Secret> {
+        let base = list_path(key::TOOLS);
+        self.tools
+            .iter()
+            .enumerate()
+            .flat_map(|(i, t)| match &t.transport {
+                ToolTransport::Http { url, headers } => {
+                    secrets::headers(headers, &base.idx(i), &Destination::url(base.idx(i).key(key::URL), url))
+                }
+                ToolTransport::Stdio { .. } => vec![],
             })
             .collect()
     }

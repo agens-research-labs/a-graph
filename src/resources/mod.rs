@@ -22,6 +22,7 @@ use serde_norway::Value;
 use crate::error::{Error, Errors, Warning};
 use crate::network::Destination;
 use crate::schema::key;
+use crate::secrets::Secret;
 
 /// The five managers, built from the value of the `resources` block.
 #[derive(Debug, Default)]
@@ -43,6 +44,11 @@ impl Resources {
             self.media.destinations(),
         ]
         .concat()
+    }
+
+    /// The environment variables of the resources and where their values go, for `allowed_env`.
+    pub fn secrets(&self) -> Vec<Secret> {
+        [self.tools.secrets(), self.mcp.secrets()].concat()
     }
 
     /// Every environment variable the resources need now and that is not set.

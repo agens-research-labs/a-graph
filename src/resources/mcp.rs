@@ -8,6 +8,7 @@ use super::common::{Errs, Obj, RawTransport, list_path};
 use crate::error::{Errors, Rule};
 use crate::network::Destination;
 use crate::schema::key;
+use crate::secrets::{self, Secret};
 
 /// A secret is kept as the name of the environment variable, never as its value.
 #[derive(Debug, Clone)]
@@ -106,6 +107,29 @@ impl McpManager {
             .filter_map(|(i, s)| match &s.transport {
                 McpTransport::Http { url, .. } => Some(Destination::url(base.idx(i).key(key::URL), url)),
                 McpTransport::Stdio { .. } => None,
+            })
+            .collect()
+    }
+
+    /// The headers of the http servers and the url each goes to, and the `env` of the stdio
+    /// servers, given to a program: for `allowed_env`.
+    pub fn secrets(&self) -> Vec<Secret> {
+        let base = list_path(key::MCP_SERVERS);
+        self.servers
+            .iter()
+            .enumerate()
+            .flat_map(|(i, s)| match &s.transport {
+                McpTransport::Http { url, headers } => {
+                    secrets::headers(headers, &base.idx(i), &Destination::url(base.idx(i).key(key::URL), url))
+                }
+                McpTransport::Stdio { env, .. } => env
+                    .iter()
+                    .map(|(name, var)| Secret {
+                        path: base.idx(i).key(key::ENV).key(name),
+                        var: var.clone(),
+                        destinations: vec![],
+                    })
+                    .collect(),
             })
             .collect()
     }

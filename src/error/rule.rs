@@ -49,6 +49,7 @@ rules! {
     NotSupported => "not_supported",
     Io => "io",
     EnvMissing => "env_missing",
+    EnvNotAllowed => "env_not_allowed",
     BlackboardHeader => "blackboard_header",
     BatchModels => "batch_models",
     BatchNested => "batch_nested",

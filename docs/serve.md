@@ -17,7 +17,16 @@ error. A file of the service that is not valid ends the command with 1, and ever
 listen on ends it with 3.
 
 The file holds no keys of models or services. They are environment variables of the service, and a graph names them
-as always, `api_key: { env: ANTHROPIC_API_KEY }`.
+as always, `api_key: { env: ANTHROPIC_API_KEY }`. The file says which variables a graph may name and where each may
+be sent, in `allowed_env`:
+
+```yaml
+allowed_env:
+  ANTHROPIC_API_KEY: [api.anthropic.com]
+```
+
+A graph may then use `ANTHROPIC_API_KEY` for a model `anthropic`, but not in a header to another host, and no
+other variable at all. The rules are in [Variables](#a-graph-from-outside), below.
 
 The service has no authentication of its own: whoever reaches its port can run graphs on it.
 
@@ -146,7 +155,16 @@ if it breaks one of these rules:
   refused when the service lists the host only with a port, because the graph would allow every port.
 
 Then the graph is checked as by `--check`: a graph that is not valid is refused (422) with all its errors, in the form
-`{ "errors": [ { "phase", "path", "rule", "message" } ] }`.
+`{ "errors": [ { "phase", "path", "rule", "message" } ] }`. One more rule is checked there, with the hosts of the
+graph:
+
+- **Variables.** Every `{ env: VAR }` of the graph must name a variable of `allowed_env`, and the value must go only
+  to hosts listed for that variable (`env_not_allowed`): the host of the model for a key of a model, the `url` of a
+  tool, a utility, an MCP server, a vector database or the log for their headers or key, the `endpoint` of the
+  trace for its headers. A refused variable is not read, so the answer never tells whether it is set; a variable of
+  the list that is not set is `env_missing`, as on the command line. The keys of a `bedrock` model go to every host
+  of the model: with a `batch`, also the control API and the S3 buckets. The variables of the log are checked with
+  its `url`, before anything else: a log that breaks the rule is refused with that error alone.
 
 Last, if the service file sets `session_max_bytes`, a session whose folder weighs more is refused (422,
 `session_full`). The size is checked before the request runs, so the requests already accepted can go past the cap.
@@ -196,7 +214,9 @@ What `compose.yml` does, and what to change:
   `docker compose exec ollama ollama pull qwen3.5:4b` once (the models stay in the volume `ollama-models`). A graph
   reaches it as `http://ollama:11434`.
 - **The keys** of the cloud models are environment variables of the container, named in `compose.yml` and taken from
-  your shell or from a `.env` file next to it: `ANTHROPIC_API_KEY=sk-... docker compose up -d`.
+  your shell or from a `.env` file next to it: `ANTHROPIC_API_KEY=sk-... docker compose up -d`. The `allowed_env`
+  of `service.yml` lets a graph send `ANTHROPIC_API_KEY` to `api.anthropic.com` and `OPENAI_API_KEY` to
+  `api.openai.com` only: a variable you add to the container is out of reach of the graphs until you list it there.
 - **The sessions** live in the named volume `a-graph-data`. Do not replace it with a folder of yours: the container
   writes as user 10001 and, on Linux, the folder would refuse it. The `service.yml` of the repository deletes a
   session nobody used for 7 days and refuses one over 100 MB (`session_retention_seconds`, `session_max_bytes`):

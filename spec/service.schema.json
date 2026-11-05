@@ -3,6 +3,16 @@
   "additionalProperties": false,
   "description": "The configuration of the service, `a-graph --serve service.yml`. Generated from the code by `a-graph --print-service-schema`: do not edit it by hand.",
   "properties": {
+    "allowed_env": {
+      "additionalProperties": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "description": "The only environment variables of the service a graph may name with `{ env: VAR }`, each with the hosts its value may be sent to, written as the entries of `allowed_hosts` and allowed by it. A graph that names another variable, or sends a variable to a host not in its list, is refused (`env_not_allowed`), and the variable is not read: whether it is set is never told. `{}` allows none. A variable without hosts, or with a host that `allowed_hosts` does not allow, keeps the service from starting.",
+      "type": "object"
+    },
     "allowed_hosts": {
       "description": "The only hosts a graph may reach, compared without regard to case. An entry `host` allows every port of the host; an entry `host:port` allows that port only. An entry is read as the host of a URL is read (`127.1` counts as `127.0.0.1`); an entry that is a URL or carries a path is refused. The `allowed_hosts` of the passport of a graph can only be a part of this list: an entry of the graph is accepted when this list has the same entry or the host alone. A graph that names another host, or a host without a port that this list allows only on a port, is refused.",
       "items": {
@@ -42,7 +52,8 @@
   "required": [
     "port",
     "data_dir",
-    "allowed_hosts"
+    "allowed_hosts",
+    "allowed_env"
   ],
   "title": "a-graph service file",
   "type": "object"

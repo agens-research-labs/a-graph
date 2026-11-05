@@ -22,7 +22,7 @@ use super::rules::{SESSION_MARKER, valid_session};
 use super::runs::{Next, Runs, SessionInUse, errors_json, run_within};
 use super::{ServiceConfig, prepare};
 use crate::error::{Error, Path, Phase, Rule};
-use crate::run::{Program, build};
+use crate::run::{Program, build_with_env};
 
 /// The most a request may weigh: a graph and, in base64, the files it reads.
 const BODY_LIMIT: usize = 64 * 1024 * 1024;
@@ -266,7 +266,8 @@ fn setup(app: &App, body: &[u8]) -> Result<(Program, String, SessionInUse), Resp
             )
         })?;
     // the program is built again for each request: requests share nothing
-    let program = build(&yml).map_err(|errors| failure(StatusCode::UNPROCESSABLE_ENTITY, &errors.0))?;
+    let program = build_with_env(&yml, &config.allowed_env)
+        .map_err(|errors| failure(StatusCode::UNPROCESSABLE_ENTITY, &errors.0))?;
     if let Some(cap) = config.session_max_bytes {
         let over = folder_over(&folder, cap).map_err(|e| {
             failure(
