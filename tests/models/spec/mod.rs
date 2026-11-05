@@ -6,12 +6,13 @@ use a_graph::loader::load;
 use a_graph::models::ModelManager;
 use a_graph::schema::key;
 
-/// The (rule, path) pairs the managers report for `<dir>/<name>.yml`, a file of the test whose folder is `dir`. The Loader must accept it.
+/// The (rule, path) pairs the manager reports, building and connecting, for `<dir>/<name>.yml`, a file of the test whose folder is `dir`. The Loader must accept it.
 fn errors(dir: &std::path::Path, name: &str) -> Vec<(String, String)> {
     set_env();
     let mut doc = load(&yml_in(dir, name)).unwrap_or_else(|e| panic!("the Loader rejected the yml: {e}"));
-    match ModelManager::build(doc.take(key::MODELS)) {
-        Ok(_) => vec![],
+    // what the yml says, then the environment variables, as the build of the program does
+    match ModelManager::build(doc.take(key::MODELS)).and_then(|mut m| m.connect()) {
+        Ok(()) => vec![],
         Err(e) => {
             e.0.iter()
                 .map(|e| (e.rule.code().to_string(), e.path.to_string()))

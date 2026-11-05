@@ -29,27 +29,34 @@ impl ModelManager {
         Self::default()
     }
 
-    /// Builds from the value of the `models` block, already validated by the Loader. The content
-    /// of every model is checked, and everything that can be known without the network: a
-    /// missing environment variable behind `{ env: VAR }` is an error here, all of them reported
-    /// together. `ambient` credentials are NOT resolved (that happens at the first call).
+    /// Builds from the value of the `models` block, already validated by the Loader: what the yml
+    /// says about every model, checked. No environment variable is read here, and no model can
+    /// be called yet: `connect` does both, after the checks of the build.
     pub fn build(list: Option<Value>) -> Result<Self, Errors> {
         let mut errs = Errs::default();
         let mut manager = ModelManager::new();
         for o in Obj::items(&Path::root().key(key::MODELS), list, &mut errs) {
-            let at = o.at().clone();
             if let Some(model) = spec::read(o, &mut errs) {
-                match build_llm(&model, &at) {
-                    Ok(llm) => {
-                        manager.insert(model.id().to_string(), llm);
-                        manager.order.push(model.id().to_string());
-                        manager.specs.insert(model.id().to_string(), model);
-                    }
-                    Err(e) => errs.0.push(e),
-                }
+                manager.order.push(model.id().to_string());
+                manager.specs.insert(model.id().to_string(), model);
             }
         }
         errs.finish(manager)
+    }
+
+    /// Makes every model of the yml ready to be called: a missing environment variable behind
+    /// `{ env: VAR }` is an error here, all of them reported together. `ambient` credentials are
+    /// NOT resolved (that happens at the first call).
+    pub fn connect(&mut self) -> Result<(), Errors> {
+        let mut errs = Errs::default();
+        let base = Path::root().key(key::MODELS);
+        for (i, id) in self.order.iter().enumerate() {
+            match build_llm(&self.specs[id], &base.idx(i)) {
+                Ok(llm) => _ = self.models.insert(id.clone(), Arc::from(llm)),
+                Err(e) => errs.0.push(e),
+            }
+        }
+        errs.finish(())
     }
 
     /// Registers a model. Ids are unique (the Loader rejects duplicates): a second one with

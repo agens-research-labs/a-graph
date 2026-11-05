@@ -53,6 +53,10 @@ A variable that is not set is an error (`env_missing`). When it is reported depe
   before anything runs;
 - the key of a vector database, and the `env` and `headers` of an MCP server: when they are used, during the run.
 
+When the file is checked, the variables are read only after the [destinations](#network): a file that names a host
+it may not reach is reported with `network_not_allowed` alone, and its variables are not read. The headers of the
+log are the exception: the log is built first, so they are read before the other destinations are checked.
+
 ## Network
 
 The graph may reach only the hosts listed in `passport.adl.permissions.network.allowed_hosts`. Without

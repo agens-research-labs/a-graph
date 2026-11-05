@@ -58,9 +58,16 @@ pub struct Program {
 
 /// Builds the program from the text of a yml. The errors of the Loader come back alone: nothing
 /// is built from a yml that is not coherent. After that the first block is read in order (the
-/// logger, the first consumer); every manager then reports ALL its errors, and they are sent to
-/// the log as well as returned. A log url whose host is not allowed comes back alone, before the
-/// logger is built: the logger sends from its build on, so that url is never called.
+/// logger, the first consumer); a log url whose host is not allowed comes back alone, before the
+/// logger is built: the logger sends from its build on, so that url is never called. Then, each
+/// step only when the one before found nothing, and with ALL the errors of the step sent to the
+/// log as well as returned:
+///
+/// 1. every manager reads its block, and no environment variable is read;
+/// 2. every destination is checked against the passport;
+/// 3. the environment variables are read: the models are made ready to be called, and so is the
+///    tracer;
+/// 4. the graph is checked against what the models and the other managers can do.
 pub fn build(src: &str) -> Result<Program, Errors> {
     let mut doc: Document = loader::load(src)?;
 
@@ -76,10 +83,10 @@ pub fn build(src: &str) -> Result<Program, Errors> {
         return Err(Errors(refused));
     }
     let verbose = Verbose::build(doc.take(key::VERBOSE), Redaction::from_passport(passport.clone())?)?;
-    let tracer = Tracer::build(trace, passport.clone(), Redaction::from_passport(passport.clone())?)?;
-    let logger = Logger::build(passport, observability)?;
+    let trace_redaction = Redaction::from_passport(passport.clone())?;
+    let logger = Logger::build(passport.clone(), observability)?;
 
-    // the rest, each block to its manager
+    // 1. the rest, each block to its manager
     let models = ModelManager::build(doc.take(key::MODELS));
     let embeddings = EmbeddingManager::build(doc.take(key::EMBEDDINGS));
     let utilities = UtilityManager::build(doc.take(key::UTILITIES));
@@ -115,12 +122,7 @@ pub fn build(src: &str) -> Result<Program, Errors> {
         return Err(report(&logger, errors));
     };
 
-    let mut broken = graph::interpret(&nodes, &edges, &models, &resources, &external);
-    broken.extend(external.memory.check_prompts(&resources.prompts));
-    if !broken.is_empty() {
-        return Err(report(&logger, broken));
-    }
-
+    // 2. where the graph goes
     destinations.extend(models.destinations());
     destinations.extend(embeddings.destinations());
     destinations.extend(utilities.destinations());
@@ -130,6 +132,24 @@ pub fn build(src: &str) -> Result<Program, Errors> {
     let refused = network::check(&allowed, destinations);
     if !refused.is_empty() {
         return Err(report(&logger, refused));
+    }
+
+    // 3. the environment variables
+    let mut models = models;
+    let mut missing = models.connect().err().map(|e| e.0).unwrap_or_default();
+    missing.extend(utilities.missing_env());
+    missing.extend(resources.missing_env());
+    let tracer = keep(Tracer::build(trace, passport, trace_redaction), &mut missing);
+    if !missing.is_empty() {
+        return Err(report(&logger, missing));
+    }
+    let tracer = tracer.flatten();
+
+    // 4. the graph against the managers
+    let mut broken = graph::interpret(&nodes, &edges, &models, &resources, &external);
+    broken.extend(external.memory.check_prompts(&resources.prompts));
+    if !broken.is_empty() {
+        return Err(report(&logger, broken));
     }
 
     let warnings: Vec<Warning> = resources.warnings().into_iter().cloned().collect();

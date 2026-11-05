@@ -19,7 +19,8 @@ fn manager_serves() {
         std::env::set_var("OPENAI_API_KEY", "o");
     }
     let mut doc = load(&own_yml(here())).unwrap();
-    let manager = ModelManager::build(doc.take(key::MODELS)).unwrap();
+    let mut manager = ModelManager::build(doc.take(key::MODELS)).unwrap();
+    manager.connect().unwrap();
     assert_eq!(manager.len(), 6);
     for id in ["fast", "strong", "smart", "claude_gcp", "claude_azure", "local"] {
         assert!(manager.get(id).is_some(), "{id}");

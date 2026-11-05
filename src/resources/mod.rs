@@ -19,7 +19,7 @@ pub use tools::*;
 
 use serde_norway::Value;
 
-use crate::error::{Errors, Warning};
+use crate::error::{Error, Errors, Warning};
 use crate::network::Destination;
 use crate::schema::key;
 
@@ -43,6 +43,11 @@ impl Resources {
             self.media.destinations(),
         ]
         .concat()
+    }
+
+    /// Every environment variable the resources need now and that is not set.
+    pub fn missing_env(&self) -> Vec<Error> {
+        self.tools.missing_env()
     }
 
     /// What the managers found worth saying while they built.

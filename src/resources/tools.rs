@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use serde_norway::Value;
 
 use super::common::{Errs, Obj, RawTransport, list_path};
-use crate::error::{Errors, Rule};
+use crate::error::{Error, Errors, Rule};
 use crate::network::Destination;
 use crate::schema::key;
 
@@ -75,15 +75,6 @@ impl ToolsManager {
                     errs.require(&at, key::URL, url.is_some(), "transport http needs `url`");
                     errs.forbid(&at, key::COMMAND, command.is_some(), "`command` is for transport stdio");
                     errs.forbid(&at, key::ARGS, !args.is_empty(), "`args` is for transport stdio");
-                    for (name, var) in &headers {
-                        if std::env::var(var).is_err() {
-                            errs.add(
-                                &at.key(key::HEADERS).key(name),
-                                Rule::EnvMissing,
-                                format!("environment variable `{var}` is not set"),
-                            );
-                        }
-                    }
                     url.map(|url| ToolTransport::Http { url, headers })
                 }
                 None => None,
@@ -164,6 +155,27 @@ impl ToolsManager {
                 ToolTransport::Stdio { .. } => None,
             })
             .collect()
+    }
+
+    /// A header whose environment variable is not set, for every http tool: read after the
+    /// checks of the build, the values are read again at each call.
+    pub fn missing_env(&self) -> Vec<Error> {
+        let base = list_path(key::TOOLS);
+        let mut errs = Errs::default();
+        for (i, t) in self.tools.iter().enumerate() {
+            if let ToolTransport::Http { headers, .. } = &t.transport {
+                for (name, var) in headers {
+                    if std::env::var(var).is_err() {
+                        errs.add(
+                            &base.idx(i).key(key::HEADERS).key(name),
+                            Rule::EnvMissing,
+                            format!("environment variable `{var}` is not set"),
+                        );
+                    }
+                }
+            }
+        }
+        errs.0
     }
 
     pub fn get(&self, id: &str) -> Option<&Tool> {

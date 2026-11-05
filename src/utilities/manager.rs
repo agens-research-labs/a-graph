@@ -6,7 +6,7 @@ use serde::Deserialize;
 use serde_norway::Value;
 
 use crate::build::{Errs, Obj};
-use crate::error::{Errors, Path, Rule};
+use crate::error::{Error, Errors, Path, Rule};
 use crate::network::Destination;
 use crate::schema::key;
 
@@ -74,15 +74,6 @@ impl UtilityManager {
                     errs.require(&at, key::URL, url.is_some(), "transport http needs `url`");
                     errs.forbid(&at, key::COMMAND, command.is_some(), "`command` is for transport stdio");
                     errs.forbid(&at, key::ARGS, !args.is_empty(), "`args` is for transport stdio");
-                    for (name, var) in &headers {
-                        if std::env::var(var).is_err() {
-                            errs.add(
-                                &at.key(key::HEADERS).key(name),
-                                Rule::EnvMissing,
-                                format!("environment variable `{var}` is not set"),
-                            );
-                        }
-                    }
                     url.map(|url| UtilityTransport::Http { url, headers })
                 }
                 None => None,
@@ -108,6 +99,27 @@ impl UtilityManager {
                 UtilityTransport::Stdio { .. } => None,
             })
             .collect()
+    }
+
+    /// A header whose environment variable is not set, for every http utility: read after the
+    /// checks of the build, the values are read again at each call.
+    pub fn missing_env(&self) -> Vec<Error> {
+        let base = Path::root().key(key::UTILITIES);
+        let mut errs = Errs::default();
+        for (i, u) in self.utilities.iter().enumerate() {
+            if let UtilityTransport::Http { headers, .. } = &u.transport {
+                for (name, var) in headers {
+                    if std::env::var(var).is_err() {
+                        errs.add(
+                            &base.idx(i).key(key::HEADERS).key(name),
+                            Rule::EnvMissing,
+                            format!("environment variable `{var}` is not set"),
+                        );
+                    }
+                }
+            }
+        }
+        errs.0
     }
 
     pub fn get(&self, id: &str) -> Option<&Utility> {
