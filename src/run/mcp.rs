@@ -3,8 +3,10 @@
 
 use std::collections::HashSet;
 use std::sync::Arc;
+use std::time::Duration;
 
 use super::Program;
+use super::batch::BRANCHES_WAIT;
 use crate::error::{Error, Path, Phase, Rule};
 use crate::gate::McpPool;
 use crate::logging::{Event, LogLevel};
@@ -78,11 +80,23 @@ impl Program {
         Ok(())
     }
 
-    /// Closes the servers of the run that ends.
+    /// Closes the servers of the run that ends. The branches a stopped or failed run aborted hold the pool while they
+    /// call a tool, and let go of it a moment later: they are waited for, `BRANCHES_WAIT` at most. A pool still held
+    /// after that is not closed here: the servers are stopped when the last branch drops it.
     pub(super) async fn close_mcp(&self) {
-        let pool = self.mcp.lock().unwrap().take();
-        if let Some(pool) = pool.and_then(|p| Arc::try_unwrap(p).ok()) {
-            pool.close().await;
+        let Some(mut pool) = self.mcp.lock().unwrap().take() else {
+            return;
+        };
+        let until = tokio::time::Instant::now() + BRANCHES_WAIT;
+        loop {
+            match Arc::try_unwrap(pool) {
+                Ok(p) => return p.close().await,
+                Err(still) if tokio::time::Instant::now() < until => {
+                    pool = still;
+                    tokio::time::sleep(Duration::from_millis(10)).await;
+                }
+                Err(_) => return,
+            }
         }
     }
 

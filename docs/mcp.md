@@ -43,7 +43,9 @@ without a handshake) and falls back to the older ones (`initialize`).
   the run before the first node.
 - Two tools with the same name on one node (from `tools`, from different servers, or a reserved name of the
   [skills](skills.md)) stop the run before the first node (`duplicate_id`): the model could not tell them apart.
-- The connections stay open until the run ends, and are closed after the last node or after an error.
+- The connections stay open until the run ends, and are closed after the last node or after an error. A branch of a
+  `parallel` or `concurrent` group stopped in the middle of a call lets go of the servers a moment later: the close
+  waits for it, one second at most. A server still busy is let go after two seconds.
 
 ## Calls
 

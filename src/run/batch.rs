@@ -18,8 +18,8 @@ use crate::models::{BatchEvent, BatchReturn, Llm};
 /// (`CLOSE_SECONDS`), with time left for the log, which is closed after the cancels.
 const CANCEL_SECONDS: u64 = 3;
 
-/// How long the end of the program waits for the branches a run aborted to let go of it.
-const BRANCHES_WAIT: Duration = Duration::from_secs(1);
+/// How long the end of the program, and the close of its MCP servers, wait for the branches a run aborted to let go.
+pub(super) const BRANCHES_WAIT: Duration = Duration::from_secs(1);
 
 /// The cancels sent and not yet answered.
 pub(super) type Cancels = Mutex<Vec<JoinHandle<()>>>;
