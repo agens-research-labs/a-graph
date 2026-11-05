@@ -36,6 +36,9 @@ mod refused_log_url;
 #[path = "resource_hosts/resource_hosts.rs"]
 mod resource_hosts;
 
+#[path = "trace_before_env/trace_before_env.rs"]
+mod trace_before_env;
+
 #[path = "url_no_host/url_no_host.rs"]
 mod url_no_host;
 
