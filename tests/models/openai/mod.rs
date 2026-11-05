@@ -180,6 +180,9 @@ mod error_messages;
 #[path = "image_out/image_out.rs"]
 mod image_out;
 
+#[path = "image_url_refused/image_url_refused.rs"]
+mod image_url_refused;
+
 #[path = "speech_out/speech_out.rs"]
 mod speech_out;
 
