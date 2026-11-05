@@ -138,6 +138,9 @@ mod session_swept;
 #[path = "sessions_apart/sessions_apart.rs"]
 mod sessions_apart;
 
+#[path = "shutdown_bounded/shutdown_bounded.rs"]
+mod shutdown_bounded;
+
 #[path = "shutdown_stops/shutdown_stops.rs"]
 mod shutdown_stops;
 
