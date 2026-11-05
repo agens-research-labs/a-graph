@@ -150,20 +150,12 @@ impl OpenAi {
             .pointer("/data/0")
             .ok_or_else(|| self.who.invalid("no image in `data`"))?;
 
-        // gpt-image models answer base64; the dall-e ones an address, downloaded here
-        let data = match (
-            item.get("b64_json").and_then(Value::as_str),
-            item.get("url").and_then(Value::as_str),
-        ) {
-            (Some(b), _) => b.to_string(),
-            (None, Some(url)) => {
-                let bytes =
-                    crate::models::http::send_bytes(&self.who, self.client.get(url), |s, b| self.api_error(s, b))
-                        .await?;
-                STANDARD.encode(bytes)
-            }
-            (None, None) => return Err(self.who.invalid("the image has neither `b64_json` nor `url`")),
-        };
+        // gpt-image models always answer base64; an address is never downloaded: its host is the server's choice
+        let data = item
+            .get("b64_json")
+            .and_then(Value::as_str)
+            .ok_or_else(|| self.who.invalid("the image has no `b64_json`"))?
+            .to_string();
         let produced = v.get("output_format").and_then(Value::as_str).map(str::to_string);
         let asked = match &media.kind {
             MediaKind::Img(f) => image_format(f),
