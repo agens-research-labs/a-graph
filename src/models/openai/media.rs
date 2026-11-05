@@ -64,6 +64,11 @@ impl OpenAi {
                 if g.voice.is_some() {
                     problems.push("`voice` is for audio".to_string());
                 }
+                if matches!(&media.provider, Some(MediaProvider::Openai(o)) if o.style.is_some()) {
+                    problems.push(
+                        "`style` is not accepted by the GPT image models: describe the style in the prompt".to_string(),
+                    );
+                }
                 Kind::Image
             }
             MediaKind::Audio(_) => {
@@ -133,9 +138,6 @@ impl OpenAi {
             }
             if let Some(c) = o.output_compression {
                 b.insert("output_compression".into(), json!(c));
-            }
-            if let Some(s) = o.style {
-                b.insert("style".into(), json!(format!("{s:?}").to_lowercase()));
             }
         }
         Value::Object(b)

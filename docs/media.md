@@ -96,7 +96,8 @@ that writes the media:
 
 - `openai` (also `azure_foundry` with publisher `openai`): `moderation` (`low`, `auto`), `output_compression` (0 to
   100, for an image of type jpeg or webp), `style` (`vivid`, `natural`; not together with the other two,
-  `media_provider_conflict`);
+  `media_provider_conflict`). No model accepts `style` at present: the GPT image models take the style from the
+  prompt, and a node that asks for it makes the file invalid when it is checked (`not_supported`);
 - `gemini` (also `vertex_ai` with publisher `google`): `image_size` (`512`, `1K`, `2K`, `4K`) and `aspect_ratio`.
 
 One media is one image or one audio: a model produces one media per call.
