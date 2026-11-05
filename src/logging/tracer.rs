@@ -59,7 +59,7 @@ impl Tracer {
             match std::env::var(&var) {
                 Ok(value) => match (
                     reqwest::header::HeaderName::from_bytes(name.as_bytes()),
-                    reqwest::header::HeaderValue::from_str(&value),
+                    crate::net::secret_value(&value),
                 ) {
                     (Ok(n), Ok(v)) => {
                         map.insert(n, v);

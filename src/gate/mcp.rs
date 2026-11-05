@@ -213,7 +213,7 @@ fn header_map(headers: &BTreeMap<String, String>) -> Result<HashMap<http::Header
         let name = http::HeaderName::try_from(name.as_str()).map_err(|e| format!("header `{name}`: {e}"))?;
         out.insert(
             name,
-            http::HeaderValue::try_from(value).map_err(|e| format!("a header value is not valid: {e}"))?,
+            crate::net::secret_value(&value).map_err(|e| format!("a header value is not valid: {e}"))?,
         );
     }
     Ok(out)

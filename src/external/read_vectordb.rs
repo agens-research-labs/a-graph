@@ -48,7 +48,7 @@ impl Vectordb {
                         "with_payload": [text_field],
                     }));
                 if let Some(key) = key {
-                    req = req.header("api-key", key);
+                    req = with_secret(req, "api-key", key);
                 }
                 let answer = self.send(req, timeout).await?;
                 let points = answer["result"]["points"]
@@ -80,7 +80,7 @@ impl Vectordb {
                     url.trim_end_matches('/')
                 );
                 let with_key = |req: reqwest::RequestBuilder| match &key {
-                    Some(key) => req.header("x-chroma-token", key),
+                    Some(key) => with_secret(req, "x-chroma-token", key.clone()),
                     None => req,
                 };
                 // the query is made on the id of the collection, which the name gives
@@ -126,5 +126,14 @@ impl Vectordb {
             ));
         }
         serde_json::from_str(&body).map_err(|e| format!("vectordb `{}`: the answer is not JSON: {e}", self.id))
+    }
+}
+
+/// The request with a header that carries a secret, marked sensitive. A value that is not valid
+/// is reported by `send`, as before.
+fn with_secret(req: reqwest::RequestBuilder, name: &'static str, value: String) -> reqwest::RequestBuilder {
+    match crate::net::secret_value(&value) {
+        Ok(v) => req.header(name, v),
+        Err(_) => req.header(name, value),
     }
 }

@@ -74,7 +74,11 @@ pub(crate) async fn http(
     let mut request = client.post(url).json(arguments);
     for (name, var) in headers {
         let value = std::env::var(var).map_err(|_| format!("environment variable `{var}` is not set"))?;
-        request = request.header(name, value);
+        // a value that is not valid is reported by `send`, as before
+        request = match crate::net::secret_value(&value) {
+            Ok(v) => request.header(name, v),
+            Err(_) => request.header(name, value),
+        };
     }
     let response = match request.send().await {
         Ok(r) => r,

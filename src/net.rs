@@ -6,6 +6,14 @@ pub(crate) fn client() -> reqwest::ClientBuilder {
     reqwest::Client::builder().redirect(reqwest::redirect::Policy::none())
 }
 
+/// The value of a header that carries a secret, marked sensitive: `Debug` hides it, and an HTTP/2
+/// connection does not index it. `Err` when the text is not a valid header value.
+pub(crate) fn secret_value(value: &str) -> Result<reqwest::header::HeaderValue, reqwest::header::InvalidHeaderValue> {
+    let mut v = reqwest::header::HeaderValue::from_str(value)?;
+    v.set_sensitive(true);
+    Ok(v)
+}
+
 /// Lowercase host of `scheme://[user@]host[:port][/...]`.
 pub(crate) fn host_of(url: &str) -> Option<String> {
     host_port_of(url).map(|(host, _)| host)
@@ -82,5 +90,19 @@ pub(crate) fn entry_text(host: &str, port: Option<u16>) -> String {
     match port {
         Some(p) => format!("{host}:{p}"),
         None => host.to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    /// A secret header is marked sensitive and keeps its value; a text that is not a header value
+    /// is refused.
+    #[test]
+    fn secret_value_sensitive() {
+        let v = super::secret_value("Bearer t").unwrap();
+        assert!(v.is_sensitive());
+        assert_eq!(v.to_str().unwrap(), "Bearer t");
+        assert_eq!(format!("{v:?}"), "Sensitive");
+        assert!(super::secret_value("a\nb").is_err());
     }
 }

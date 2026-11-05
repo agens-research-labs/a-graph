@@ -65,7 +65,7 @@ impl Logger {
         for (name, value) in headers {
             let n = reqwest::header::HeaderName::from_bytes(name.as_bytes())
                 .map_err(|_| fail("headers", Rule::BadValue, format!("invalid header name `{name}`")))?;
-            let v = reqwest::header::HeaderValue::from_str(&value)
+            let v = crate::net::secret_value(&value)
                 .map_err(|_| fail("headers", Rule::BadValue, format!("invalid value for header `{name}`")))?;
             map.insert(n, v);
         }
