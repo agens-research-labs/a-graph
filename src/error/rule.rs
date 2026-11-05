@@ -52,6 +52,7 @@ rules! {
     BlackboardHeader => "blackboard_header",
     BatchModels => "batch_models",
     BatchNested => "batch_nested",
+    ReactNested => "react_nested",
     GroupOutRequired => "group_out_required",
     ValidationNoNext => "validation_no_next",
     ValidationInGroup => "validation_in_group",

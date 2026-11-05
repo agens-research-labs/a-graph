@@ -72,7 +72,7 @@
           "properties": {
             "react": {
               "$ref": "#/$defs/react",
-              "description": "A controller that decides at run time which worker to call. A `react` inside a `react` cannot run yet."
+              "description": "A controller that decides at run time which worker to call. A `react` cannot be a worker of another `react`, nor stand in a group among its workers."
             }
           },
           "required": [
@@ -271,7 +271,7 @@
           "properties": {
             "react": {
               "$ref": "#/$defs/react",
-              "description": "A controller that decides at run time which worker to call. A `react` inside a `react` cannot run yet."
+              "description": "A controller that decides at run time which worker to call. A `react` cannot be a worker of another `react`, nor stand in a group among its workers."
             }
           },
           "required": [
@@ -354,7 +354,7 @@
           "properties": {
             "react": {
               "$ref": "#/$defs/react",
-              "description": "A controller that decides at run time which worker to call. A `react` inside a `react` cannot run yet."
+              "description": "A controller that decides at run time which worker to call. A `react` cannot be a worker of another `react`, nor stand in a group among its workers."
             }
           },
           "required": [

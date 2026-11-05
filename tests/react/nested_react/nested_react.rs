@@ -1,19 +1,24 @@
-use crate::common::run_react::*;
+use crate::common::run::*;
 
 fn here() -> &'static std::path::Path {
     std::path::Path::new(file!()).parent().unwrap()
 }
 
-/// A react inside a react is refused before any node runs.
-#[tokio::test]
-async fn nested_react() {
-    let (p, seen) = program(
-        here(),
-        "nested_react",
-        script(|_, _| json!({ "done": true, "answer": "x" })),
-    )
-    .await;
-    let e = p.run("hi").await.unwrap_err();
-    assert_eq!(e.rule.code(), "not_supported");
-    assert!(seen.lock().unwrap().is_empty(), "no node ran");
+/// A react among the workers of a react, or in a group among them, is refused when the file is
+/// checked, before any run.
+#[test]
+fn nested_react() {
+    assert_eq!(
+        errors(here(), "nested_react"),
+        [
+            (
+                "react_nested".to_string(),
+                "graph.edges[1].react.components[0].react".to_string()
+            ),
+            (
+                "react_nested".to_string(),
+                "graph.edges[2].react.components[0].linear[1].fan[0].react".to_string()
+            ),
+        ]
+    );
 }

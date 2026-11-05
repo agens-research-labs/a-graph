@@ -117,7 +117,7 @@ fn steps(list: &Value, at: &Path, nodes: &Nodes, c: &mut Collector) {
 }
 
 /// The groups inside the `components`; the controller has no tools, MCP servers, skills, blackboard
-/// or output schema of its own; the workers have different ids.
+/// or output schema of its own; the workers have different ids and no `react` among them.
 fn react(v: &Value, at: &Path, nodes: &Nodes, c: &mut Collector) {
     if let Some(controller) = v.get(key::CONTROLLER).and_then(Value::as_str) {
         nodes.controller_rules(controller, c);
@@ -125,6 +125,7 @@ fn react(v: &Value, at: &Path, nodes: &Nodes, c: &mut Collector) {
     if let Some(components) = v.get(key::COMPONENTS) {
         let here = at.key(key::COMPONENTS);
         steps(components, &here, nodes, c);
+        nested_react(components, &here, c);
         let mut seen: Vec<String> = Vec::new();
         for (i, item) in components.as_sequence().into_iter().flatten().enumerate() {
             let Some(id) = worker_id(item) else { continue };
@@ -136,6 +137,28 @@ fn react(v: &Value, at: &Path, nodes: &Nodes, c: &mut Collector) {
                 ));
             }
             seen.push(id);
+        }
+    }
+}
+
+/// A `react` among the workers of a `react`, or in a group among them, cannot be run. The inner
+/// `react` is not walked here: its own check finds what is nested deeper.
+fn nested_react(list: &Value, at: &Path, c: &mut Collector) {
+    let Some(items) = list.as_sequence() else { return };
+    for (i, item) in items.iter().enumerate() {
+        let Some((k, v)) = single(item) else { continue };
+        let here = at.idx(i).key(k);
+        if k == key::REACT {
+            c.errs.push(error(
+                &here,
+                Rule::ReactNested,
+                "a `react` cannot be a worker of another `react`, nor stand in a group among its workers",
+            ));
+        } else if GROUPS.contains(&k) {
+            let Some(entries) = v.as_sequence() else { continue };
+            if let Some(fan) = entries.iter().find_map(|e| single(e).filter(|(k, _)| *k == key::FAN)) {
+                nested_react(fan.1, &fan_path(&here, entries), c);
+            }
         }
     }
 }

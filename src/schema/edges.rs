@@ -52,7 +52,7 @@ const BATCH_GROUP: Field = Field::req(BATCH, GROUP).doc(
     "A group whose branches are sent to the provider as one batch job; with `limit`, at most that many requests in each job. The branches are plain nodes, all with the same model.",
 );
 const REACT_ENTRY: Field = Field::req(REACT, REACT_BODY)
-    .doc("A controller that decides at run time which worker to call. A `react` inside a `react` cannot run yet.");
+    .doc("A controller that decides at run time which worker to call. A `react` cannot be a worker of another `react`, nor stand in a group among its workers.");
 
 /// What can be a branch of a `fan`.
 static BRANCH_SHAPE: Shape = Shape::Either(&[

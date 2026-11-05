@@ -8,8 +8,7 @@
 //! to the provider as one batch job (or several, of `limit` requests each). A `react` makes its
 //! controller answer a routing output at every turn until it says it is done. A validation node
 //! lets the message it examined pass unchanged when the judge approves; when it refuses, either the
-//! run ends there (`stop`) or the problem goes to the next node (`node`). Not yet: a `react`
-//! inside a `react`.
+//! run ends there (`stop`) or the problem goes to the next node (`node`).
 
 use std::sync::Arc;
 
@@ -115,7 +114,6 @@ impl Program {
         user_message: &str,
         stop: impl Future<Output = Error>,
     ) -> Result<RunOutput, Error> {
-        refuse_what_is_not_run_yet(self.edges.steps())?;
         self.run_started();
         let started = std::time::Instant::now();
         // the MCP servers are connected before the first node and closed after the last, or after the error
@@ -598,10 +596,11 @@ impl Program {
                         }
                     }
                     Step::Group(g) => self.clone().run_group(g, handed, user.clone()).await?,
+                    // the loader refuses a `react` among the workers (`react_nested`)
                     Step::React(_) => {
                         return Err(error(
-                            Rule::NotSupported,
-                            "a `react` inside a `react` cannot be run yet".into(),
+                            Rule::ReactNested,
+                            "a `react` cannot be a worker of another `react`".into(),
                         ));
                     }
                 };
@@ -654,34 +653,4 @@ fn pack(branches: &[Branch]) -> Result<Carry, Error> {
         (true, true) => None,
     };
     Ok(Carry { message, media })
-}
-
-/// A `batch` takes plain nodes only and a `react` cannot hold another `react`: a graph that breaks
-/// either is refused before any node runs.
-fn refuse_what_is_not_run_yet(steps: &[Step]) -> Result<(), Error> {
-    refuse(steps, false)
-}
-
-fn refuse(steps: &[Step], inside_react: bool) -> Result<(), Error> {
-    for step in steps {
-        match step {
-            Step::Node(_) => {}
-            Step::React(r) => {
-                if inside_react {
-                    return Err(fail(Rule::NotSupported, "a `react` inside a `react` cannot be run yet"));
-                }
-                refuse(&r.workers, true)?;
-            }
-            Step::Group(g) => {
-                if g.pattern == Pattern::Batch && g.fan.iter().any(|s| !matches!(s, Step::Node(_))) {
-                    return Err(fail(
-                        Rule::NotSupported,
-                        "the branches of a `batch` group are plain nodes",
-                    ));
-                }
-                refuse(&g.fan, inside_react)?;
-            }
-        }
-    }
-    Ok(())
 }
