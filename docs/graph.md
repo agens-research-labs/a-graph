@@ -763,7 +763,7 @@ A map with exactly one of these keys.
 | `parallel` | a `group` (below) | A group whose branches run all together, each as a task of its own; with `limit`, at most that many at a time. The first branch that fails ends the run. |
 | `concurrent` | a `group` (below) | A group whose branches run all together, at most `limit` at a time; `limit` is mandatory. The first branch that fails ends the run. |
 | `batch` | a `group` (below) | A group whose branches are sent to the provider as one batch job; with `limit`, at most that many requests in each job. The branches are plain nodes, all with the same model. |
-| `react` | a `react` (below) | A controller that decides at run time which worker to call. A `react` inside a `react` cannot run yet. |
+| `react` | a `react` (below) | A controller that decides at run time which worker to call. A `react` cannot be a worker of another `react`, nor stand in a group among its workers. |
 
 ## `group`
 
@@ -801,7 +801,7 @@ A map with exactly one of these keys.
 | `parallel` | a `group` (below) | A group whose branches run all together, each as a task of its own; with `limit`, at most that many at a time. The first branch that fails ends the run. |
 | `concurrent` | a `group` (below) | A group whose branches run all together, at most `limit` at a time; `limit` is mandatory. The first branch that fails ends the run. |
 | `batch` | a `group` (below) | A group whose branches are sent to the provider as one batch job; with `limit`, at most that many requests in each job. The branches are plain nodes, all with the same model. |
-| `react` | a `react` (below) | A controller that decides at run time which worker to call. A `react` inside a `react` cannot run yet. |
+| `react` | a `react` (below) | A controller that decides at run time which worker to call. A `react` cannot be a worker of another `react`, nor stand in a group among its workers. |
 
 ## `worker`
 
@@ -816,4 +816,4 @@ A map with exactly one of these keys.
 | `parallel` | a `group` (below) | A group whose branches run all together, each as a task of its own; with `limit`, at most that many at a time. The first branch that fails ends the run. |
 | `concurrent` | a `group` (below) | A group whose branches run all together, at most `limit` at a time; `limit` is mandatory. The first branch that fails ends the run. |
 | `batch` | a `group` (below) | A group whose branches are sent to the provider as one batch job; with `limit`, at most that many requests in each job. The branches are plain nodes, all with the same model. |
-| `react` | a `react` (below) | A controller that decides at run time which worker to call. A `react` inside a `react` cannot run yet. |
+| `react` | a `react` (below) | A controller that decides at run time which worker to call. A `react` cannot be a worker of another `react`, nor stand in a group among its workers. |

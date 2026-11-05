@@ -110,7 +110,8 @@ controller is the only link between the workers and the rest of the graph.
 - `max_iterations` is the most calls to workers. A controller that asks for one more fails the run (`react_limit`).
 - The controller has no tools, MCP servers, skills, blackboard or output `schema` of its own: its output is defined
   by the `react`. Give those to a worker.
-- A `react` inside a `react` cannot run yet.
+- A `react` cannot be a worker of another `react`, nor stand in a group among its workers: the file is refused
+  (`react_nested`).
 
 ## Roles
 

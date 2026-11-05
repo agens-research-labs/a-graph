@@ -1,4 +1,4 @@
-# A graph on a mock model ({{port:model}}, started by the test) that answers with the text it was asked, so the answer of a node shows what it received. A react whose worker is another react: not allowed yet.
+# A react graph that is only built, never run. A react whose worker is another react, then a react with a react in a group among its workers: both are refused.
 graph_spec: "1.0"
 passport:
   adl:
@@ -29,6 +29,8 @@ resources:
       content: { system: "", user: "X({{agent_message}})" }
     - id: p_z
       content: { system: "", user: "Z({{agent_message}})" }
+    - id: p_y
+      content: { system: "", user: "Y({{agent_message}})" }
 graph:
   nodes:
     - id: s
@@ -61,6 +63,36 @@ graph:
       message:
         input: { agent_message: true }
         output: { assistant_message: true, node: true }
+    - id: c2
+      model: { id: m }
+      resources: { prompt: p_y }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: gi
+      model: { id: m }
+      resources: { prompt: p_y }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: w2
+      model: { id: m }
+      resources: { prompt: p_y }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: go
+      model: { id: m }
+      resources: { prompt: p_y }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: x2
+      model: { id: m }
+      resources: { prompt: p_y }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
   edges:
     - start: s
     - react:
@@ -72,4 +104,17 @@ graph:
               max_iterations: 2
               components:
                 - worker: x
+    - react:
+        controller: c2
+        max_iterations: 3
+        components:
+          - linear:
+              - in: gi
+              - fan:
+                  - react:
+                      controller: w2
+                      max_iterations: 2
+                      components:
+                        - worker: x2
+              - out: go
     - end: z
