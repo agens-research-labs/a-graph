@@ -79,8 +79,9 @@ all the steps are reported together.
 - The names of the tests are short.
 - Code shared by the tests lives only in `tests/common`, and the MCP server used by the tests in `tests/mcp_server`, a
   project of its own.
-- The mock servers of the tests listen on fixed ports, written in each test's yml, so that no port is shared between
-  tests.
+- The mock servers of the tests listen on a free port, chosen when the test starts: the yml names it
+  `{{port:<name>}}` and the test fills it in, so that no port is shared between tests, nor between two `cargo test`
+  at once.
 - A test must run from a clean checkout, for anyone: no file outside the project, no state left by another test.
 
 ## The schema of the graph file
