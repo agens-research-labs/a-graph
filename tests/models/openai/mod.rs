@@ -1,6 +1,6 @@
 use crate::common::http::{Req, Resp, serve};
 use a_graph::models::*;
-use a_graph::resources::{GeminiMedia, Generate, MediaKind, MediaProvider, Moderation, OpenaiMedia, Size};
+use a_graph::resources::{GeminiMedia, Generate, ImageStyle, MediaKind, MediaProvider, Moderation, OpenaiMedia, Size};
 use a_graph::{Path, Rule};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
