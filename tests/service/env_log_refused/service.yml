@@ -1,0 +1,6 @@
+# The configuration of the service for this test ({{port:service}}); the sessions keep their files in target/test-service/env_log_refused.
+port: {{port:service}}
+data_dir: target/test-service/env_log_refused
+allowed_hosts: [127.0.0.1, localhost]
+allowed_env:
+  A_GRAPH_ENV_LISTED: [127.0.0.1]

@@ -18,6 +18,21 @@ mod config_storage;
 #[path = "config_rules/config_rules.rs"]
 mod config_rules;
 
+#[path = "env_allowed/env_allowed.rs"]
+mod env_allowed;
+
+#[path = "env_config/env_config.rs"]
+mod env_config;
+
+#[path = "env_log_refused/env_log_refused.rs"]
+mod env_log_refused;
+
+#[path = "env_not_listed/env_not_listed.rs"]
+mod env_not_listed;
+
+#[path = "env_wrong_host/env_wrong_host.rs"]
+mod env_wrong_host;
+
 #[path = "health/health.rs"]
 mod health;
 

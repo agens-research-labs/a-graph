@@ -1,0 +1,6 @@
+# The configuration of the service for this test ({{port:service}}); the sessions keep their files in target/test-service/env_allowed.
+port: {{port:service}}
+data_dir: target/test-service/env_allowed
+allowed_hosts: [127.0.0.1, localhost]
+allowed_env:
+  A_GRAPH_ENV_ALLOWED: [127.0.0.1]
