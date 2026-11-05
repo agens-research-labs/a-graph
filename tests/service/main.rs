@@ -51,6 +51,9 @@ mod host_refused;
 #[path = "invalid_yml/invalid_yml.rs"]
 mod invalid_yml;
 
+#[path = "log_host_refused/log_host_refused.rs"]
+mod log_host_refused;
+
 #[path = "no_aliases/no_aliases.rs"]
 mod no_aliases;
 
