@@ -2570,7 +2570,7 @@
                         "type": "integer"
                       },
                       "style": {
-                        "description": "The style of the image. Not together with the other two (`media_provider_conflict`).",
+                        "description": "The style of the image. No model accepts it at present: the GPT image models take the style from the prompt. Not together with the other two (`media_provider_conflict`).",
                         "enum": [
                           "vivid",
                           "natural"

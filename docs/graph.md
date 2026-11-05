@@ -384,7 +384,7 @@ A map with exactly one of these keys.
 |---|---|---|---|
 | `moderation` | no | `low` or `auto` | How strict the moderation of the image is. |
 | `output_compression` | no | whole number | From 0 to 100, for an image of type `jpeg` or `webp`. |
-| `style` | no | `vivid` or `natural` | The style of the image. Not together with the other two (`media_provider_conflict`). |
+| `style` | no | `vivid` or `natural` | The style of the image. No model accepts it at present: the GPT image models take the style from the prompt. Not together with the other two (`media_provider_conflict`). |
 
 ## `resources.media[].provider.gemini`
 
