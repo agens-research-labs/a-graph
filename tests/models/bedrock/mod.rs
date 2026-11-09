@@ -206,3 +206,6 @@ mod structured_refusal;
 
 #[path = "cut_tool_call/cut_tool_call.rs"]
 mod cut_tool_call;
+
+#[path = "refused_tool_call/refused_tool_call.rs"]
+mod refused_tool_call;
