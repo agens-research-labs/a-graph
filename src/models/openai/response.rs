@@ -36,6 +36,18 @@ impl OpenAi {
             ("cancelled", _) => StopReason::Other,
             (other, _) => return Err(self.who.invalid(format!("unexpected status `{other}`"))),
         };
+        // a refusal part may come after a tool call: it is looked for first
+        let refused = items
+            .iter()
+            .filter(|i| i.get("type").and_then(Value::as_str) == Some("message"))
+            .flat_map(|i| i.get("content").and_then(Value::as_array).into_iter().flatten())
+            .any(|p| {
+                p.get("type").and_then(Value::as_str) == Some("refusal")
+                    && !p.get("refusal").and_then(Value::as_str).unwrap_or_default().is_empty()
+            });
+        if refused {
+            stop_reason = StopReason::Refused;
+        }
 
         let (mut text, mut refusal) = (String::new(), String::new());
         let mut reasoning = Vec::new();
@@ -57,6 +69,8 @@ impl OpenAi {
                         }
                     }
                 }
+                // a refusal asks for nothing: its tool calls are never run
+                Some("function_call") if stop_reason == StopReason::Refused => {}
                 // a cut answer may hold a tool call cut in the middle
                 Some("function_call") if stop_reason.is_cut() => return Err(self.who.truncated()),
                 Some("function_call") => {
@@ -89,9 +103,6 @@ impl OpenAi {
             }
         }
 
-        if !refusal.is_empty() {
-            stop_reason = StopReason::Refused;
-        }
         if !tools_call.is_empty() {
             stop_reason = StopReason::ToolCall;
         }
