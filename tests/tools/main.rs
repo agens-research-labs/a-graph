@@ -71,3 +71,6 @@ mod two_calls_in_order;
 
 #[path = "unknown_tool/unknown_tool.rs"]
 mod unknown_tool;
+
+#[path = "cut_call_not_run/cut_call_not_run.rs"]
+mod cut_call_not_run;

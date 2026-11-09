@@ -11,12 +11,15 @@ async fn structured() {
     assert_eq!(r.structured, Some(json!({ "a": 1 })));
     assert!(r.message.is_none());
 
-    let (r, _) = one_call(
-        c.clone(),
-        Resp::ok(message(json!([{ "type": "text", "text": "{\"a\":" }]), "max_tokens")),
-    )
-    .await;
-    assert!(matches!(r, Err(ModelError::Truncated { .. })), "{r:?}");
+    // a cut answer has its JSON cut, at max_tokens or at the end of the context window
+    for stop in ["max_tokens", "model_context_window_exceeded"] {
+        let (r, _) = one_call(
+            c.clone(),
+            Resp::ok(message(json!([{ "type": "text", "text": "{\"a\":" }]), stop)),
+        )
+        .await;
+        assert!(matches!(r, Err(ModelError::Truncated { .. })), "{stop}: {r:?}");
+    }
 
     let (r, _) = one_call(c.clone(), Resp::ok(text_answer("not json"))).await;
     assert!(matches!(r, Err(ModelError::InvalidResponse { .. })), "{r:?}");

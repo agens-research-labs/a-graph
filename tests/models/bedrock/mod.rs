@@ -203,3 +203,6 @@ mod batch_let_go;
 
 #[path = "structured_refusal/structured_refusal.rs"]
 mod structured_refusal;
+
+#[path = "cut_tool_call/cut_tool_call.rs"]
+mod cut_tool_call;
