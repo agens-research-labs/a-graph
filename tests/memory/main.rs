@@ -98,3 +98,6 @@ mod summary_error;
 
 #[path = "embedding_error/embedding_error.rs"]
 mod embedding_error;
+
+#[path = "memory_file_kept_out/memory_file_kept_out.rs"]
+mod memory_file_kept_out;
