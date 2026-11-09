@@ -404,13 +404,16 @@ impl Program {
                 .outcome()
                 .await
                 .map_err(|e| node_error(chunk[0], format!("the batch stopped: {e}")))?
-                .map_err(|e| node_error(chunk[0], e.to_string()))?;
+                .map_err(|e| node_error(chunk[0], e.to_string()).with_detail_if(e.said()))?;
             for r in results {
                 let i: usize = r
                     .id
                     .parse()
                     .map_err(|_| node_error(chunk[0], format!("the batch answered an unknown request `{}`", r.id)))?;
-                answers[i] = Some(r.result.map_err(|e| node_error(i, e.to_string()))?);
+                answers[i] = Some(
+                    r.result
+                        .map_err(|e| node_error(i, e.to_string()).with_detail_if(e.said()))?,
+                );
             }
         }
         let mut done = Vec::with_capacity(nodes.len());
@@ -523,7 +526,7 @@ impl Program {
                 let response = llm
                     .invoke(&call)
                     .await
-                    .map_err(|e| error(Rule::ModelFailed, e.to_string()))?;
+                    .map_err(|e| error(Rule::ModelFailed, e.to_string()).with_detail_if(e.said()))?;
                 self.model_called(&cid, &prepared.model, &call, &response);
                 usage += response.info.usage;
                 time += response.info.execution_time;

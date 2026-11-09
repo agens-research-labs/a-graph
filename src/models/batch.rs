@@ -130,3 +130,12 @@ pub(crate) async fn submitted(
 pub(crate) fn cannot_cancel(batch_id: &str, why: &str) {
     eprintln!("a-graph: cannot cancel the batch job {batch_id} at the provider: {why}");
 }
+
+/// `batch failed`, with the state the provider gave the job when it is a fixed one (`fixed_code`), for
+/// a job that ended with no result.
+pub(crate) fn batch_ended(state: &str) -> String {
+    match super::error::fixed_code(Some(state)) {
+        Some(state) => format!("batch {state}"),
+        None => "the batch ended with no result".to_string(),
+    }
+}

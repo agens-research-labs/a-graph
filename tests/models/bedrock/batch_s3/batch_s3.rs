@@ -97,12 +97,7 @@ async fn batch_s3() {
     let get = |id: &str| results.iter().find(|r| r.id == id).unwrap();
     assert_eq!(get("one").result.as_ref().unwrap().message.as_deref(), Some("first"));
     assert_eq!(get("two").result.as_ref().unwrap().message.as_deref(), Some("second"));
-    assert!(
-        get("three")
-            .result
-            .as_ref()
-            .unwrap_err()
-            .to_string()
-            .contains("bad request")
-    );
+    let three = get("three").result.as_ref().unwrap_err();
+    assert!(!three.to_string().contains("bad request"), "{three}");
+    assert!(three.said().is_some_and(|s| s.contains("bad request")), "{three:?}");
 }

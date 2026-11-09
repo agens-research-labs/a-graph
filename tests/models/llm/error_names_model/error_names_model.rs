@@ -1,6 +1,6 @@
 use super::*;
 
-/// Every error says which model and provider.
+/// Every error says which model and provider; what the provider wrote is never in the message.
 #[test]
 fn error_names_model() {
     let e = |err: ModelError| err.to_string();
@@ -10,15 +10,22 @@ fn error_names_model() {
         model,
         provider,
         status: Some(429),
-        message: "slow down".into(),
+        code: Some("rate_limit_error".into()),
+        message: String::new(),
+        said: Some("slow down".into()),
     });
-    assert_eq!(with_status, "model `m` (p): the provider answered 429: slow down");
+    assert_eq!(
+        with_status,
+        "model `m` (p): the provider answered 429 (rate_limit_error)"
+    );
     let (model, provider) = m();
     let no_status = e(ModelError::Provider {
         model,
         provider,
         status: None,
+        code: None,
         message: "batch expired".into(),
+        said: None,
     });
     assert_eq!(
         no_status,

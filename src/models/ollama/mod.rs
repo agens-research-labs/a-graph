@@ -60,11 +60,11 @@ impl Ollama {
 
     /// The server answers `{"error": "..."}`.
     fn api_error(&self, status: u16, body: &str) -> ModelError {
-        let message = serde_json::from_str::<Value>(body)
+        let said = serde_json::from_str::<Value>(body)
             .ok()
             .and_then(|v| v.get("error").and_then(Value::as_str).map(str::to_string))
             .unwrap_or_else(|| body.chars().take(500).collect());
-        self.who.provider_error(Some(status), message)
+        self.who.provider_said(Some(status), None, "", Some(said))
     }
 }
 

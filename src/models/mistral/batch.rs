@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use serde_json::{Value, json};
 
 use super::Mistral;
-use crate::models::batch::{may_create, patiently, refused_unless_over, submitted};
+use crate::models::batch::{batch_ended, may_create, patiently, refused_unless_over, submitted};
 use crate::models::{BatchEvent, BatchEvents, BatchOutcome, BatchRequest, BatchResult, BatchReturn, ModelError};
 
 impl Mistral {
@@ -92,11 +92,11 @@ impl Mistral {
         let output = last.get("output_file").and_then(Value::as_str);
         let errors = last.get("error_file").and_then(Value::as_str);
         if output.is_none() && errors.is_none() {
-            let why = last
+            let said = last
                 .pointer("/errors/0/message")
                 .and_then(Value::as_str)
-                .unwrap_or("no result file");
-            return Err(self.who.provider_error(None, format!("batch {state}: {why}")));
+                .map(str::to_string);
+            return Err(self.who.provider_said(None, None, batch_ended(&state), said));
         }
 
         let mut by_id: HashMap<String, Value> = HashMap::new();
@@ -127,11 +127,8 @@ impl Mistral {
 
     fn batch_result(&self, schema: bool, line: &Value) -> Result<crate::models::ModelResponse, ModelError> {
         if let Some(err) = line.get("error").filter(|e| !e.is_null()) {
-            let msg = err
-                .get("message")
-                .and_then(Value::as_str)
-                .unwrap_or("the request failed");
-            return Err(self.who.provider_error(None, format!("batch request failed: {msg}")));
+            let said = err.get("message").and_then(Value::as_str).map(str::to_string);
+            return Err(self.who.provider_said(None, None, "batch request failed", said));
         }
         let status = line
             .pointer("/response/status_code")
@@ -139,11 +136,10 @@ impl Mistral {
             .unwrap_or(200);
         let body = &line["response"]["body"];
         if status != 200 {
-            let msg = body
-                .get("message")
-                .and_then(Value::as_str)
-                .unwrap_or("the request failed");
-            return Err(self.who.provider_error(Some(status as u16), msg));
+            let said = body.get("message").and_then(Value::as_str).map(str::to_string);
+            return Err(self
+                .who
+                .provider_said(Some(status as u16), None, "batch request failed", said));
         }
         // the time of one request inside a batch is not measurable: 0
         self.parse_completion(schema, body, 0.0)

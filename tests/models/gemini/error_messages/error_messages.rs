@@ -11,20 +11,22 @@ async fn error_messages() {
         ),
     )
     .await;
-    let text = r.unwrap_err().to_string();
+    let e = r.unwrap_err();
+    let text = e.to_string();
     assert!(
         text.contains("`flash`")
             && text.contains("(gemini)")
-            && text.contains("404")
-            && text.contains("no longer available"),
+            && text.contains("404 (not_found)")
+            && !text.contains("no longer available"),
         "{text}"
     );
+    assert!(e.said().is_some_and(|s| s.contains("no longer available")), "{e:?}");
 
     // a bad key comes back as 400, inside an array
     let bad_key = json!([{ "error": { "code": 400, "message": "API key not valid.", "status": "INVALID_ARGUMENT", "details": [{ "reason": "API_KEY_INVALID" }] } }]).to_string();
     let (r, _) = one_call(call("q"), Resp::status(400, bad_key)).await;
     assert!(
-        matches!(&r, Err(ModelError::Credentials { detail, .. }) if detail == "API key not valid."),
+        matches!(&r, Err(ModelError::Credentials { detail, said, .. }) if detail == "the provider answered 400" && said.as_deref() == Some("API key not valid.")),
         "{r:?}"
     );
 
@@ -37,7 +39,7 @@ async fn error_messages() {
     )
     .await;
     assert!(
-        matches!(&r, Err(ModelError::Provider { status: Some(503), message, .. }) if message == "high demand"),
+        matches!(&r, Err(ModelError::Provider { status: Some(503), said: Some(s), .. }) if s == "high demand"),
         "{r:?}"
     );
 
@@ -45,7 +47,7 @@ async fn error_messages() {
         .to_string();
     let (r, _) = one_call(call("q"), Resp::ok(failed)).await;
     assert!(
-        matches!(&r, Err(ModelError::Provider { message, .. }) if message == "the model failed"),
+        matches!(&r, Err(ModelError::Provider { message, code: Some(c), said: Some(s), .. }) if message == "the interaction failed" && c == "x" && s == "the model failed"),
         "{r:?}"
     );
 

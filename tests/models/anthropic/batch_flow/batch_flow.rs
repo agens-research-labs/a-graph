@@ -60,8 +60,9 @@ async fn batch_flow() {
     let get = |id: &str| results.iter().find(|r| r.id == id).unwrap();
     assert_eq!(get("one").result.as_ref().unwrap().message.as_deref(), Some("first"));
     assert_eq!(get("two").result.as_ref().unwrap().message.as_deref(), Some("second"));
-    let three = get("three").result.as_ref().unwrap_err().to_string();
-    assert!(three.contains("bad params"), "{three}");
+    let three = get("three").result.as_ref().unwrap_err();
+    assert!(!three.to_string().contains("bad params"), "{three}");
+    assert!(three.said().is_some_and(|s| s.contains("bad params")), "{three:?}");
     assert!(matches!(get("four").result, Err(ModelError::Provider { .. })));
 
     // the results are read from the documented path on our host, not from the URL in the answer

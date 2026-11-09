@@ -16,7 +16,7 @@ async fn failed_batch() {
         )
         .await;
     assert!(
-        matches!(&r, Err(ModelError::Provider { message, .. }) if message.contains("FAILED") && message.contains("the job was invalid")),
+        matches!(&r, Err(ModelError::Provider { message, said: Some(s), .. }) if message.contains("FAILED") && s.contains("the job was invalid")),
         "{r:?}"
     );
 

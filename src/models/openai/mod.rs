@@ -181,15 +181,23 @@ impl OpenAi {
     }
 
     /// OpenAI answers `{"error": {"message", "type", "code"}}`; 401 and 403 are about the credentials.
+    /// `{ "error": { "message", "type", "code" } }`: the code, or else the type, is the code; the
+    /// message what the provider said.
     fn api_error(&self, status: u16, body: &str) -> ModelError {
-        let message = serde_json::from_str::<Value>(body)
-            .ok()
+        let v = serde_json::from_str::<Value>(body).ok();
+        let code = v.as_ref().and_then(|v| {
+            v.pointer("/error/code")
+                .and_then(Value::as_str)
+                .or_else(|| v.pointer("/error/type").and_then(Value::as_str))
+        });
+        let said = v
+            .as_ref()
             .and_then(|v| v.pointer("/error/message").and_then(Value::as_str).map(str::to_string))
             .unwrap_or_else(|| body.chars().take(500).collect());
         if status == 401 || status == 403 {
-            self.who.credentials(message)
+            self.who.credentials_refused(Some(status), code, Some(said))
         } else {
-            self.who.provider_error(Some(status), message)
+            self.who.provider_said(Some(status), code, "", Some(said))
         }
     }
 

@@ -13,7 +13,7 @@ use serde_json::{Map, Value, json};
 use super::Bedrock;
 use super::hosts::split_s3;
 use crate::models::Reasoning;
-use crate::models::batch::{may_create, refused_unless_over, submitted};
+use crate::models::batch::{batch_ended, may_create, refused_unless_over, submitted};
 use crate::models::{
     BatchEvent, BatchEvents, BatchOutcome, BatchRequest, BatchResult, BatchReturn, MediaInput, ModelError,
     ModelInvocation, ModelResponse, ResponseInfo, Role, StopReason, ToolCall, Usage,
@@ -165,10 +165,9 @@ impl Bedrock {
             .map(str::to_string)
             .collect();
         if keys.is_empty() {
-            let why = message.unwrap_or_else(|| "no result file".into());
             return Err(self
                 .who
-                .provider_error(None, format!("batch {}: {why}", status.as_str())));
+                .provider_said(None, None, batch_ended(status.as_str()), message));
         }
 
         let mut by_record: HashMap<String, Value> = HashMap::new();
@@ -240,12 +239,9 @@ impl Bedrock {
 
     fn batch_result(&self, line: &Value) -> Result<ModelResponse, ModelError> {
         if let Some(err) = line.get("error").filter(|e| !e.is_null()) {
-            let msg = err
-                .get("errorMessage")
-                .and_then(Value::as_str)
-                .unwrap_or("the request failed");
+            let said = err.get("errorMessage").and_then(Value::as_str).map(str::to_string);
             let status = err.get("errorCode").and_then(Value::as_u64).map(|c| c as u16);
-            return Err(self.who.provider_error(status, format!("batch request failed: {msg}")));
+            return Err(self.who.provider_said(status, None, "batch request failed", said));
         }
         let out = line
             .get("modelOutput")

@@ -128,18 +128,17 @@ impl Bedrock {
                 let meta = s.err();
                 // an error the SDK could not classify has no code: its whole chain says more
                 let Some(code) = meta.code() else {
-                    return self
-                        .who
-                        .provider_error(None, aws_sdk_bedrockruntime::error::DisplayErrorContext(&e).to_string());
+                    let said = aws_sdk_bedrockruntime::error::DisplayErrorContext(&e).to_string();
+                    return self.who.provider_said(None, None, "", Some(said));
                 };
-                let message = meta.message().map(str::to_string).unwrap_or_else(|| meta.to_string());
+                let said = meta.message().map(str::to_string).unwrap_or_else(|| meta.to_string());
                 match code {
                     "AccessDeniedException"
                     | "UnrecognizedClientException"
                     | "ExpiredTokenException"
                     | "InvalidSignatureException"
-                    | "IncompleteSignatureException" => self.who.credentials(format!("{code}: {message}")),
-                    _ => self.who.provider_error(None, format!("{code}: {message}")),
+                    | "IncompleteSignatureException" => self.who.credentials_refused(None, Some(code), Some(said)),
+                    _ => self.who.provider_said(None, Some(code), "", Some(said)),
                 }
             }
             other => {

@@ -6,7 +6,7 @@ use std::time::Duration;
 use serde_json::{Value, json};
 
 use super::OpenAi;
-use crate::models::batch::{may_create, patiently, refused_unless_over, submitted};
+use crate::models::batch::{batch_ended, may_create, patiently, refused_unless_over, submitted};
 use crate::models::{BatchEvent, BatchEvents, BatchOutcome, BatchRequest, BatchResult, BatchReturn, ModelError};
 
 /// How often a batch is polled. There is no maximum wait: it ends when OpenAI says so.
@@ -121,11 +121,12 @@ impl OpenAi {
         let output_id = last.get("output_file_id").and_then(Value::as_str);
         let error_id = last.get("error_file_id").and_then(Value::as_str);
         if output_id.is_none() && error_id.is_none() {
-            let why = last
+            let code = last.pointer("/errors/data/0/code").and_then(Value::as_str);
+            let said = last
                 .pointer("/errors/data/0/message")
                 .and_then(Value::as_str)
-                .unwrap_or("no result file");
-            return Err(self.who.provider_error(None, format!("batch {state}: {why}")));
+                .map(str::to_string);
+            return Err(self.who.provider_said(None, code, batch_ended(&state), said));
         }
 
         let mut by_id: HashMap<String, Value> = HashMap::new();
@@ -156,11 +157,9 @@ impl OpenAi {
 
     fn batch_result(&self, schema: bool, line: &Value) -> Result<crate::models::ModelResponse, ModelError> {
         if let Some(err) = line.get("error").filter(|e| !e.is_null()) {
-            let msg = err
-                .get("message")
-                .and_then(Value::as_str)
-                .unwrap_or("the request failed");
-            return Err(self.who.provider_error(None, format!("batch request failed: {msg}")));
+            let code = err.get("code").and_then(Value::as_str);
+            let said = err.get("message").and_then(Value::as_str).map(str::to_string);
+            return Err(self.who.provider_said(None, code, "batch request failed", said));
         }
         let status = line
             .pointer("/response/status_code")
@@ -168,11 +167,17 @@ impl OpenAi {
             .unwrap_or(0);
         let body = &line["response"]["body"];
         if status != 200 {
-            let msg = body
+            let code = body
+                .pointer("/error/code")
+                .and_then(Value::as_str)
+                .or_else(|| body.pointer("/error/type").and_then(Value::as_str));
+            let said = body
                 .pointer("/error/message")
                 .and_then(Value::as_str)
-                .unwrap_or("the request failed");
-            return Err(self.who.provider_error(Some(status as u16), msg));
+                .map(str::to_string);
+            return Err(self
+                .who
+                .provider_said(Some(status as u16), code, "batch request failed", said));
         }
         // the time of one request inside a batch is not measurable: 0
         self.parse_response(schema, body, 0.0)

@@ -174,7 +174,7 @@ impl Program {
             let mut response = llm
                 .invoke(&call)
                 .await
-                .map_err(|e| fail(Rule::ModelFailed, e.to_string()))?;
+                .map_err(|e| fail(Rule::ModelFailed, e.to_string()).with_detail_if(e.said()))?;
             self.model_called(
                 &id,
                 self.nodes.model().get(node).map(|m| m.id.as_str()).unwrap_or_default(),

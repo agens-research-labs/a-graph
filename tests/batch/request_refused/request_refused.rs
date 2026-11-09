@@ -14,5 +14,11 @@ async fn request_refused() {
         (e.rule.code(), e.path.to_string()),
         ("model_failed", "node(e)".to_string())
     );
-    assert!(e.message.contains("this request was refused"), "{}", e.message);
+    assert!(!e.message.contains("this request was refused"), "{}", e.message);
+    assert!(
+        e.detail
+            .as_deref()
+            .is_some_and(|d| d.contains("this request was refused")),
+        "{e:?}"
+    );
 }

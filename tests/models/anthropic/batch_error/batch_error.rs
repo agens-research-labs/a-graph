@@ -21,7 +21,7 @@ async fn batch_error() {
         )
         .await;
     assert!(
-        matches!(&r, Err(ModelError::Provider { status: Some(400), message, .. }) if message.contains("too many")),
+        matches!(&r, Err(ModelError::Provider { status: Some(400), said: Some(s), .. }) if s.contains("too many")),
         "{r:?}"
     );
 }

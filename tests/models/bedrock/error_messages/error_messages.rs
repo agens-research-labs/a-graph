@@ -13,7 +13,7 @@ async fn error_messages() {
     )
     .await;
     assert!(
-        matches!(&r, Err(ModelError::Credentials { detail, .. }) if detail.contains("AccessDeniedException") && detail.contains("don't have access")),
+        matches!(&r, Err(ModelError::Credentials { detail, said: Some(s), .. }) if detail.contains("AccessDeniedException") && !detail.contains("don't have access") && s.contains("don't have access")),
         "{r:?}"
     );
 
@@ -22,13 +22,18 @@ async fn error_messages() {
         err(400, "ValidationException", "The provided model identifier is invalid."),
     )
     .await;
-    let text = r.unwrap_err().to_string();
+    let e = r.unwrap_err();
+    let text = e.to_string();
     assert!(
         text.contains("`strong`")
             && text.contains("(bedrock)")
             && text.contains("ValidationException")
-            && text.contains("model identifier is invalid"),
+            && !text.contains("model identifier is invalid"),
         "{text}"
+    );
+    assert!(
+        e.said().is_some_and(|s| s.contains("model identifier is invalid")),
+        "{e:?}"
     );
 
     // the SDK retries a throttling by itself: the server keeps answering it
@@ -41,7 +46,7 @@ async fn error_messages() {
     .await;
     let r = client(&base).invoke(&call("q")).await;
     assert!(
-        matches!(&r, Err(ModelError::Provider { message, .. }) if message.contains("ThrottlingException")),
+        matches!(&r, Err(ModelError::Provider { code: Some(c), .. }) if c == "ThrottlingException"),
         "{r:?}"
     );
     assert!(seen.lock().unwrap().len() > 1, "the SDK should have retried");

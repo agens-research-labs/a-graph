@@ -9,7 +9,7 @@ async fn error_messages() {
     )
     .await;
     assert!(
-        matches!(&r, Err(ModelError::Credentials { detail, .. }) if detail == "Unauthorized"),
+        matches!(&r, Err(ModelError::Credentials { detail, said, .. }) if detail == "the provider answered 401" && said.as_deref() == Some("Unauthorized")),
         "{r:?}"
     );
 
@@ -21,14 +21,16 @@ async fn error_messages() {
         ),
     )
     .await;
-    let text = r.unwrap_err().to_string();
+    let e = r.unwrap_err();
+    let text = e.to_string();
     assert!(
         text.contains("`mistral_small`")
             && text.contains("(mistral)")
             && text.contains("422")
-            && text.contains("Invalid model"),
+            && !text.contains("Invalid model"),
         "{text}"
     );
+    assert!(e.said().is_some_and(|s| s.contains("Invalid model")), "{e:?}");
 
     let (r, _) = one_call(
         call("q"),
@@ -38,7 +40,9 @@ async fn error_messages() {
         ),
     )
     .await;
-    assert!(r.unwrap_err().to_string().contains("field required"));
+    let e = r.unwrap_err();
+    assert!(!e.to_string().contains("field required"), "{e}");
+    assert!(e.said().is_some_and(|s| s.contains("field required")), "{e:?}");
 
     let (r, _) = one_call(call("q"), Resp::ok("not json")).await;
     assert!(matches!(r, Err(ModelError::InvalidResponse { .. })));

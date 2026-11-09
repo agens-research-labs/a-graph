@@ -16,7 +16,7 @@ async fn failed_job() {
         )
         .await;
     assert!(
-        matches!(&r, Err(ModelError::Provider { message, .. }) if message.contains("Failed") && message.contains("could not start")),
+        matches!(&r, Err(ModelError::Provider { message, said: Some(s), .. }) if message.contains("Failed") && s.contains("could not start")),
         "{r:?}"
     );
 

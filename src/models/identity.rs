@@ -1,6 +1,6 @@
 //! Which model and provider an error is about: every provider builds its `ModelError`s here.
 
-use super::error::ModelError;
+use super::error::{ModelError, answered, fixed_code};
 
 #[derive(Debug, Clone)]
 pub(crate) struct Identity {
@@ -38,22 +38,63 @@ impl Identity {
         }
     }
 
+    /// Credentials that are not valid, as `detail` says; `detail` holds nothing the provider wrote.
     pub(crate) fn credentials(&self, detail: impl Into<String>) -> ModelError {
         let (model, provider) = self.parts();
         ModelError::Credentials {
             model,
             provider,
             detail: detail.into(),
+            said: None,
         }
     }
 
+    /// The provider refused the credentials (401, 403) with the code `code` and the text `said`.
+    pub(crate) fn credentials_refused(
+        &self,
+        status: Option<u16>,
+        code: Option<&str>,
+        said: Option<String>,
+    ) -> ModelError {
+        let (model, provider) = self.parts();
+        ModelError::Credentials {
+            model,
+            provider,
+            detail: answered(status, fixed_code(code).as_deref(), ""),
+            said,
+        }
+    }
+
+    /// An error of the provider that `message` says; `message` holds nothing the provider wrote.
     pub(crate) fn provider_error(&self, status: Option<u16>, message: impl Into<String>) -> ModelError {
         let (model, provider) = self.parts();
         ModelError::Provider {
             model,
             provider,
             status,
+            code: None,
             message: message.into(),
+            said: None,
+        }
+    }
+
+    /// An error the provider answered with the code `code` and the text `said`. `message` says where
+    /// (`batch request failed`), or is empty.
+    pub(crate) fn provider_said(
+        &self,
+        status: Option<u16>,
+        code: Option<&str>,
+        message: impl Into<String>,
+        said: Option<String>,
+    ) -> ModelError {
+        let (model, provider) = self.parts();
+        ModelError::Provider {
+            model,
+            provider,
+            status,
+            code: fixed_code(code),
+            message: message.into(),
+            said,
         }
     }
 

@@ -45,7 +45,7 @@ impl Program {
                 .embeddings
                 .embed(&db.embedding, &[query])
                 .await
-                .map_err(|e| fail(Rule::ModelFailed, e.to_string()))?;
+                .map_err(|e| fail(Rule::ModelFailed, e.to_string()).with_detail_if(e.said()))?;
             let vector = vectors.pop().ok_or_else(|| {
                 fail(
                     Rule::ModelFailed,

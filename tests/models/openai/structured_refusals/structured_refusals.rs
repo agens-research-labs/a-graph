@@ -51,7 +51,7 @@ async fn structured_refusals() {
     )
     .await;
     assert!(
-        matches!(&r, Err(ModelError::Provider { message, .. }) if message == "it broke"),
+        matches!(&r, Err(ModelError::Provider { message, code: Some(c), said: Some(s), .. }) if message == "the response failed" && c == "server_error" && s == "it broke"),
         "{r:?}"
     );
 }

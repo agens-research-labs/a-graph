@@ -25,7 +25,7 @@ impl Program {
         let response = llm
             .invoke(&prepared.call)
             .await
-            .map_err(|e| fail(Rule::ModelFailed, e.to_string()))?;
+            .map_err(|e| fail(Rule::ModelFailed, e.to_string()).with_detail_if(e.said()))?;
 
         self.model_called(&id, &prepared.model, &prepared.call, &response);
         let verdict = response

@@ -104,7 +104,8 @@ impl Mistral {
     /// Mistral answers `{"message": "..."}`, or `{"detail": [...]}` for a body it cannot read.
     fn api_error(&self, status: u16, body: &str) -> ModelError {
         let parsed = serde_json::from_str::<Value>(body).ok();
-        let message = parsed
+        // no fixed code: a validation error lists what was sent (`detail[].input`)
+        let said = parsed
             .as_ref()
             .and_then(|v| {
                 v.get("message")
@@ -114,9 +115,9 @@ impl Mistral {
             })
             .unwrap_or_else(|| body.chars().take(500).collect());
         if status == 401 || status == 403 {
-            self.who.credentials(message)
+            self.who.credentials_refused(Some(status), None, Some(said))
         } else {
-            self.who.provider_error(Some(status), message)
+            self.who.provider_said(Some(status), None, "", Some(said))
         }
     }
 

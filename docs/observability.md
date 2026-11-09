@@ -43,11 +43,11 @@ tools, or every turn of a react controller. Each call is a `model.call` of its o
 An error is an event too, of level `error`, with the code of its rule and the fields `phase`, `path` and `message`. A
 run that fails ends with its error instead of `run.end`. A warning is an event of level `warn`.
 
-The `message` of an error never holds a content. What a model or a utility wrote that made the error (a verdict of a
-judge without `validation`, the answer of a react controller, what a utility wrote on its standard error) is the
-content `detail` of the event, written only as the passport allows; in the trace it is the attribute `a_graph.detail`
-of the interval the error ends. The caller of the run, on the command line or through the service, gets the `message`
-only.
+The `message` of an error never holds a content. What a model, a utility or a provider wrote that made the error (a
+verdict of a judge without `validation`, the answer of a react controller, what a utility wrote on its standard error,
+the text of an error of a provider) is the content `detail` of the event, written only as the passport allows; in the
+trace it is the attribute `a_graph.detail` of the interval the error ends. The caller of the run, on the command line or
+through the service, gets the `message` only.
 
 ## The log
 

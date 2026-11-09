@@ -145,11 +145,12 @@ impl Anthropic {
             // the time of one request inside a batch is not measurable: 0
             Some("succeeded") => self.parse_message(schema, &result["message"], 0.0),
             Some("errored") => {
-                let message = result
+                let code = result.pointer("/error/error/type").and_then(Value::as_str);
+                let said = result
                     .pointer("/error/error/message")
                     .and_then(Value::as_str)
-                    .unwrap_or("the request failed");
-                Err(self.provider_error(format!("batch request failed: {message}")))
+                    .map(str::to_string);
+                Err(self.who.provider_said(None, code, "batch request failed", said))
             }
             Some("expired") => Err(self.provider_error("the batch expired before this request could run")),
             Some("canceled") => Err(self.provider_error("the batch was canceled before this request could run")),

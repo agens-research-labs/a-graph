@@ -52,6 +52,14 @@ impl Error {
         self.detail = Some(detail.into());
         self
     }
+
+    /// `with_detail` when there is one.
+    pub fn with_detail_if(mut self, detail: Option<&str>) -> Self {
+        if let Some(d) = detail {
+            self.detail = Some(d.to_string());
+        }
+        self
+    }
 }
 
 impl fmt::Display for Error {

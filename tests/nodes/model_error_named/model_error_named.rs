@@ -4,7 +4,7 @@ fn here() -> &'static std::path::Path {
     std::path::Path::new(file!()).parent().unwrap()
 }
 
-/// A model error comes back with the node and the model.
+/// A model error comes back with the node and the model; what the provider wrote is its detail.
 #[tokio::test]
 async fn model_error_named() {
     let (p, _) = program(
@@ -19,8 +19,9 @@ async fn model_error_named() {
         ("model_failed", "node(n)".to_string())
     );
     assert!(
-        e.message.contains("the model fell over") && e.message.contains("`m`"),
+        !e.message.contains("the model fell over") && e.message.contains("`m`"),
         "{}",
         e.message
     );
+    assert_eq!(e.detail.as_deref(), Some("the model fell over"));
 }

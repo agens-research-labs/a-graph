@@ -127,3 +127,14 @@ the level asked answers with an error of its provider, during the run.
 `ollama` and `custom` take only `host` and `model`. Both are called with `POST <host>/api/chat`, in the format of the
 Ollama API: a model server of your own can be used with `provider: custom` if it answers that request in the same way.
 `ollama` is kept apart from `custom` so that it can have options of its own in the future; it has none yet.
+
+## Errors
+
+A provider that answers with an error fails the node (`model_failed`). The message says the status of the answer and,
+when the provider gives one, the code of the error: `the provider answered 400 (invalid_request_error)`. The code is
+`error.type` for `anthropic`, `error.code` or else `error.type` for `openai`, `error.code` for `gemini`, the code of
+the exception for `bedrock`; `mistral`, `ollama` and `custom` give none. A code is kept only if it is made of letters,
+digits and `_`, 64 characters at most. The text of the provider, which may repeat what was sent, is the `detail` of
+the error, written only as the passport allows (see [observability](observability.md)). The same holds for an
+answer that says it failed, for a batch that failed and for a request of a batch that failed, and for the server of
+the embeddings.

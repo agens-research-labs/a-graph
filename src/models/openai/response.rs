@@ -18,11 +18,9 @@ impl OpenAi {
     ) -> Result<ModelResponse, ModelError> {
         let status = v.get("status").and_then(Value::as_str).unwrap_or("completed");
         if status == "failed" {
-            let msg = v
-                .pointer("/error/message")
-                .and_then(Value::as_str)
-                .unwrap_or("the response failed");
-            return Err(self.who.provider_error(None, msg));
+            let code = v.pointer("/error/code").and_then(Value::as_str);
+            let said = v.pointer("/error/message").and_then(Value::as_str).map(str::to_string);
+            return Err(self.who.provider_said(None, code, "the response failed", said));
         }
         let items = v
             .get("output")

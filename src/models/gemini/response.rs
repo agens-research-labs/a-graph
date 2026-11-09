@@ -23,11 +23,12 @@ impl Gemini {
             .and_then(Value::as_str)
             .ok_or_else(|| self.who.invalid("no `status`"))?;
         if status == "failed" {
-            let msg = v
+            let code = v.pointer("/errors/0/code").and_then(Value::as_str);
+            let said = v
                 .pointer("/errors/0/message")
                 .and_then(Value::as_str)
-                .unwrap_or("the interaction failed");
-            return Err(self.who.provider_error(None, msg));
+                .map(str::to_string);
+            return Err(self.who.provider_said(None, code, "the interaction failed", said));
         }
         let steps = v
             .get("steps")

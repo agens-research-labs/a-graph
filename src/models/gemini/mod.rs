@@ -174,16 +174,18 @@ impl Gemini {
             .as_ref()
             .and_then(|v| if v.is_array() { v.get(0) } else { Some(v) })
             .and_then(|v| v.get("error"));
-        let message = error
+        // `{ "error": { "code", "message" } }`: a code of letters is the code
+        let code = error.and_then(|e| e.get("code")).and_then(Value::as_str);
+        let said = error
             .and_then(|e| e.get("message"))
             .and_then(Value::as_str)
             .map(str::to_string)
             .unwrap_or_else(|| body.chars().take(500).collect());
         let key_invalid = body.contains("API_KEY_INVALID");
         if status == 401 || status == 403 || key_invalid {
-            self.who.credentials(message)
+            self.who.credentials_refused(Some(status), code, Some(said))
         } else {
-            self.who.provider_error(Some(status), message)
+            self.who.provider_said(Some(status), code, "", Some(said))
         }
     }
 }

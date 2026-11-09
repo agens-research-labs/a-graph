@@ -14,11 +14,13 @@ pub enum ModelError {
         problems: Vec<String>,
     },
 
+    /// `said` is what the provider wrote, if it did: a content, never part of the message.
     #[error("model `{model}` ({provider}): credentials: {detail}")]
     Credentials {
         model: String,
         provider: String,
         detail: String,
+        said: Option<String>,
     },
 
     #[error("model `{model}` ({provider}): network: {source}")]
@@ -29,13 +31,17 @@ pub enum ModelError {
         source: Box<dyn std::error::Error + Send + Sync>,
     },
 
-    /// The provider answered with an error, or a batch failed or expired.
-    #[error("model `{model}` ({provider}): the provider answered {}: {message}", status.map_or("with an error".to_string(), |s| s.to_string()))]
+    /// The provider answered with an error, or a batch failed or expired. `code` is the fixed code the
+    /// provider gave the error, if it is one (see `fixed_code`); `said` is what the provider wrote: a
+    /// content, never part of the message.
+    #[error("model `{model}` ({provider}): {}", answered(*status, code.as_deref(), message))]
     Provider {
         model: String,
         provider: String,
         status: Option<u16>,
+        code: Option<String>,
         message: String,
+        said: Option<String>,
     },
 
     #[error("model `{model}` ({provider}): invalid response: {detail}")]
@@ -57,4 +63,36 @@ pub enum ModelError {
         expected: String,
         produced: String,
     },
+}
+
+impl ModelError {
+    /// What the provider wrote that made the error, if it did: a content, never part of the message.
+    pub fn said(&self) -> Option<&str> {
+        match self {
+            ModelError::Credentials { said, .. } | ModelError::Provider { said, .. } => said.as_deref(),
+            _ => None,
+        }
+    }
+}
+
+/// `the provider answered 400 (invalid_request_error): <message>`, each part only when there is one.
+pub(crate) fn answered(status: Option<u16>, code: Option<&str>, message: &str) -> String {
+    let mut text = format!(
+        "the provider answered {}",
+        status.map_or("with an error".to_string(), |s| s.to_string())
+    );
+    if let Some(code) = code {
+        text.push_str(&format!(" ({code})"));
+    }
+    if !message.is_empty() {
+        text.push_str(&format!(": {message}"));
+    }
+    text
+}
+
+/// `code` if it is a fixed code (letters, digits and `_`, 64 characters at most), which says what kind
+/// of error it is and holds no content; `None` otherwise.
+pub(crate) fn fixed_code(code: Option<&str>) -> Option<String> {
+    code.filter(|c| !c.is_empty() && c.len() <= 64 && c.chars().all(|ch| ch.is_ascii_alphanumeric() || ch == '_'))
+        .map(str::to_string)
 }

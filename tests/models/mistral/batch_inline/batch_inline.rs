@@ -59,20 +59,10 @@ async fn batch_inline() {
     let get = |id: &str| results.iter().find(|r| r.id == id).unwrap();
     assert_eq!(get("one").result.as_ref().unwrap().message.as_deref(), Some("first"));
     assert_eq!(get("two").result.as_ref().unwrap().message.as_deref(), Some("second"));
-    assert!(
-        get("three")
-            .result
-            .as_ref()
-            .unwrap_err()
-            .to_string()
-            .contains("bad params")
-    );
-    assert!(
-        get("four")
-            .result
-            .as_ref()
-            .unwrap_err()
-            .to_string()
-            .contains("timed out")
-    );
+    let three = get("three").result.as_ref().unwrap_err();
+    assert!(!three.to_string().contains("bad params"), "{three}");
+    assert!(three.said().is_some_and(|s| s.contains("bad params")), "{three:?}");
+    let four = get("four").result.as_ref().unwrap_err();
+    assert!(!four.to_string().contains("timed out"), "{four}");
+    assert!(four.said().is_some_and(|s| s.contains("timed out")), "{four:?}");
 }
