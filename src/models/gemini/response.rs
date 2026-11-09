@@ -33,6 +33,14 @@ impl Gemini {
             .get("steps")
             .and_then(Value::as_array)
             .ok_or_else(|| self.who.invalid("no `steps` array"))?;
+        let mut stop_reason = match status {
+            "completed" => StopReason::End,
+            "requires_action" => StopReason::ToolCall,
+            // the output reached max_output_tokens (thinking tokens count in it)
+            "incomplete" => StopReason::MaxTokens,
+            "cancelled" => StopReason::Other,
+            other => return Err(self.who.invalid(format!("unexpected status `{other}`"))),
+        };
         let expected = self
             .media_format(&call.output_media)
             .ok()
@@ -79,6 +87,8 @@ impl Gemini {
                         }
                     }
                 }
+                // a cut answer may hold a tool call cut in the middle
+                Some("function_call") if stop_reason.is_cut() => return Err(self.who.truncated()),
                 Some("function_call") => tools_call.push(ToolCall {
                     call_id: step
                         .get("id")
@@ -101,21 +111,13 @@ impl Gemini {
             }
         }
 
-        let mut stop_reason = match status {
-            "completed" => StopReason::End,
-            "requires_action" => StopReason::ToolCall,
-            // the output reached max_output_tokens (thinking tokens count in it)
-            "incomplete" => StopReason::MaxTokens,
-            "cancelled" => StopReason::Other,
-            other => return Err(self.who.invalid(format!("unexpected status `{other}`"))),
-        };
         if !tools_call.is_empty() {
             stop_reason = StopReason::ToolCall;
         }
 
         let (mut message, mut structured) = (None, None);
         if call.schema.is_some() {
-            if stop_reason == StopReason::MaxTokens {
+            if stop_reason.is_cut() {
                 return Err(self.who.truncated());
             }
             if tools_call.is_empty() {

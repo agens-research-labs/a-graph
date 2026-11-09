@@ -17,6 +17,14 @@ impl Mistral {
             .ok_or_else(|| self.who.invalid("no `choices`"))?;
         let msg = choice.get("message").ok_or_else(|| self.who.invalid("no `message`"))?;
         let finish = choice.get("finish_reason").and_then(Value::as_str).unwrap_or_default();
+        let mut stop_reason = match finish {
+            "stop" => StopReason::End,
+            "length" => StopReason::MaxTokens,
+            "model_length" => StopReason::ContextExceeded,
+            "tool_calls" => StopReason::ToolCall,
+            "error" => return Err(self.who.provider_error(None, "the model stopped with an error")),
+            _ => StopReason::Other,
+        };
 
         // the content is a string, or chunks: text and thinking
         let mut text = String::new();
@@ -38,6 +46,10 @@ impl Mistral {
 
         let mut tools_call = Vec::new();
         for c in msg.get("tool_calls").and_then(Value::as_array).into_iter().flatten() {
+            // a cut answer may hold a tool call cut in the middle
+            if stop_reason.is_cut() {
+                return Err(self.who.truncated());
+            }
             let f = c
                 .get("function")
                 .ok_or_else(|| self.who.invalid("a tool call without `function`"))?;
@@ -66,21 +78,13 @@ impl Mistral {
             });
         }
 
-        let mut stop_reason = match finish {
-            "stop" => StopReason::End,
-            "length" => StopReason::MaxTokens,
-            "model_length" => StopReason::ContextExceeded,
-            "tool_calls" => StopReason::ToolCall,
-            "error" => return Err(self.who.provider_error(None, "the model stopped with an error")),
-            _ => StopReason::Other,
-        };
         if !tools_call.is_empty() {
             stop_reason = StopReason::ToolCall;
         }
 
         let (mut message, mut structured) = (None, None);
         if schema {
-            if stop_reason == StopReason::MaxTokens {
+            if stop_reason.is_cut() {
                 return Err(self.who.truncated());
             }
             if tools_call.is_empty() {

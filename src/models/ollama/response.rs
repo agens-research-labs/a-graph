@@ -10,6 +10,11 @@ impl Ollama {
         let msg = v.get("message").ok_or_else(|| self.who.invalid("no `message`"))?;
         let text = msg.get("content").and_then(Value::as_str).unwrap_or_default();
         let done_reason = v.get("done_reason").and_then(Value::as_str).unwrap_or_default();
+        let mut stop_reason = match done_reason {
+            "stop" | "" => StopReason::End,
+            "length" => StopReason::MaxTokens,
+            _ => StopReason::Other,
+        };
 
         let mut tools_call = Vec::new();
         for (n, c) in msg
@@ -19,6 +24,10 @@ impl Ollama {
             .flatten()
             .enumerate()
         {
+            // a cut answer may hold a tool call cut in the middle
+            if stop_reason.is_cut() {
+                return Err(self.who.truncated());
+            }
             let f = c
                 .get("function")
                 .ok_or_else(|| self.who.invalid("a tool call without `function`"))?;
@@ -54,18 +63,13 @@ impl Ollama {
             None => Vec::new(),
         };
 
-        let mut stop_reason = match done_reason {
-            "stop" | "" => StopReason::End,
-            "length" => StopReason::MaxTokens,
-            _ => StopReason::Other,
-        };
         if !tools_call.is_empty() {
             stop_reason = StopReason::ToolCall;
         }
 
         let (mut message, mut structured) = (None, None);
         if schema {
-            if stop_reason == StopReason::MaxTokens {
+            if stop_reason.is_cut() {
                 return Err(self.who.truncated());
             }
             if tools_call.is_empty() {
