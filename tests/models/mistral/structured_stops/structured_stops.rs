@@ -14,15 +14,15 @@ async fn structured_stops() {
     assert_eq!(r.structured, Some(json!({ "a": 1 })));
     assert!(r.message.is_none());
 
-    let (r, _) = one_call(
-        c.clone(),
-        Resp::ok(completion(
-            json!({ "role": "assistant", "content": "{\"a\":" }),
-            "length",
-        )),
-    )
-    .await;
-    assert!(matches!(r, Err(ModelError::Truncated { .. })), "{r:?}");
+    // a cut answer has its JSON cut, at max_tokens or at the end of the context window
+    for finish in ["length", "model_length"] {
+        let (r, _) = one_call(
+            c.clone(),
+            Resp::ok(completion(json!({ "role": "assistant", "content": "{\"a\":" }), finish)),
+        )
+        .await;
+        assert!(matches!(r, Err(ModelError::Truncated { .. })), "{finish}: {r:?}");
+    }
     let (r, _) = one_call(c, Resp::ok(text_answer("not json"))).await;
     assert!(matches!(r, Err(ModelError::InvalidResponse { .. })), "{r:?}");
 

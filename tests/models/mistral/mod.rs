@@ -158,3 +158,6 @@ mod batch_retry;
 
 #[path = "batch_let_go/batch_let_go.rs"]
 mod batch_let_go;
+
+#[path = "cut_tool_call/cut_tool_call.rs"]
+mod cut_tool_call;
