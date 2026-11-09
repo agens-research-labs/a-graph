@@ -1,0 +1,39 @@
+# An MCP server over HTTP (on {{port:mcp}}, a mock started by the test) whose every JSON answer begins with 20 MiB of spaces, and the node n that uses it (model on {{port:model}}, started by the test).
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:{{port:model}}
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: p_n
+      content: { system: "", user: "N({{user_message}})" }
+  mcp_servers:
+    - id: srv
+      transport: http
+      url: http://127.0.0.1:{{port:mcp}}/mcp
+      max_iter: 3
+      timeout: 30
+graph:
+  nodes:
+    - id: n
+      model: { id: m }
+      resources: { prompt: p_n, mcp_servers: [srv] }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true }
+  edges:
+    - start: n

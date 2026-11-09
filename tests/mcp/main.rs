@@ -15,6 +15,9 @@ mod current_revision;
 #[path = "error_result/error_result.rs"]
 mod error_result;
 
+#[path = "http_body_limit/http_body_limit.rs"]
+mod http_body_limit;
+
 #[path = "mcp_alone_refused/mcp_alone_refused.rs"]
 mod mcp_alone_refused;
 
