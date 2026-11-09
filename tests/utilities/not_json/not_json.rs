@@ -15,5 +15,6 @@ async fn not_json() {
         .await
         .unwrap_err();
     assert!(e.message.contains("utility `u`") && e.message.contains("JSON"), "{e}");
-    assert!(e.detail.is_some(), "what it wrote is the detail");
+    assert!(!e.message.contains("hello"), "{e}");
+    assert!(e.detail.unwrap().contains("hello"), "what it wrote is the detail");
 }

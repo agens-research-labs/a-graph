@@ -15,5 +15,6 @@ async fn wrong_shape() {
         .await
         .unwrap_err();
     assert!(e.message.contains("`text`") && e.message.contains("`mime_type`"), "{e}");
-    assert!(e.detail.is_some(), "the answer is the detail");
+    assert!(!e.message.contains("\"x\""), "{e}");
+    assert_eq!(e.detail.as_deref(), Some(r#"{"x":1}"#), "the answer is the detail");
 }

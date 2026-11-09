@@ -1,0 +1,52 @@
+# A judge whose verdict has no `validation` ({{port:model}}, started by the test); the test sets the display and what it may show.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: confidential, categories: [pii] }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:{{port:model}}
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: p_s
+      content: { system: "", user: "S({{user_message}})" }
+    - id: p_e
+      content: { system: "", user: "E({{agent_message}})" }
+    - id: p_judge
+      content: { system: "Judge the text.", user: "J({{agent_message}})" }
+graph:
+  nodes:
+    - id: s
+      model: { id: m }
+      resources: { prompt: p_s }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true, node: true }
+    - id: judge
+      validation-node:
+        model: { id: m }
+        resources: { prompt: p_judge }
+        message:
+          input: { agent_message: true }
+        on_error: stop
+    - id: e
+      model: { id: m }
+      resources: { prompt: p_e }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+  edges:
+    - start: s
+    - next: judge
+    - end: e

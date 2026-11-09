@@ -29,3 +29,6 @@ mod steps_shows_nodes;
 
 #[path = "tool_call_shown/tool_call_shown.rs"]
 mod tool_call_shown;
+
+#[path = "error_detail/error_detail.rs"]
+mod error_detail;

@@ -29,3 +29,9 @@ mod sends_otlp_json;
 
 #[path = "times_nest/times_nest.rs"]
 mod times_nest;
+
+#[path = "error_detail_hidden/error_detail_hidden.rs"]
+mod error_detail_hidden;
+
+#[path = "error_detail_shown/error_detail_shown.rs"]
+mod error_detail_shown;

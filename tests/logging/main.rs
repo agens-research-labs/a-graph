@@ -47,3 +47,6 @@ mod url_delivery;
 
 #[path = "warning_event/warning_event.rs"]
 mod warning_event;
+
+#[path = "error_detail_written/error_detail_written.rs"]
+mod error_detail_written;

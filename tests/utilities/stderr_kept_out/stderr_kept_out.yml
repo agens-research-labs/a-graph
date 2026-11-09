@@ -1,0 +1,42 @@
+# A utility that fails and writes data on its standard error, under a passport that forbids contents (model mock {{port:model}}).
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: confidential, categories: [pii] }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error, output: { file: ./target/test-output/stderr_kept_out.log } }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:{{port:model}}
+    input: [text]
+    output: [text]
+utilities:
+  - id: bad
+    transport: stdio
+    command: /bin/sh
+    args: ["tests/utilities/stderr_kept_out/files/scripts/bad.sh"]
+    timeout: 5
+resources:
+  prompts:
+    - id: pr
+      content:
+        system: "Be brief."
+        user: "Q: {{user_message}}"
+graph:
+  nodes:
+    - id: n
+      model: { id: m, max_tokens: 50 }
+      resources: { prompt: pr }
+      message:
+        input: { user_message: true, utility: [bad] }
+        output: { assistant_message: true }
+  edges:
+    - start: n
+    - end: n

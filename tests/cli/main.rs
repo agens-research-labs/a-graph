@@ -41,3 +41,6 @@ mod run_stdin;
 
 #[path = "usage_errors/usage_errors.rs"]
 mod usage_errors;
+
+#[path = "error_kept_out/error_kept_out.rs"]
+mod error_kept_out;

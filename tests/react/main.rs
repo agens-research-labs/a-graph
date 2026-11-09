@@ -41,3 +41,6 @@ mod several_workers;
 
 #[path = "unknown_worker/unknown_worker.rs"]
 mod unknown_worker;
+
+#[path = "routing_kept_out/routing_kept_out.rs"]
+mod routing_kept_out;

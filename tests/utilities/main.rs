@@ -131,3 +131,6 @@ mod vectordb_utility;
 
 #[path = "wrong_shape/wrong_shape.rs"]
 mod wrong_shape;
+
+#[path = "stderr_kept_out/stderr_kept_out.rs"]
+mod stderr_kept_out;

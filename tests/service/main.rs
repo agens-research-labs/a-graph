@@ -161,3 +161,6 @@ mod together;
 
 #[path = "too_many_events/too_many_events.rs"]
 mod too_many_events;
+
+#[path = "error_kept_out/error_kept_out.rs"]
+mod error_kept_out;

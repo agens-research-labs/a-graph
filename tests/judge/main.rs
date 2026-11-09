@@ -53,3 +53,6 @@ mod refuse_stop;
 
 #[path = "run_node_refused/run_node_refused.rs"]
 mod run_node_refused;
+
+#[path = "verdict_kept_out/verdict_kept_out.rs"]
+mod verdict_kept_out;
