@@ -12,16 +12,36 @@ const DEFAULT_TIMEOUT: u64 = 60;
 /// How many chunks come back when the yml does not say `top_k`.
 const DEFAULT_TOP_K: u32 = 5;
 
+/// Why a search failed. `message` never holds what the server wrote, `detail` does: it is a content,
+/// written only where the passport allows contents.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SearchFailure {
+    pub message: String,
+    pub detail: Option<String>,
+}
+
+impl From<String> for SearchFailure {
+    fn from(message: String) -> Self {
+        SearchFailure { message, detail: None }
+    }
+}
+
+impl std::fmt::Display for SearchFailure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+
 impl VectordbManager {
     /// The texts of the chunks of database `id` nearest to `vector`. The error says what failed.
-    pub async fn search(&self, id: &str, vector: &[f32]) -> Result<Vec<String>, String> {
+    pub async fn search(&self, id: &str, vector: &[f32]) -> Result<Vec<String>, SearchFailure> {
         let db = self.get(id).ok_or_else(|| format!("vectordb `{id}` is not declared"))?;
         db.search(&self.client, vector).await
     }
 }
 
 impl Vectordb {
-    async fn search(&self, client: &reqwest::Client, vector: &[f32]) -> Result<Vec<String>, String> {
+    async fn search(&self, client: &reqwest::Client, vector: &[f32]) -> Result<Vec<String>, SearchFailure> {
         let top_k = self.top_k.unwrap_or(DEFAULT_TOP_K);
         let timeout = Duration::from_secs(self.timeout.map_or(DEFAULT_TIMEOUT, u64::from));
         let key = match &self.api_key {
@@ -54,7 +74,7 @@ impl Vectordb {
                 let points = answer["result"]["points"]
                     .as_array()
                     .ok_or_else(|| format!("vectordb `{}`: the answer has no `result.points`", self.id))?;
-                points
+                let texts: Result<Vec<String>, String> = points
                     .iter()
                     .map(|p| {
                         p["payload"][text_field.as_str()]
@@ -67,7 +87,8 @@ impl Vectordb {
                                 )
                             })
                     })
-                    .collect()
+                    .collect();
+                Ok(texts?)
             }
             VectorBackend::Chromadb {
                 url,
@@ -108,8 +129,9 @@ impl Vectordb {
         }
     }
 
-    /// Sends the request and reads the JSON answer; a non-2xx status is an error with its body.
-    async fn send(&self, req: reqwest::RequestBuilder, timeout: Duration) -> Result<Value, String> {
+    /// Sends the request and reads the JSON answer; a non-2xx status is an error, whose detail is the
+    /// body.
+    async fn send(&self, req: reqwest::RequestBuilder, timeout: Duration) -> Result<Value, SearchFailure> {
         let resp = req
             .timeout(timeout)
             .send()
@@ -118,14 +140,13 @@ impl Vectordb {
         let status = resp.status();
         let body = resp.text().await.map_err(|e| format!("vectordb `{}`: {e}", self.id))?;
         if !status.is_success() {
-            return Err(format!(
-                "vectordb `{}`: the server answered {}: {}",
-                self.id,
-                status.as_u16(),
-                body.chars().take(500).collect::<String>()
-            ));
+            return Err(SearchFailure {
+                message: format!("vectordb `{}`: the server answered {}", self.id, status.as_u16()),
+                detail: Some(body.chars().take(500).collect::<String>()),
+            });
         }
-        serde_json::from_str(&body).map_err(|e| format!("vectordb `{}`: the answer is not JSON: {e}", self.id))
+        // an error of the syntax says where, never what
+        Ok(serde_json::from_str(&body).map_err(|e| format!("vectordb `{}`: the answer is not JSON: {e}", self.id))?)
     }
 }
 

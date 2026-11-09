@@ -57,7 +57,7 @@ impl Program {
                 .vectordb
                 .search(&r.id, &vector)
                 .await
-                .map_err(|e| fail(Rule::Io, e))?;
+                .map_err(|e| fail(Rule::Io, e.message).with_detail_if(e.detail.as_deref()))?;
             self.emit(
                 self.traced(
                     Event::new(LogLevel::Debug, "read.vectordb")

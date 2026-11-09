@@ -9,6 +9,7 @@ mod vectordb;
 
 pub use memory::*;
 pub use memory_file::*;
+pub use read_vectordb::SearchFailure;
 pub use search::*;
 pub use vectordb::*;
 
