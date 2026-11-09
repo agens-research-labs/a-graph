@@ -139,3 +139,20 @@ pub(crate) fn batch_ended(state: &str) -> String {
         None => "the batch ended with no result".to_string(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::batch_ended;
+
+    /// The state of a job is in the message only when it is a fixed one, never a text.
+    #[test]
+    fn batch_ended_keeps_fixed_states() {
+        assert_eq!(batch_ended("failed"), "batch failed");
+        assert_eq!(batch_ended("FAILED"), "batch FAILED");
+        assert_eq!(
+            batch_ended("the patient has diabetes"),
+            "the batch ended with no result"
+        );
+        assert_eq!(batch_ended(""), "the batch ended with no result");
+    }
+}

@@ -1,6 +1,6 @@
 use super::*;
 
-/// Errors say what failed and pass mistrals message.
+/// Errors say what failed; what the provider wrote is kept apart from the message.
 #[tokio::test]
 async fn error_messages() {
     let (r, _) = one_call(

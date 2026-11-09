@@ -19,7 +19,12 @@ async fn poll_fails_cancels() {
     .await;
     let run = tokio::time::timeout(Duration::from_secs(10), p.run("hi")).await;
     let e = run.expect("the failed polls end the run").unwrap_err();
-    assert!(e.message.contains("529"), "{e:?}");
+    assert!(e.message.contains("529") && !e.message.contains("overloaded"), "{e:?}");
+    assert_eq!(
+        e.detail.as_deref(),
+        Some("overloaded"),
+        "what the provider wrote is the detail"
+    );
     a_graph::run::close(p).await;
 
     let polls = seen

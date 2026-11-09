@@ -1,6 +1,6 @@
 use super::*;
 
-/// Errors say what failed and pass openais message.
+/// Errors say what failed; what the provider wrote is kept apart from the message.
 #[tokio::test]
 async fn error_messages() {
     let err = |status, msg: &str| {

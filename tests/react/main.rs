@@ -44,3 +44,6 @@ mod unknown_worker;
 
 #[path = "routing_kept_out/routing_kept_out.rs"]
 mod routing_kept_out;
+
+#[path = "controller_error/controller_error.rs"]
+mod controller_error;

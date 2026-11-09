@@ -56,3 +56,6 @@ mod run_node_refused;
 
 #[path = "verdict_kept_out/verdict_kept_out.rs"]
 mod verdict_kept_out;
+
+#[path = "judge_model_error/judge_model_error.rs"]
+mod judge_model_error;

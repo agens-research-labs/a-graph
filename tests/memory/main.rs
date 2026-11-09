@@ -92,3 +92,9 @@ mod write_roles;
 
 #[path = "writes_exchange/writes_exchange.rs"]
 mod writes_exchange;
+
+#[path = "summary_error/summary_error.rs"]
+mod summary_error;
+
+#[path = "embedding_error/embedding_error.rs"]
+mod embedding_error;

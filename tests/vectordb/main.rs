@@ -65,3 +65,6 @@ mod two_vectordbs_in_order;
 
 #[path = "unknown_embedding/unknown_embedding.rs"]
 mod unknown_embedding;
+
+#[path = "embedding_error/embedding_error.rs"]
+mod embedding_error;

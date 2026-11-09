@@ -35,3 +35,6 @@ mod to_node_no_reasoning;
 
 #[path = "to_output_reasoning/to_output_reasoning.rs"]
 mod to_output_reasoning;
+
+#[path = "provider_text_kept_out/provider_text_kept_out.rs"]
+mod provider_text_kept_out;

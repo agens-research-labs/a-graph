@@ -1,0 +1,45 @@
+[
+  {
+    "id": "n",
+    "timestamp": "t",
+    "synt": "",
+    "chat": [
+      {
+        "role": "user",
+        "content": "about cats",
+        "embedding": [
+          1.0,
+          0.0
+        ]
+      },
+      {
+        "role": "assistant",
+        "content": "cats purr"
+      },
+      {
+        "role": "user",
+        "content": "about taxes",
+        "embedding": [
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "role": "assistant",
+        "content": "taxes are due"
+      },
+      {
+        "role": "user",
+        "content": "about dogs",
+        "embedding": [
+          0.9,
+          0.1
+        ]
+      },
+      {
+        "role": "assistant",
+        "content": "dogs bark"
+      }
+    ]
+  }
+]
