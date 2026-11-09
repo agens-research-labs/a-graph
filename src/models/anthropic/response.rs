@@ -25,6 +25,14 @@ impl Anthropic {
             .get("stop_reason")
             .and_then(Value::as_str)
             .ok_or_else(|| self.invalid("no `stop_reason`"))?;
+        let mut stop_reason = match stop {
+            "end_turn" | "stop_sequence" => StopReason::End,
+            "tool_use" => StopReason::ToolCall,
+            "max_tokens" => StopReason::MaxTokens,
+            "model_context_window_exceeded" => StopReason::ContextExceeded,
+            "refusal" => StopReason::Refused,
+            _ => StopReason::Other,
+        };
 
         let mut text = String::new();
         let mut reasoning = Vec::new();
@@ -35,6 +43,10 @@ impl Anthropic {
                 // opaque: the tool loop sends them back as they are
                 Some("thinking" | "redacted_thinking") => reasoning.push(b.clone()),
                 Some("tool_use") => {
+                    // a cut answer may hold a `tool_use` block cut in the middle
+                    if stop_reason.is_cut() {
+                        return Err(self.who.truncated());
+                    }
                     let arguments = b
                         .get("input")
                         .filter(|i| i.is_object())
@@ -59,14 +71,6 @@ impl Anthropic {
             }
         }
 
-        let mut stop_reason = match stop {
-            "end_turn" | "stop_sequence" => StopReason::End,
-            "tool_use" => StopReason::ToolCall,
-            "max_tokens" => StopReason::MaxTokens,
-            "model_context_window_exceeded" => StopReason::ContextExceeded,
-            "refusal" => StopReason::Refused,
-            _ => StopReason::Other,
-        };
         if !tools_call.is_empty() {
             stop_reason = StopReason::ToolCall;
         }
@@ -74,7 +78,7 @@ impl Anthropic {
         let (mut message, mut structured) = (None, None);
         // a refusal is a text, schema or not
         if schema && stop_reason != StopReason::Refused {
-            if stop_reason == StopReason::MaxTokens {
+            if stop_reason.is_cut() {
                 return Err(self.who.truncated());
             }
             // a model that asks for a tool first has no JSON yet

@@ -51,7 +51,9 @@ goes to every destination:
 
 With an output `schema` (a JSON Schema written on the node), the model answers in that shape and the answer is a JSON
 value instead of a text. When the model refuses, the answer is the text of the refusal instead. A node that has a
-`schema` and goes through output utilities gives them the JSON as a text, and what they give back is a text.
+`schema` and goes through output utilities gives them the JSON as a text, and what they give back is a text. An answer
+that stopped before its end, at `max_tokens` or at the end of the context window, has its JSON cut: the run stops
+(`model_failed`).
 
 Each produced media decides its own destinations with its `assistant` and `node`.
 

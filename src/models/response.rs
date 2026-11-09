@@ -43,6 +43,14 @@ pub enum StopReason {
     Other,
 }
 
+impl StopReason {
+    /// The answer stopped before its end: at `max_tokens` or at the end of the context window. A tool call in
+    /// it may be cut anywhere, so it is never run.
+    pub fn is_cut(self) -> bool {
+        matches!(self, StopReason::MaxTokens | StopReason::ContextExceeded)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ResponseInfo {
     pub provider: String,

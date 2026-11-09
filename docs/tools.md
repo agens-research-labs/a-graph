@@ -49,6 +49,10 @@ An answer that is not JSON is a failure too.
 - A call of a tool the node does not have: the model is told that the node has no such tool.
 - A program that cannot even start: the run stops. It is a mistake of the configuration, not something the model can
   fix.
+- An answer of the model that stopped before its end, at `max_tokens` or at the end of the context window, and asks
+  for tools: no tool is called, since a call may be cut anywhere, and the run stops (`model_failed`). It happens
+  with or without an output `schema`; a larger `max_tokens` is the fix. Without a `schema`, a cut answer that asks
+  for no tool is the answer of the node.
 
 ## The loop
 

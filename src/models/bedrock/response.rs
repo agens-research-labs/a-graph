@@ -23,6 +23,15 @@ impl Bedrock {
         let Some(Output::Message(message)) = out.output() else {
             return Err(self.who.invalid("no message in the answer"));
         };
+        let stop = out.stop_reason();
+        let mut stop_reason = match stop {
+            BedrockStop::EndTurn | BedrockStop::StopSequence => StopReason::End,
+            BedrockStop::ToolUse => StopReason::ToolCall,
+            BedrockStop::MaxTokens => StopReason::MaxTokens,
+            BedrockStop::ModelContextWindowExceeded => StopReason::ContextExceeded,
+            BedrockStop::GuardrailIntervened | BedrockStop::ContentFiltered => StopReason::Refused,
+            _ => StopReason::Other,
+        };
 
         let mut text = String::new();
         let mut reasoning = Vec::new();
@@ -38,6 +47,10 @@ impl Bedrock {
                     reasoning.push(json!({ "redacted": STANDARD.encode(b.as_ref()) }))
                 }
                 ContentBlock::ToolUse(t) => {
+                    // a cut answer may hold a tool call cut in the middle
+                    if stop_reason.is_cut() {
+                        return Err(self.who.truncated());
+                    }
                     let arguments = from_document(t.input());
                     if !arguments.is_object() {
                         return Err(self.who.invalid("tool call arguments are not a JSON object"));
@@ -53,15 +66,6 @@ impl Bedrock {
             }
         }
 
-        let stop = out.stop_reason();
-        let mut stop_reason = match stop {
-            BedrockStop::EndTurn | BedrockStop::StopSequence => StopReason::End,
-            BedrockStop::ToolUse => StopReason::ToolCall,
-            BedrockStop::MaxTokens => StopReason::MaxTokens,
-            BedrockStop::ModelContextWindowExceeded => StopReason::ContextExceeded,
-            BedrockStop::GuardrailIntervened | BedrockStop::ContentFiltered => StopReason::Refused,
-            _ => StopReason::Other,
-        };
         if !tools_call.is_empty() {
             stop_reason = StopReason::ToolCall;
         }
@@ -69,7 +73,7 @@ impl Bedrock {
         let (mut message, mut structured) = (None, None);
         // a refusal is a text, schema or not: the message of the guardrail
         if schema && stop_reason != StopReason::Refused {
-            if stop_reason == StopReason::MaxTokens {
+            if stop_reason.is_cut() {
                 return Err(self.who.truncated());
             }
             if tools_call.is_empty() {

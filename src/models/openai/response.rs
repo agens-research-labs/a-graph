@@ -28,6 +28,14 @@ impl OpenAi {
             .get("output")
             .and_then(Value::as_array)
             .ok_or_else(|| self.who.invalid("no `output` array"))?;
+        let incomplete = v.pointer("/incomplete_details/reason").and_then(Value::as_str);
+        let mut stop_reason = match (status, incomplete) {
+            ("incomplete", Some("content_filter")) => StopReason::Refused,
+            ("incomplete", _) => StopReason::MaxTokens,
+            ("completed", _) => StopReason::End,
+            ("cancelled", _) => StopReason::Other,
+            (other, _) => return Err(self.who.invalid(format!("unexpected status `{other}`"))),
+        };
 
         let (mut text, mut refusal) = (String::new(), String::new());
         let mut reasoning = Vec::new();
@@ -49,6 +57,8 @@ impl OpenAi {
                         }
                     }
                 }
+                // a cut answer may hold a tool call cut in the middle
+                Some("function_call") if stop_reason.is_cut() => return Err(self.who.truncated()),
                 Some("function_call") => {
                     // the arguments are a JSON string
                     let raw = item
@@ -79,14 +89,6 @@ impl OpenAi {
             }
         }
 
-        let incomplete = v.pointer("/incomplete_details/reason").and_then(Value::as_str);
-        let mut stop_reason = match (status, incomplete) {
-            ("incomplete", Some("content_filter")) => StopReason::Refused,
-            ("incomplete", _) => StopReason::MaxTokens,
-            ("completed", _) => StopReason::End,
-            ("cancelled", _) => StopReason::Other,
-            (other, _) => return Err(self.who.invalid(format!("unexpected status `{other}`"))),
-        };
         if !refusal.is_empty() {
             stop_reason = StopReason::Refused;
         }
@@ -98,7 +100,7 @@ impl OpenAi {
         if !refusal.is_empty() {
             message = Some(refusal);
         } else if schema {
-            if stop_reason == StopReason::MaxTokens {
+            if stop_reason.is_cut() {
                 return Err(self.who.truncated());
             }
             if tools_call.is_empty() && stop_reason != StopReason::Refused {

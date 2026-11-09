@@ -1,6 +1,6 @@
 //! What a call to a model can fail with. Every variant says which model and which provider;
 //! the caller adds the node. `refused`, `context_exceeded` and `max_tokens` without a schema
-//! are NOT errors: they are a `StopReason`.
+//! are NOT errors: they are a `StopReason`; a cut answer that asks for a tool is one (`Truncated`).
 
 use thiserror::Error;
 
@@ -45,8 +45,9 @@ pub enum ModelError {
         detail: String,
     },
 
-    /// The output reached `max_tokens` while a schema was required: the JSON is cut.
-    #[error("model `{model}` ({provider}): the output was truncated at max_tokens")]
+    /// The output stopped before its end (`StopReason::is_cut`) while a schema was required, so the JSON is cut;
+    /// or while it asked for a tool, so the call may be cut and is not run.
+    #[error("model `{model}` ({provider}): the output was cut before its end")]
     Truncated { model: String, provider: String },
 
     #[error("model `{model}` ({provider}): expected media `{expected}`, produced `{produced}`")]
