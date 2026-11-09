@@ -46,6 +46,8 @@ impl Bedrock {
                 ContentBlock::ReasoningContent(ReasoningContentBlock::RedactedContent(b)) => {
                     reasoning.push(json!({ "redacted": STANDARD.encode(b.as_ref()) }))
                 }
+                // a refusal asks for nothing: its tool calls are never run
+                ContentBlock::ToolUse(_) if stop_reason == StopReason::Refused => {}
                 ContentBlock::ToolUse(t) => {
                     // a cut answer may hold a tool call cut in the middle
                     if stop_reason.is_cut() {

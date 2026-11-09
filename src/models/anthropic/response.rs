@@ -42,6 +42,8 @@ impl Anthropic {
                 Some("text") => text.push_str(b.get("text").and_then(Value::as_str).unwrap_or_default()),
                 // opaque: the tool loop sends them back as they are
                 Some("thinking" | "redacted_thinking") => reasoning.push(b.clone()),
+                // a refusal asks for nothing: its tool calls are never run
+                Some("tool_use") if stop_reason == StopReason::Refused => {}
                 Some("tool_use") => {
                     // a cut answer may hold a `tool_use` block cut in the middle
                     if stop_reason.is_cut() {
