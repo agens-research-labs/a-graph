@@ -68,3 +68,6 @@ mod unknown_embedding;
 
 #[path = "embedding_error/embedding_error.rs"]
 mod embedding_error;
+
+#[path = "database_text_kept_out/database_text_kept_out.rs"]
+mod database_text_kept_out;
