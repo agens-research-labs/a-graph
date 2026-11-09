@@ -46,7 +46,8 @@ impl Program {
                     format!("memory `{}` is kept in a vectordb, which is not supported yet", m.id),
                 ));
             };
-            let record = read_record(path, &id).map_err(|e| fail(Rule::Io, format!("memory `{}`: {e}", m.id)))?;
+            let record = read_record(path, &id)
+                .map_err(|e| fail(Rule::Io, format!("memory `{}`: {e}", m.id)).with_detail_if(e.detail.as_deref()))?;
             if memory.synt.is_some() {
                 let summary = self
                     .text_through(&id, "memory.read", &m.read_utility, record.synt.clone())
@@ -177,7 +178,7 @@ impl Program {
                     }
                 })
                 .await
-                .map_err(|e| fail(Rule::Io, format!("memory `{}`: {e}", m.id)))?;
+                .map_err(|e| fail(Rule::Io, format!("memory `{}`: {e}", m.id)).with_detail_if(e.detail.as_deref()))?;
 
             if let Some(synt) = &memory.synt
                 && saved.exchanges().len() >= synt.length as usize
@@ -266,7 +267,7 @@ impl Program {
                 }
             })
             .await
-            .map_err(|e| fail(Rule::Io, format!("memory `{}`: {e}", memory.id)))?;
+            .map_err(|e| fail(Rule::Io, format!("memory `{}`: {e}", memory.id)).with_detail_if(e.detail.as_deref()))?;
         Ok(())
     }
 }

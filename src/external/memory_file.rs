@@ -45,7 +45,40 @@ pub struct Take {
 
 /// The record of node `node` in the file at `path`. A file that does not exist yet, or has no
 /// record of the node, gives an empty record: the file is created at the first write.
-pub fn read_record(path: &str, node: &str) -> Result<Record, String> {
+/// Why a memory file could not be read or changed. `message` never holds what the file holds, `detail`
+/// does: it is a content, written only where the passport allows contents.
+#[derive(Debug, Clone, PartialEq)]
+pub struct MemoryFailure {
+    pub message: String,
+    pub detail: Option<String>,
+}
+
+impl From<String> for MemoryFailure {
+    fn from(message: String) -> Self {
+        MemoryFailure { message, detail: None }
+    }
+}
+
+impl std::fmt::Display for MemoryFailure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+
+/// `path` is not a list of records: where, from the line and the column, and what serde says as the
+/// detail, since it may quote a text of the file.
+fn not_records(path: &str, e: &serde_json::Error) -> MemoryFailure {
+    MemoryFailure {
+        message: format!(
+            "`{path}` is not a list of records (line {}, column {})",
+            e.line(),
+            e.column()
+        ),
+        detail: Some(e.to_string()),
+    }
+}
+
+pub fn read_record(path: &str, node: &str) -> Result<Record, MemoryFailure> {
     let text = match std::fs::read_to_string(path) {
         Ok(t) => t,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
@@ -54,7 +87,7 @@ pub fn read_record(path: &str, node: &str) -> Result<Record, String> {
                 ..Record::default()
             });
         }
-        Err(e) => return Err(format!("cannot read `{path}`: {e}")),
+        Err(e) => return Err(format!("cannot read `{path}`: {e}").into()),
     };
     if text.trim().is_empty() {
         return Ok(Record {
@@ -62,8 +95,7 @@ pub fn read_record(path: &str, node: &str) -> Result<Record, String> {
             ..Record::default()
         });
     }
-    let records: Vec<Record> =
-        serde_json::from_str(&text).map_err(|e| format!("`{path}` is not a list of records: {e}"))?;
+    let records: Vec<Record> = serde_json::from_str(&text).map_err(|e| not_records(path, &e))?;
     Ok(records.into_iter().find(|r| r.id == node).unwrap_or_else(|| Record {
         id: node.to_string(),
         ..Record::default()
@@ -187,19 +219,19 @@ fn lock_records(path: &str) -> Result<std::fs::File, String> {
 }
 
 /// Reads the whole list of records; a file that does not exist yet is an empty list.
-fn read_records(path: &str) -> Result<Vec<Record>, String> {
+fn read_records(path: &str) -> Result<Vec<Record>, MemoryFailure> {
     match std::fs::read_to_string(path) {
         Ok(t) if t.trim().is_empty() => Ok(Vec::new()),
-        Ok(t) => serde_json::from_str(&t).map_err(|e| format!("`{path}` is not a list of records: {e}")),
+        Ok(t) => serde_json::from_str(&t).map_err(|e| not_records(path, &e)),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Vec::new()),
-        Err(e) => Err(format!("cannot read `{path}`: {e}")),
+        Err(e) => Err(format!("cannot read `{path}`: {e}").into()),
     }
 }
 
 /// Changes the record of `node` (created if it does not exist), sets its `timestamp` and saves
 /// the file, holding the lock of the file from the read to the write. Gives back the record as it is
 /// after the change.
-pub fn update_record(path: &str, node: &str, change: impl FnOnce(&mut Record)) -> Result<Record, String> {
+pub fn update_record(path: &str, node: &str, change: impl FnOnce(&mut Record)) -> Result<Record, MemoryFailure> {
     let _held = lock_records(path)?;
     let mut records = read_records(path)?;
     let index = match records.iter().position(|r| r.id == node) {

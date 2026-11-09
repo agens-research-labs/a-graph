@@ -3,7 +3,7 @@
 use serde::Deserialize;
 use serde_norway::Value;
 
-use super::{Record, update_record};
+use super::{MemoryFailure, Record, update_record};
 use crate::build::{Errs, Obj};
 use crate::error::{Error, Errors, Path, Phase, Rule};
 use crate::resources::{PromptBody, PromptsManager};
@@ -196,11 +196,11 @@ impl MemoryManager {
         path: &str,
         node: &str,
         change: impl FnOnce(&mut Record) + Send + 'static,
-    ) -> Result<Record, String> {
+    ) -> Result<Record, MemoryFailure> {
         let (path, node) = (path.to_string(), node.to_string());
         tokio::task::spawn_blocking(move || update_record(&path, &node, change))
             .await
-            .map_err(|e| format!("the change of the record stopped: {e}"))?
+            .map_err(|e| MemoryFailure::from(format!("the change of the record stopped: {e}")))?
     }
 
     pub fn get(&self, id: &str) -> Option<&Memory> {

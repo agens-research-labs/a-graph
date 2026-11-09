@@ -58,6 +58,10 @@ of the service and runs of the command line that share the file wait for each ot
 lost. If the process dies between the write of the temporary file and its rename, the temporary file stays next to
 the memory, and the memory stays as it was.
 
+A file that is not a list of records fails the node that reads or writes it (`io`). The message says where, by line and
+column; what the parser says, which may quote a text of the file, is the `detail` of the error, written only as the
+passport allows (see [observability](observability.md)).
+
 ## Reading
 
 Before the call, for every memory of the node:
