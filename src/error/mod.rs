@@ -30,7 +30,11 @@ pub struct Error {
     pub phase: Phase,
     pub path: Path,
     pub rule: Rule,
+    /// What went wrong, never with a content: it is written everywhere, whatever the passport says.
     pub message: String,
+    /// What a model, a utility, a provider or a file wrote that made the error: a content, written only
+    /// where the passport allows contents, and never given to the caller.
+    pub detail: Option<String>,
 }
 
 impl Error {
@@ -40,7 +44,13 @@ impl Error {
             path,
             rule,
             message: message.into(),
+            detail: None,
         }
+    }
+
+    pub fn with_detail(mut self, detail: impl Into<String>) -> Self {
+        self.detail = Some(detail.into());
+        self
     }
 }
 

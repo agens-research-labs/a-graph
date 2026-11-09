@@ -34,10 +34,7 @@ impl Program {
             .filter(serde_json::Value::is_object)
             .ok_or_else(|| fail(Rule::BadValue, "the judge did not answer with the verdict".into()))?;
         let approved = verdict["validation"].as_bool().ok_or_else(|| {
-            fail(
-                Rule::BadValue,
-                format!("the verdict of the judge has no `validation`: {verdict}"),
-            )
+            fail(Rule::BadValue, "the verdict of the judge has no `validation`".into()).with_detail(verdict.to_string())
         })?;
         self.node_finished(node, &response, Some(if approved { "approved" } else { "refused" }));
         if approved {

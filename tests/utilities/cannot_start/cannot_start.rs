@@ -9,5 +9,9 @@ fn here() -> &'static std::path::Path {
 async fn cannot_start() {
     let u = manager(&own_yml(here())).get("u").unwrap().clone();
     let e = call_utility(&u, &UtilityInput::Text("x".into())).await.unwrap_err();
-    assert!(e.contains("utility `u`") && e.contains("cannot start"), "{e}");
+    assert!(
+        e.message.contains("utility `u`") && e.message.contains("cannot start"),
+        "{e}"
+    );
+    assert_eq!(e.detail, None);
 }

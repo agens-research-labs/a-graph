@@ -53,12 +53,11 @@ pub(crate) async fn stdio(command: &str, args: &[String], arguments: &Value) -> 
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        let why = if stderr.trim().is_empty() {
-            format!("the program exited with {}", output.status)
-        } else {
-            stderr.trim().to_string()
-        };
-        return Ok(ToolOutcome::failed(why));
+        let plain = format!("the program exited with {}", output.status);
+        if stderr.trim().is_empty() {
+            return Ok(ToolOutcome::failed(plain));
+        }
+        return Ok(ToolOutcome::failed_with_data(plain, stderr.trim()));
     }
     Ok(answer(&String::from_utf8_lossy(&output.stdout)))
 }
@@ -94,10 +93,10 @@ pub(crate) async fn http(
         }
     };
     if !status.is_success() {
-        return Ok(ToolOutcome::failed(format!(
-            "the service answered {status}: {}",
-            body.trim()
-        )));
+        return Ok(ToolOutcome::failed_with_data(
+            format!("the service answered {status}"),
+            format!("the service answered {status}: {}", body.trim()),
+        ));
     }
     Ok(answer(&body))
 }
@@ -106,9 +105,13 @@ pub(crate) async fn http(
 fn answer(text: &str) -> ToolOutcome {
     match serde_json::from_str::<Value>(text) {
         Ok(v) => ToolOutcome::ok(v),
-        Err(e) => ToolOutcome::failed(format!(
-            "the tool did not answer with JSON ({e}); it wrote: {}",
-            text.chars().take(200).collect::<String>()
-        )),
+        // an error of the syntax says where, never what: only the text itself holds data
+        Err(e) => ToolOutcome::failed_with_data(
+            format!("the tool did not answer with JSON ({e})"),
+            format!(
+                "the tool did not answer with JSON ({e}); it wrote: {}",
+                text.chars().take(200).collect::<String>()
+            ),
+        ),
     }
 }

@@ -26,6 +26,11 @@ use serde_json::Value;
 pub struct ToolOutcome {
     pub result: Value,
     pub is_error: bool,
+    /// For a failure of `stdio` or `http` whose reason holds what the program or the service wrote: the
+    /// reason without it. A utility, which calls them, writes this one in its error and keeps the reason
+    /// for the places the passport allows; so a new reason of theirs that holds such a text must come
+    /// with it (`failed_with_data`). The model always reads the whole reason.
+    pub without_data: Option<String>,
 }
 
 impl ToolOutcome {
@@ -33,6 +38,7 @@ impl ToolOutcome {
         ToolOutcome {
             result,
             is_error: false,
+            without_data: None,
         }
     }
 
@@ -40,6 +46,17 @@ impl ToolOutcome {
         ToolOutcome {
             result: Value::String(why.into()),
             is_error: true,
+            without_data: None,
+        }
+    }
+
+    /// A failure whose reason `why` holds what the program or the service wrote; `plain` says the same
+    /// without it.
+    pub(crate) fn failed_with_data(plain: impl Into<String>, why: impl Into<String>) -> Self {
+        ToolOutcome {
+            result: Value::String(why.into()),
+            is_error: true,
+            without_data: Some(plain.into()),
         }
     }
 }

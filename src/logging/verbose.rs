@@ -197,10 +197,14 @@ impl Verbose {
                     )
                 )
             )),
-            _ if ev.level == LogLevel::Error => Some(format!(
-                "{bar}{}",
-                self.paint("31", &format!("✗ {}: {}", ev.code, text("message")))
-            )),
+            _ if ev.level == LogLevel::Error => {
+                let mut lines = vec![format!(
+                    "{bar}{}",
+                    self.paint("31", &format!("✗ {}: {}", ev.code, text("message")))
+                )];
+                lines.extend(self.contents(ev, &inner));
+                Some(lines.join("\n"))
+            }
             _ if ev.level == LogLevel::Warn => Some(format!(
                 "{bar}{}",
                 self.paint("33", &format!("! {}: {}", ev.code, text("message")))

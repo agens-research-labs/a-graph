@@ -64,10 +64,14 @@ impl Event {
 
 impl From<&Error> for Event {
     fn from(e: &Error) -> Self {
-        Event::new(LogLevel::Error, e.rule.code())
+        let ev = Event::new(LogLevel::Error, e.rule.code())
             .field("phase", e.phase.to_string())
             .field("path", e.path.to_string())
-            .field("message", e.message.clone())
+            .field("message", e.message.clone());
+        match &e.detail {
+            Some(detail) => ev.content("detail", detail.clone()),
+            None => ev,
+        }
     }
 }
 

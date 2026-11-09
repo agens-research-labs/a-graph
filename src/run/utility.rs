@@ -6,7 +6,16 @@ use super::node::{Content, NodeInput};
 use crate::error::{Error, Path, Phase, Rule};
 use crate::logging::{Event, LogLevel};
 use crate::models::MediaOutput;
-use crate::utilities::{UtilityInput, UtilityOutput, call_utility, mime_of};
+use crate::utilities::{UtilityFailure, UtilityInput, UtilityOutput, call_utility, mime_of};
+
+/// The error of a utility that failed in `node`: its message, and what it wrote as the detail.
+fn failed(node: &str, why: UtilityFailure) -> Error {
+    let e = Error::new(Phase::Execution, Path::node(node), Rule::UtilityFailed, why.message);
+    match why.detail {
+        Some(detail) => e.with_detail(detail),
+        None => e,
+    }
+}
 
 impl Program {
     /// Runs a text through the utilities `ids`, in order. `place` and `node` tell, in the error and
@@ -26,7 +35,9 @@ impl Program {
                 .get(id)
                 .ok_or_else(|| fail(format!("utility `{id}` is not built")))?;
             let started = std::time::Instant::now();
-            let answer = call_utility(utility, &UtilityInput::Text(text)).await.map_err(fail)?;
+            let answer = call_utility(utility, &UtilityInput::Text(text))
+                .await
+                .map_err(|why| failed(node, why))?;
             self.emit(
                 Event::new(LogLevel::Debug, "utility.call")
                     .node(node)
@@ -177,7 +188,7 @@ impl Program {
             if let Some(path) = temporary {
                 let _ = std::fs::remove_file(path);
             }
-            let answer = answer.map_err(fail)?;
+            let answer = answer.map_err(|why| failed(node, why))?;
             self.emit(
                 Event::new(LogLevel::Debug, "utility.call")
                     .node(node)

@@ -14,5 +14,6 @@ async fn wrong_shape() {
     let e = call_utility(&utility(), &UtilityInput::Text("x".into()))
         .await
         .unwrap_err();
-    assert!(e.contains("`text`") && e.contains("`mime_type`"), "{e}");
+    assert!(e.message.contains("`text`") && e.message.contains("`mime_type`"), "{e}");
+    assert!(e.detail.is_some(), "the answer is the detail");
 }

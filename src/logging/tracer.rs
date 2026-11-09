@@ -120,13 +120,15 @@ impl Tracer {
         if let Some(n) = &ev.node {
             attributes.push(("a_graph.node".into(), json!(n)));
         }
+        let mut contents: Vec<(String, Value)> = Vec::new();
         if !ev.content.is_empty() {
             if self.redaction.allow_content {
-                attributes.extend(ev.content.iter().map(|(k, v)| (format!("a_graph.{k}"), json!(v))));
+                contents.extend(ev.content.iter().map(|(k, v)| (format!("a_graph.{k}"), json!(v))));
             } else {
-                attributes.push(("a_graph.content_redacted".into(), json!(true)));
+                contents.push(("a_graph.content_redacted".into(), json!(true)));
             }
         }
+        attributes.extend(contents.iter().cloned());
         let text = |k: &str| {
             ev.fields
                 .iter()
@@ -189,11 +191,12 @@ impl Tracer {
                 attributes,
                 number("duration"),
             ),
-            // an error of the run ends its interval, marked as failed
+            // an error of the run ends its interval, marked as failed, with its detail as the passport allows
             _ if ev.level == LogLevel::Error => {
                 if let Some(mut s) = st.open.remove(&ev.span) {
                     s.end = ev.at;
                     s.error = Some(format!("{}: {}", ev.code, text("message")));
+                    s.attributes.extend(contents);
                     st.done.push(s);
                 }
             }

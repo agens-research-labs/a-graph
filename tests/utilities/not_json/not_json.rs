@@ -14,5 +14,6 @@ async fn not_json() {
     let e = call_utility(&utility(), &UtilityInput::Text("x".into()))
         .await
         .unwrap_err();
-    assert!(e.contains("utility `u`") && e.contains("JSON"), "{e}");
+    assert!(e.message.contains("utility `u`") && e.message.contains("JSON"), "{e}");
+    assert!(e.detail.is_some(), "what it wrote is the detail");
 }

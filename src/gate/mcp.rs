@@ -135,6 +135,7 @@ async fn try_call(
             Ok(ToolOutcome {
                 result: value,
                 is_error: result.is_error == Some(true),
+                without_data: None,
             })
         }
         Err(rmcp::ServiceError::McpError(e)) => Ok(ToolOutcome::failed(e.message.to_string())),

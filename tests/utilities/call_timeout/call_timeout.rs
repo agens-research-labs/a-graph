@@ -15,6 +15,7 @@ async fn call_timeout() {
     let e = call_utility(&utility(), &UtilityInput::Text("x".into()))
         .await
         .unwrap_err();
-    assert!(e.contains("did not answer within 1 s"), "{e}");
+    assert!(e.message.contains("did not answer within 1 s"), "{e}");
+    assert_eq!(e.detail, None);
     assert!(started.elapsed().as_secs() < 4);
 }

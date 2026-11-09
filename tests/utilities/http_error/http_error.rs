@@ -13,8 +13,7 @@ async fn http_error() {
         .unwrap()
         .clone();
     let e = call_utility(&u, &UtilityInput::Text("x".into())).await.unwrap_err();
-    assert!(
-        e.contains("utility `u`") && e.contains("500") && e.contains("the converter is down"),
-        "{e}"
-    );
+    assert!(e.message.contains("utility `u`") && e.message.contains("500"), "{e}");
+    assert!(!e.message.contains("the converter is down"), "{e}");
+    assert!(e.detail.unwrap().contains("the converter is down"));
 }

@@ -539,10 +539,8 @@ impl Program {
 
                 if done {
                     let answer = routing["answer"].as_str().filter(|a| !a.is_empty()).ok_or_else(|| {
-                        error(
-                            Rule::MissingField,
-                            format!("the controller is done and gave no `answer`: {routing}"),
-                        )
+                        error(Rule::MissingField, "the controller is done and gave no `answer`".into())
+                            .with_detail(routing.to_string())
                     })?;
                     let mut last = response;
                     (last.message, last.structured) = (Some(answer.to_string()), None);
@@ -572,14 +570,18 @@ impl Program {
                     .ok_or_else(|| {
                         error(
                             Rule::MissingField,
-                            format!("the controller is not done and named no `next_worker`: {routing}"),
+                            "the controller is not done and named no `next_worker`".into(),
                         )
+                        .with_detail(routing.to_string())
                     })?
                     .to_string();
-                let position = ids
-                    .iter()
-                    .position(|i| *i == name)
-                    .ok_or_else(|| error(Rule::UnknownRef, format!("`{name}` is not a worker of this react")))?;
+                let position = ids.iter().position(|i| *i == name).ok_or_else(|| {
+                    error(
+                        Rule::UnknownRef,
+                        "the controller named a worker that is not in this react".into(),
+                    )
+                    .with_detail(name.clone())
+                })?;
                 dispatched += 1;
 
                 let handed = Carry {

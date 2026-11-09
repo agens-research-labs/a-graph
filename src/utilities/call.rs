@@ -1,7 +1,7 @@
 //! Calling a utility. It receives ONE JSON object, `{ "text": ... }` or `{ "path": ..., "mime_type": ... }`,
 //! and answers ONE JSON object, `{ "text": ... }` or `{ "mime_type": ..., "data": "<base64>" }`.
 //! A utility that fails stops the run: no model is involved to read the reason, so the reason
-//! (the text it wrote on its standard error, or the status of its answer) is the error.
+//! (the status of its program or of its answer) is the error, and what it wrote is its detail.
 
 use std::time::Duration;
 
@@ -70,8 +70,28 @@ pub fn mime_of(path: &str) -> Option<String> {
     Some(mime.to_string())
 }
 
+/// Why a utility failed. `message` never holds what the utility wrote, `detail` does: it is a content,
+/// written only where the passport allows contents.
+#[derive(Debug, Clone, PartialEq)]
+pub struct UtilityFailure {
+    pub message: String,
+    pub detail: Option<String>,
+}
+
+impl UtilityFailure {
+    fn plain(message: String) -> Self {
+        UtilityFailure { message, detail: None }
+    }
+}
+
+impl std::fmt::Display for UtilityFailure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+
 /// Calls `utility`. `Err` says why it failed, with the id of the utility.
-pub async fn call_utility(utility: &Utility, input: &UtilityInput) -> Result<UtilityOutput, String> {
+pub async fn call_utility(utility: &Utility, input: &UtilityInput) -> Result<UtilityOutput, UtilityFailure> {
     let arguments = input.to_json();
     let call = async {
         match &utility.transport {
@@ -81,12 +101,12 @@ pub async fn call_utility(utility: &Utility, input: &UtilityInput) -> Result<Uti
     };
     // when the time is up the call is dropped: a program is killed, a request is abandoned
     let outcome = match tokio::time::timeout(Duration::from_secs(utility.timeout.into()), call).await {
-        Ok(outcome) => outcome.map_err(|e| format!("utility `{}`: {e}", utility.id))?,
+        Ok(outcome) => outcome.map_err(|e| UtilityFailure::plain(format!("utility `{}`: {e}", utility.id)))?,
         Err(_) => {
-            return Err(format!(
+            return Err(UtilityFailure::plain(format!(
                 "utility `{}` did not answer within {} s",
                 utility.id, utility.timeout
-            ));
+            )));
         }
     };
     if outcome.is_error {
@@ -94,12 +114,18 @@ pub async fn call_utility(utility: &Utility, input: &UtilityInput) -> Result<Uti
             Value::String(s) => s.clone(),
             other => other.to_string(),
         };
-        return Err(format!("utility `{}`: {why}", utility.id));
+        return Err(match outcome.without_data {
+            Some(plain) => UtilityFailure {
+                message: format!("utility `{}`: {plain}", utility.id),
+                detail: Some(why),
+            },
+            None => UtilityFailure::plain(format!("utility `{}`: {why}", utility.id)),
+        });
     }
     parse(&utility.id, &outcome.result)
 }
 
-fn parse(id: &str, answer: &Value) -> Result<UtilityOutput, String> {
+fn parse(id: &str, answer: &Value) -> Result<UtilityOutput, UtilityFailure> {
     if let Some(text) = answer.get("text").and_then(Value::as_str) {
         return Ok(UtilityOutput::Text(text.to_string()));
     }
@@ -112,8 +138,8 @@ fn parse(id: &str, answer: &Value) -> Result<UtilityOutput, String> {
             data: data.to_string(),
         });
     }
-    Err(format!(
-        "utility `{id}` did not answer with `text` or with `mime_type` and `data`: {}",
-        answer.to_string().chars().take(200).collect::<String>()
-    ))
+    Err(UtilityFailure {
+        message: format!("utility `{id}` did not answer with `text` or with `mime_type` and `data`"),
+        detail: Some(answer.to_string().chars().take(200).collect::<String>()),
+    })
 }
