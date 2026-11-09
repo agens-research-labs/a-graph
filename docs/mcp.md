@@ -39,6 +39,8 @@ without a handshake) and falls back to the older ones (`initialize`).
 - At that moment each server is asked for its tools, which are then given to the model of every node that uses the
   server.
 - A server that cannot be reached, or does not give its tools, stops the run before the first node.
+- An answer of a server over HTTP is read up to 16 MiB: a server that answers with more when the run starts stops
+  the run before the first node.
 - Two tools with the same name on one node (from `tools`, from different servers, or a reserved name of the
   [skills](skills.md)) stop the run before the first node (`duplicate_id`): the model could not tell them apart.
 - The connections stay open until the run ends, and are closed after the last node or after an error.
