@@ -49,7 +49,7 @@ const PARALLEL_GROUP: Field = Field::req(PARALLEL, GROUP).doc(
 );
 const CONCURRENT_GROUP: Field = Field::req(CONCURRENT, GROUP).doc("A group whose branches run all together, at most `limit` at a time; `limit` is mandatory. The first branch that fails ends the run.");
 const BATCH_GROUP: Field = Field::req(BATCH, GROUP).doc(
-    "A group whose branches are sent to the provider as one batch job; with `limit`, at most that many requests in each job. The branches are plain nodes, all with the same model.",
+    "A group whose branches are sent to the provider as one batch job; with `limit`, at most that many requests in each job. The branches are plain nodes, all with the same model, without tools, MCP servers or skills.",
 );
 const REACT_ENTRY: Field = Field::req(REACT, REACT_BODY)
     .doc("A controller that decides at run time which worker to call. A `react` cannot be a worker of another `react`, nor stand in a group among its workers.");

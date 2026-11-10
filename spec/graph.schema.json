@@ -59,7 +59,7 @@
           "properties": {
             "batch": {
               "$ref": "#/$defs/group",
-              "description": "A group whose branches are sent to the provider as one batch job; with `limit`, at most that many requests in each job. The branches are plain nodes, all with the same model."
+              "description": "A group whose branches are sent to the provider as one batch job; with `limit`, at most that many requests in each job. The branches are plain nodes, all with the same model, without tools, MCP servers or skills."
             }
           },
           "required": [
@@ -258,7 +258,7 @@
           "properties": {
             "batch": {
               "$ref": "#/$defs/group",
-              "description": "A group whose branches are sent to the provider as one batch job; with `limit`, at most that many requests in each job. The branches are plain nodes, all with the same model."
+              "description": "A group whose branches are sent to the provider as one batch job; with `limit`, at most that many requests in each job. The branches are plain nodes, all with the same model, without tools, MCP servers or skills."
             }
           },
           "required": [
@@ -341,7 +341,7 @@
           "properties": {
             "batch": {
               "$ref": "#/$defs/group",
-              "description": "A group whose branches are sent to the provider as one batch job; with `limit`, at most that many requests in each job. The branches are plain nodes, all with the same model."
+              "description": "A group whose branches are sent to the provider as one batch job; with `limit`, at most that many requests in each job. The branches are plain nodes, all with the same model, without tools, MCP servers or skills."
             }
           },
           "required": [
@@ -1724,7 +1724,7 @@
             "properties": {
               "batch": {
                 "additionalProperties": false,
-                "description": "Needed only by a `batch` group. The job is created on the Bedrock control API (`bedrock.<region>.amazonaws.com`), which must be in `allowed_hosts`. A batch cannot have tools or an output `schema`.",
+                "description": "Needed only by a `batch` group. The job is created on the Bedrock control API (`bedrock.<region>.amazonaws.com`), which must be in `allowed_hosts`. A batch cannot have an output `schema`.",
                 "properties": {
                   "input_s3_uri": {
                     "description": "The S3 folder the requests are written to, as `s3://<bucket>/<prefix>`. Its bucket must be in `allowed_hosts`.",

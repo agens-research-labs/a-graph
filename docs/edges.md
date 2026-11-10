@@ -54,7 +54,9 @@ The four groups differ only in how the branches run:
 | `concurrent` | all together, at most `limit` at a time | mandatory |
 | `batch` | as one batch job of the provider, instead of one call each (see [models](models.md#batch)) | optional: at most `limit` requests in each job |
 
-The branches of a `batch` are plain nodes, all with the same model: a group or a `react` among them is an error.
+The branches of a `batch` are plain nodes, all with the same model: a group or a `react` among them is an error. They
+cannot have tools, MCP servers or skills (`batch_tools`): the answer of a batch is the last one, so a tool call in it
+would never run. The `in` and `out` nodes of the group do not run in the batch and may have them.
 
 In `parallel` and `concurrent`, the first branch that fails ends the run, and the branches still running are stopped.
 

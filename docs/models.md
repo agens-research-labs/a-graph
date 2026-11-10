@@ -61,7 +61,7 @@ it cannot do is an error (`not_supported`).
 | `openai` | text, images | one image or one audio per call | yes |
 | `gemini` | text, images | one image or one audio per call | no |
 | `mistral` | text, images | one audio per call (speech) | yes |
-| `bedrock` | text, images (png, jpeg, gif, webp) | none | yes, without tools and without an output `schema` |
+| `bedrock` | text, images (png, jpeg, gif, webp) | none | yes, without an output `schema` |
 | `vertex_ai`, publisher `anthropic` | as `anthropic` | none | no |
 | `vertex_ai`, publisher `google` | as `gemini` | as `gemini` | no |
 | `azure_foundry`, publisher `anthropic` | as `anthropic` | none | no |
@@ -110,6 +110,7 @@ is killed cancels nothing, nor does a second Ctrl-C, which ends the process at o
 - A `batch` block on `vertex_ai` is accepted only with publisher `google`, and on `azure_foundry` only with publisher
   `openai` (`batch_not_allowed`). With publisher `google` the batch is not available yet.
 - A produced media cannot go in a batch.
+- The branches of a batch cannot have tools, MCP servers or skills, with any provider (see [edges](edges.md)).
 
 ## Reasoning
 

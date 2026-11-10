@@ -50,7 +50,7 @@ const BEDROCK: &[Field] = &[
         ]),
     )
     .doc(
-        "Needed only by a `batch` group. The job is created on the Bedrock control API (`bedrock.<region>.amazonaws.com`), which must be in `allowed_hosts`. A batch cannot have tools or an output `schema`.",
+        "Needed only by a `batch` group. The job is created on the Bedrock control API (`bedrock.<region>.amazonaws.com`), which must be in `allowed_hosts`. A batch cannot have an output `schema`.",
     ),
 ];
 

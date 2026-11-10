@@ -26,6 +26,6 @@ async fn check_limits() {
     let ModelError::Unsupported { problems, .. } = m.check(&req).unwrap_err() else {
         panic!("not Unsupported")
     };
-    // media output, tools/schema in a batch, no `batch` block, audio input, a bmp image
+    // media output, a schema in a batch, no `batch` block, audio input, a bmp image
     assert_eq!(problems.len(), 5, "{problems:?}");
 }

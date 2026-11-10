@@ -156,7 +156,7 @@ Amazon Bedrock, through the Converse API (`bedrock-runtime.<region>.amazonaws.co
 |---|---|---|---|
 | `region` | yes | text | The AWS region the model runs in, for example `eu-west-1`. |
 | `credentials` | yes | `ambient`, or map (below) | `ambient`: the default chain of the AWS SDK, resolved at the first call; the traffic it needs is not checked against `allowed_hosts`. Or the keys, each read from an environment variable when the file is checked. |
-| `batch` | no | map (below) | Needed only by a `batch` group. The job is created on the Bedrock control API (`bedrock.<region>.amazonaws.com`), which must be in `allowed_hosts`. A batch cannot have tools or an output `schema`. |
+| `batch` | no | map (below) | Needed only by a `batch` group. The job is created on the Bedrock control API (`bedrock.<region>.amazonaws.com`), which must be in `allowed_hosts`. A batch cannot have an output `schema`. |
 
 ## `models[].credentials` with `provider: bedrock`
 
@@ -762,7 +762,7 @@ A map with exactly one of these keys.
 | `linear` | a `group` (below) | A group whose branches run one after the other. `limit` is not allowed. |
 | `parallel` | a `group` (below) | A group whose branches run all together, each as a task of its own; with `limit`, at most that many at a time. The first branch that fails ends the run. |
 | `concurrent` | a `group` (below) | A group whose branches run all together, at most `limit` at a time; `limit` is mandatory. The first branch that fails ends the run. |
-| `batch` | a `group` (below) | A group whose branches are sent to the provider as one batch job; with `limit`, at most that many requests in each job. The branches are plain nodes, all with the same model. |
+| `batch` | a `group` (below) | A group whose branches are sent to the provider as one batch job; with `limit`, at most that many requests in each job. The branches are plain nodes, all with the same model, without tools, MCP servers or skills. |
 | `react` | a `react` (below) | A controller that decides at run time which worker to call. A `react` cannot be a worker of another `react`, nor stand in a group among its workers. |
 
 ## `group`
@@ -800,7 +800,7 @@ A map with exactly one of these keys.
 | `linear` | a `group` (below) | A group whose branches run one after the other. `limit` is not allowed. |
 | `parallel` | a `group` (below) | A group whose branches run all together, each as a task of its own; with `limit`, at most that many at a time. The first branch that fails ends the run. |
 | `concurrent` | a `group` (below) | A group whose branches run all together, at most `limit` at a time; `limit` is mandatory. The first branch that fails ends the run. |
-| `batch` | a `group` (below) | A group whose branches are sent to the provider as one batch job; with `limit`, at most that many requests in each job. The branches are plain nodes, all with the same model. |
+| `batch` | a `group` (below) | A group whose branches are sent to the provider as one batch job; with `limit`, at most that many requests in each job. The branches are plain nodes, all with the same model, without tools, MCP servers or skills. |
 | `react` | a `react` (below) | A controller that decides at run time which worker to call. A `react` cannot be a worker of another `react`, nor stand in a group among its workers. |
 
 ## `worker`
@@ -815,5 +815,5 @@ A map with exactly one of these keys.
 | `linear` | a `group` (below) | A group whose branches run one after the other. `limit` is not allowed. |
 | `parallel` | a `group` (below) | A group whose branches run all together, each as a task of its own; with `limit`, at most that many at a time. The first branch that fails ends the run. |
 | `concurrent` | a `group` (below) | A group whose branches run all together, at most `limit` at a time; `limit` is mandatory. The first branch that fails ends the run. |
-| `batch` | a `group` (below) | A group whose branches are sent to the provider as one batch job; with `limit`, at most that many requests in each job. The branches are plain nodes, all with the same model. |
+| `batch` | a `group` (below) | A group whose branches are sent to the provider as one batch job; with `limit`, at most that many requests in each job. The branches are plain nodes, all with the same model, without tools, MCP servers or skills. |
 | `react` | a `react` (below) | A controller that decides at run time which worker to call. A `react` cannot be a worker of another `react`, nor stand in a group among its workers. |

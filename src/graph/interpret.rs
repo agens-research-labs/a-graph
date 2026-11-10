@@ -59,10 +59,7 @@ pub fn interpret(
                 }),
             input_media: input_kinds(nodes, e, resources),
             output_media: produced(nodes, e, id, &at, resources, &mut writers, &mut errs),
-            uses_tools: nodes
-                .resources()
-                .get(e)
-                .is_some_and(|r| !r.tools.is_empty() || !r.mcp_servers.is_empty() || !r.skills.is_empty()),
+            uses_tools: uses_tools(nodes, e),
             batch: in_batch.contains(&e),
         };
         check_model(&base.key(key::MODEL), m, asked, models, &mut errs);
@@ -76,6 +73,14 @@ pub fn interpret(
 
 fn err(path: Path, rule: Rule, msg: impl Into<String>) -> Error {
     Error::new(Phase::Interpretation, path, rule, msg)
+}
+
+/// Tools, MCP servers or skills are bound to the node.
+fn uses_tools(nodes: &Nodes, e: Entity) -> bool {
+    nodes
+        .resources()
+        .get(e)
+        .is_some_and(|r| !r.tools.is_empty() || !r.mcp_servers.is_empty() || !r.skills.is_empty())
 }
 
 /// What the node asks of its model besides its own parameters.
@@ -581,6 +586,21 @@ fn batch_nodes(nodes: &Nodes, edges: &Edges, errs: &mut Vec<Error>) -> HashSet<E
                         format!("node `{}` uses model `{model}`, but the nodes of its batch must use the same model as `{}`: `{wanted}`", nodes.id(e).unwrap_or_default(), nodes.id(first).unwrap_or_default()),
                     ));
                 }
+            }
+        }
+        // a batch answer is the last one: a tool call in it would never run
+        for &e in &members {
+            if uses_tools(nodes, e) {
+                let at = Path::root()
+                    .key(key::GRAPH)
+                    .key(key::NODES)
+                    .idx(e.0 as usize)
+                    .key(key::RESOURCES);
+                errs.push(err(
+                    at,
+                    Rule::BatchTools,
+                    format!("node `{}` is in a batch and has tools, MCP servers or skills: the answer of a batch is the last one, so its tool calls would never run", nodes.id(e).unwrap_or_default()),
+                ));
             }
         }
         all.extend(members);
