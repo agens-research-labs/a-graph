@@ -1,0 +1,93 @@
+# A bedrock model with its `batch` block. A `batch` group whose branch `d` has a tool: refused by the rule of every
+# provider, not a second time by the check of Bedrock.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions:
+      network:
+        allowed_hosts:
+          - bedrock-runtime.eu-west-1.amazonaws.com
+          - bedrock.eu-west-1.amazonaws.com
+          - my-in.s3.eu-west-1.amazonaws.com
+          - my-out.s3.eu-west-1.amazonaws.com
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: bedrock
+    model: anthropic.claude-sonnet-4-5
+    input: [text]
+    output: [text]
+    region: eu-west-1
+    credentials: ambient
+    batch:
+      input_s3_uri: s3://my-in/jobs
+      output_s3_uri: s3://my-out/results/
+      role_arn: arn:aws:iam::123456789012:role/batch
+resources:
+  prompts:
+    - id: p_s
+      content: { system: "", user: "S({{user_message}})" }
+    - id: p_a
+      content: { system: "", user: "A({{agent_message}})" }
+  tools:
+    - id: get_weather
+      description: weather
+      max_iter: 5
+      timeout: 30
+      transport: stdio
+      command: /usr/bin/python3
+      args: ["w.py"]
+      parameters: { type: object, properties: { city: { type: string } }, required: [city] }
+graph:
+  nodes:
+    - id: s
+      model: { id: m, max_tokens: 100 }
+      resources: { prompt: p_s }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true, node: true }
+    - id: i
+      model: { id: m, max_tokens: 100 }
+      resources: { prompt: p_a }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: d
+      model: { id: m, max_tokens: 100 }
+      resources: { prompt: p_a, tools: [get_weather] }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: x
+      model: { id: m, max_tokens: 100 }
+      resources: { prompt: p_a }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: f
+      model: { id: m, max_tokens: 100 }
+      resources: { prompt: p_a }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: z
+      model: { id: m, max_tokens: 100 }
+      resources: { prompt: p_a }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+  edges:
+    - start: s
+    - batch:
+        - in: i
+        - fan:
+            - next: d
+            - next: x
+        - out: f
+    - end: z

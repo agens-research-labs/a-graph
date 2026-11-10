@@ -1,0 +1,105 @@
+# An anthropic model (it has batch). A `batch` group whose branches `d`, `e`, `k` have a tool, an MCP server and a skill,
+# `x` has none; the `in` and `out` nodes of the group (`i`, `f`) have a tool too, but they do not run in the batch.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [api.anthropic.com] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: anthropic
+    model: claude-haiku-4-5
+    api_key: { env: ANTHROPIC_API_KEY }
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: p_s
+      content: { system: "", user: "S({{user_message}})" }
+    - id: p_a
+      content: { system: "", user: "A({{agent_message}})" }
+  tools:
+    - id: get_weather
+      description: weather
+      max_iter: 5
+      timeout: 30
+      transport: stdio
+      command: /usr/bin/python3
+      args: ["w.py"]
+      parameters: { type: object, properties: { city: { type: string } }, required: [city] }
+  mcp_servers:
+    - id: files
+      max_iter: 5
+      timeout: 30
+      transport: stdio
+      command: /usr/bin/python3
+  skills:
+    - id: pdf
+      path: ./tests/batch/tools_refused/files/skills/pdf
+graph:
+  nodes:
+    - id: s
+      model: { id: m, max_tokens: 100 }
+      resources: { prompt: p_s }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true, node: true }
+    - id: i
+      model: { id: m, max_tokens: 100 }
+      resources: { prompt: p_a, tools: [get_weather] }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: d
+      model: { id: m, max_tokens: 100 }
+      resources: { prompt: p_a, tools: [get_weather] }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: e
+      model: { id: m, max_tokens: 100 }
+      resources: { prompt: p_a, mcp_servers: [files] }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: k
+      model: { id: m, max_tokens: 100 }
+      resources: { prompt: p_a, skills: [pdf] }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: x
+      model: { id: m, max_tokens: 100 }
+      resources: { prompt: p_a }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: f
+      model: { id: m, max_tokens: 100 }
+      resources: { prompt: p_a, tools: [get_weather] }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+    - id: z
+      model: { id: m, max_tokens: 100 }
+      resources: { prompt: p_a }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true, node: true }
+  edges:
+    - start: s
+    - batch:
+        - in: i
+        - fan:
+            - next: d
+            - next: e
+            - next: k
+            - next: x
+        - out: f
+    - end: z

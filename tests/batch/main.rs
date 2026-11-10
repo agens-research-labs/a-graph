@@ -6,6 +6,9 @@ mod common;
 #[path = "batch_builds/batch_builds.rs"]
 mod batch_builds;
 
+#[path = "bedrock_one_error/bedrock_one_error.rs"]
+mod bedrock_one_error;
+
 #[path = "creating_cancels/creating_cancels.rs"]
 mod creating_cancels;
 
@@ -38,3 +41,6 @@ mod same_model;
 
 #[path = "stopped_cancels/stopped_cancels.rs"]
 mod stopped_cancels;
+
+#[path = "tools_refused/tools_refused.rs"]
+mod tools_refused;
