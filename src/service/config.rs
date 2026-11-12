@@ -1,5 +1,6 @@
 //! The file that starts the service: its port, where the sessions keep their files, the hosts a
-//! graph may reach, how long a run is kept, how many go on at once and how long one lasts, and how
+//! graph may reach, how long a run is kept, how many go on at once and how long one lasts, how long
+//! the body of a request may take to arrive, and how
 //! long a session is kept and how much it may weigh, the environment variables a graph may use and
 //! the providers that may use the credentials of the service. Its keys are those of
 //! `schema::SERVICE`; the first five are mandatory: the service starts only if its owner chose them.
@@ -22,6 +23,8 @@ pub const DEFAULT_RETENTION_SECONDS: u64 = 600;
 pub const DEFAULT_MAX_RUNS: usize = 8;
 /// The longest a run may last when the file does not say: an hour.
 pub const DEFAULT_RUN_TIMEOUT_SECONDS: u64 = 3600;
+/// The longest the body of a request may take to arrive when the file does not say.
+pub const DEFAULT_READ_TIMEOUT_SECONDS: u64 = 60;
 
 #[derive(Debug, Clone)]
 pub struct ServiceConfig {
@@ -40,6 +43,8 @@ pub struct ServiceConfig {
     pub max_runs: usize,
     /// Seconds a run may last; then it ends as failed (`run_timeout`).
     pub run_timeout_seconds: u64,
+    /// Seconds the body of a request may take to arrive; then it is refused (`read_timeout`).
+    pub read_timeout_seconds: u64,
     /// Seconds a session folder is kept after its last request; `None`: never deleted.
     pub session_retention_seconds: Option<u64>,
     /// The most a session folder may weigh before a request for it is refused; `None`: no cap.
@@ -106,6 +111,14 @@ impl ServiceConfig {
                 "`run_timeout_seconds` is at least 1",
             );
         }
+        let read_timeout = o.opt::<u64>(key::READ_TIMEOUT_SECONDS, &mut errs);
+        if read_timeout == Some(0) {
+            errs.add(
+                &Path::root().key(key::READ_TIMEOUT_SECONDS),
+                Rule::BadValue,
+                "`read_timeout_seconds` is at least 1",
+            );
+        }
         let session_retention = o.opt::<u64>(key::SESSION_RETENTION_SECONDS, &mut errs);
         if session_retention == Some(0) {
             errs.add(
@@ -132,6 +145,7 @@ impl ServiceConfig {
                 retention_seconds: retention.unwrap_or(DEFAULT_RETENTION_SECONDS),
                 max_runs: max_runs.map_or(DEFAULT_MAX_RUNS, |n| n as usize),
                 run_timeout_seconds: run_timeout.unwrap_or(DEFAULT_RUN_TIMEOUT_SECONDS),
+                read_timeout_seconds: read_timeout.unwrap_or(DEFAULT_READ_TIMEOUT_SECONDS),
                 session_retention_seconds: session_retention,
                 session_max_bytes,
             }),

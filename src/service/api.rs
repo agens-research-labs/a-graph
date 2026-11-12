@@ -49,6 +49,10 @@ impl Endpoint {
         let refusals = |mut responses: serde_json::Map<String, Value>| {
             responses.insert("400".into(), errors("The body is not a JSON object with `yml`, `message` and, if wanted, `session` (an unknown key too), or `session` is not a name."));
             responses.insert(
+                "408".into(),
+                errors("The body did not arrive within `read_timeout_seconds` (`read_timeout`)."),
+            );
+            responses.insert(
                 "413".into(),
                 json!({ "description": "The body is larger than 64 MiB." }),
             );

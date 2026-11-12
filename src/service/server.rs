@@ -8,7 +8,8 @@ use std::time::Duration;
 use tokio::time::Instant;
 
 use axum::Router;
-use axum::extract::{DefaultBodyLimit, Path as UrlPath, State};
+use axum::body::Bytes;
+use axum::extract::{DefaultBodyLimit, FromRequest, Path as UrlPath, Request as HttpRequest, State};
 use axum::http::StatusCode;
 use axum::response::sse::{Event as SseEvent, KeepAlive, Sse};
 use axum::response::{IntoResponse, Response};
@@ -195,7 +196,7 @@ fn folder_over(folder: &std::path::Path, cap: u64) -> std::io::Result<bool> {
 /// not give it back before the setup ends.
 async fn accept(
     app: &Arc<App>,
-    body: axum::body::Bytes,
+    body: Bytes,
     permit: OwnedSemaphorePermit,
 ) -> Result<(Program, String, SessionInUse, OwnedSemaphorePermit), Response> {
     // parsing, the disk and the build are blocking work: they do not run on a thread of the executor
@@ -303,9 +304,33 @@ fn busy(max_runs: usize) -> Response {
     )
 }
 
-async fn run(State(app): State<Arc<App>>, body: axum::body::Bytes) -> Response {
-    // taken without waiting and before anything else, so a request that is refused costs nothing; held until the
-    // run ends, or dropped with a request that is not accepted
+/// The body of a request, read within `read_timeout_seconds`. It is read as `Bytes`, so the limit of
+/// `DefaultBodyLimit` and the answers of axum to a body too large (413) or cut (400) are those of the extractor; a
+/// body still arriving at the deadline is refused (408), and the connection is closed with the answer.
+async fn read_body(app: &App, request: HttpRequest) -> Result<Bytes, Response> {
+    let seconds = app.config.read_timeout_seconds;
+    match tokio::time::timeout(Duration::from_secs(seconds), Bytes::from_request(request, &())).await {
+        Ok(Ok(body)) => Ok(body),
+        Ok(Err(rejection)) => Err(rejection.into_response()),
+        Err(_) => Err(failure(
+            StatusCode::REQUEST_TIMEOUT,
+            &[Error::new(
+                Phase::Execution,
+                Path::root(),
+                Rule::ReadTimeout,
+                format!("the request did not arrive within read_timeout_seconds ({seconds})"),
+            )],
+        )),
+    }
+}
+
+async fn run(State(app): State<Arc<App>>, request: HttpRequest) -> Response {
+    let body = match read_body(&app, request).await {
+        Ok(body) => body,
+        Err(refusal) => return refusal,
+    };
+    // taken without waiting, once the body is read; held until the run ends, or dropped with a request that is not
+    // accepted
     let Ok(permit) = app.permits.clone().try_acquire_owned() else {
         return busy(app.config.max_runs);
     };
@@ -337,7 +362,11 @@ async fn run(State(app): State<Arc<App>>, body: axum::body::Bytes) -> Response {
     }
 }
 
-async fn start(State(app): State<Arc<App>>, body: axum::body::Bytes) -> Response {
+async fn start(State(app): State<Arc<App>>, request: HttpRequest) -> Response {
+    let body = match read_body(&app, request).await {
+        Ok(body) => body,
+        Err(refusal) => return refusal,
+    };
     let Ok(permit) = app.permits.clone().try_acquire_owned() else {
         return busy(app.config.max_runs);
     };

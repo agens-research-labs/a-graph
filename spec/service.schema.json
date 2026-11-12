@@ -43,6 +43,10 @@
       "description": "The port the service listens on, on all interfaces.",
       "type": "integer"
     },
+    "read_timeout_seconds": {
+      "description": "The longest the service waits for the whole body of `POST /run` or `POST /runs`. A request still arriving then is refused with 408 (`read_timeout`). A body of 64 MiB takes about 54 seconds at 10 Mbit/s. The default is 60, at least 1.",
+      "type": "integer"
+    },
     "retention_seconds": {
       "description": "How long a run is kept after it ends, so that it can still be watched and asked for; then it is forgotten. The default is 600, at least 1.",
       "type": "integer"

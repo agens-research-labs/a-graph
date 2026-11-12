@@ -261,6 +261,16 @@
             },
             "description": "The body is not a JSON object with `yml`, `message` and, if wanted, `session` (an unknown key too), or `session` is not a name."
           },
+          "408": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            },
+            "description": "The body did not arrive within `read_timeout_seconds` (`read_timeout`)."
+          },
           "413": {
             "description": "The body is larger than 64 MiB."
           },
@@ -350,6 +360,16 @@
               }
             },
             "description": "The body is not a JSON object with `yml`, `message` and, if wanted, `session` (an unknown key too), or `session` is not a name."
+          },
+          "408": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            },
+            "description": "The body did not arrive within `read_timeout_seconds` (`read_timeout`)."
           },
           "413": {
             "description": "The body is larger than 64 MiB."

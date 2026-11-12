@@ -79,7 +79,8 @@ in memory until it is forgotten, `retention_seconds` after its end, and a run th
 going on.
 
 The graph is checked and built again for each request: requests share nothing but the folders of their sessions. A
-request weighs at most 64 MiB.
+request weighs at most 64 MiB, and its body must arrive within `read_timeout_seconds` (60 seconds when the file does
+not say): a request still arriving then is refused with 408 (`read_timeout`), and its connection is closed.
 
 ## Sessions
 
