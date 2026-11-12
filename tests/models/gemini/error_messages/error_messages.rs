@@ -7,7 +7,8 @@ async fn error_messages() {
         call("q"),
         Resp::status(
             404,
-            json!({ "error": { "message": "models/x is no longer available", "code": "not_found" } }).to_string(),
+            json!({ "error": { "code": 404, "message": "models/x is no longer available", "status": "NOT_FOUND" } })
+                .to_string(),
         ),
     )
     .await;
@@ -16,7 +17,7 @@ async fn error_messages() {
     assert!(
         text.contains("`flash`")
             && text.contains("(gemini)")
-            && text.contains("404 (not_found)")
+            && text.contains("404 (NOT_FOUND)")
             && !text.contains("no longer available"),
         "{text}"
     );
@@ -26,7 +27,7 @@ async fn error_messages() {
     let bad_key = json!([{ "error": { "code": 400, "message": "API key not valid.", "status": "INVALID_ARGUMENT", "details": [{ "reason": "API_KEY_INVALID" }] } }]).to_string();
     let (r, _) = one_call(call("q"), Resp::status(400, bad_key)).await;
     assert!(
-        matches!(&r, Err(ModelError::Credentials { detail, said, .. }) if detail == "the provider answered 400" && said.as_deref() == Some("API key not valid.")),
+        matches!(&r, Err(ModelError::Credentials { detail, said, .. }) if detail == "the provider answered 400 (INVALID_ARGUMENT)" && said.as_deref() == Some("API key not valid.")),
         "{r:?}"
     );
 
@@ -39,7 +40,7 @@ async fn error_messages() {
     )
     .await;
     assert!(
-        matches!(&r, Err(ModelError::Provider { status: Some(503), said: Some(s), .. }) if s == "high demand"),
+        matches!(&r, Err(ModelError::Provider { status: Some(503), code: Some(c), said: Some(s), .. }) if c == "UNAVAILABLE" && s == "high demand"),
         "{r:?}"
     );
 

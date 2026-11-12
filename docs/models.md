@@ -132,7 +132,7 @@ Ollama API: a model server of your own can be used with `provider: custom` if it
 
 A provider that answers with an error fails the node (`model_failed`). The message says the status of the answer and,
 when the provider gives one, the code of the error: `the provider answered 400 (invalid_request_error)`. The code is
-`error.type` for `anthropic`, `error.code` or else `error.type` for `openai`, `error.code` for `gemini`, the code of
+`error.type` for `anthropic`, `error.code` or else `error.type` for `openai`, `error.status` for `gemini`, the code of
 the exception for `bedrock`; `mistral`, `ollama` and `custom` give none. A code is kept only if it is made of letters,
 digits and `_`, 64 characters at most. The text of the provider, which may repeat what was sent, is the `detail` of
 the error, written only as the passport allows (see [observability](observability.md)). The same holds for an

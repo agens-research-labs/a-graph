@@ -174,8 +174,9 @@ impl Gemini {
             .as_ref()
             .and_then(|v| if v.is_array() { v.get(0) } else { Some(v) })
             .and_then(|v| v.get("error"));
-        // `{ "error": { "code", "message" } }`: a code of letters is the code
-        let code = error.and_then(|e| e.get("code")).and_then(Value::as_str);
+        // `{ "error": { "code": 404, "message", "status": "NOT_FOUND" } }`: `code` is the HTTP status, the code of the
+        // error is `status`
+        let code = error.and_then(|e| e.get("status")).and_then(Value::as_str);
         let said = error
             .and_then(|e| e.get("message"))
             .and_then(Value::as_str)
