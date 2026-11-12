@@ -143,6 +143,11 @@ if it breaks one of these rules:
   every alias would copy its value, so a small graph could fill the memory of the service. Write the value again
   where it is used. A `*` or a `&` inside a text is not an alias and is allowed. The command line still accepts
   aliases.
+- **At most 100000 YAML events.** Every value, key, list and map is an event (a long text, such as a media in
+  `base64`, is one). A graph with more is refused (`not_supported`), before it is read whole: each event costs
+  memory while the graph is checked, so a body of 64 MiB with tens of millions of small values could take
+  gigabytes. Real graphs have far fewer: the largest of this repository has under 800. The command line has no such
+  limit.
 - **No tags.** A YAML tag (`!name` before a value, as in `path: !x notes.md`) is refused (`not_supported`): the
   rules below would not see the value under the tag, while the graph would still use it. Write the value without
   its tag. A `!` inside a text is not a tag and is allowed. The command line still accepts tags.

@@ -28,7 +28,7 @@ fn refuse(at: Path, rule: Rule, msg: impl Into<String>) -> Error {
 
 /// The yml, ready to be built: its paths inside `<data_dir>/<session>/`. `Err` has every rule it breaks.
 pub fn prepare(yml: &str, config: &ServiceConfig, session: &str) -> Result<String, Vec<Error>> {
-    match first_alias_or_tag(yml) {
+    match first_refused(yml) {
         Some(Found::Alias) => {
             return Err(vec![refuse(
                 Path::root(),
@@ -41,6 +41,15 @@ pub fn prepare(yml: &str, config: &ServiceConfig, session: &str) -> Result<Strin
                 Path::root(),
                 Rule::NotSupported,
                 "this service does not accept YAML tags (`!name`): write the value without its tag",
+            )]);
+        }
+        Some(Found::TooManyEvents) => {
+            return Err(vec![refuse(
+                Path::root(),
+                Rule::NotSupported,
+                format!(
+                    "this service does not accept a yml of more than {MAX_YML_EVENTS} YAML events (values, keys, lists and maps)"
+                ),
             )]);
         }
         None => {}
@@ -88,7 +97,12 @@ pub fn prepare(yml: &str, config: &ServiceConfig, session: &str) -> Result<Strin
     serde_norway::to_string(&root).map_err(|e| vec![refuse(Path::root(), Rule::Parse, e.to_string())])
 }
 
-/// What the yml may not have: an alias or a tag.
+/// The most events of the parser a yml may have. The parse that follows keeps every event, then builds a tree from
+/// them, at about 200 bytes an element: a body of 64 MiB could hold tens of millions of them, and take gigabytes. The
+/// largest graph of the repository has under 800.
+const MAX_YML_EVENTS: usize = 100_000;
+
+/// What the yml may not have: an alias, a tag, or more than `MAX_YML_EVENTS` events.
 enum Found {
     /// `*name`: serde_norway copies the value of the anchor at every alias, so a small yml can become a tree of
     /// gigabytes.
@@ -96,11 +110,14 @@ enum Found {
     /// `!name` before a value: the rules below look for a text or a list and skip a tagged value, while the build
     /// reads the value under the tag, so a tagged path or list of hosts would escape them.
     Tag,
+    /// More events than `MAX_YML_EVENTS`: the reading stops there, so its time is bounded too.
+    TooManyEvents,
 }
 
-/// The first alias or tag of the yml. Only the events of the parser are read, one at a time, and nothing is copied. A
-/// yml that does not parse answers `None`: serde_norway then reports the error.
-fn first_alias_or_tag(yml: &str) -> Option<Found> {
+/// The first alias or tag of the yml, or the event past `MAX_YML_EVENTS`. Only the events of the parser are read, one
+/// at a time, and nothing is copied. A yml that does not parse before then answers `None`: serde_norway then reports
+/// the error.
+fn first_refused(yml: &str) -> Option<Found> {
     use std::mem::MaybeUninit;
     use unsafe_libyaml_norway::{
         YAML_ALIAS_EVENT, YAML_MAPPING_START_EVENT, YAML_SCALAR_EVENT, YAML_SEQUENCE_START_EVENT,
@@ -121,6 +138,7 @@ fn first_alias_or_tag(yml: &str) -> Option<Found> {
         yaml_parser_set_encoding(parser, YAML_UTF8_ENCODING);
         yaml_parser_set_input_string(parser, yml.as_ptr(), yml.len() as _);
         let mut found = None;
+        let mut events = 0usize;
         loop {
             let mut event = MaybeUninit::<yaml_event_t>::uninit();
             if yaml_parser_parse(parser, event.as_mut_ptr()).fail {
@@ -141,6 +159,11 @@ fn first_alias_or_tag(yml: &str) -> Option<Found> {
             }
             if tagged {
                 found = Some(Found::Tag);
+                break;
+            }
+            events += 1;
+            if events > MAX_YML_EVENTS {
+                found = Some(Found::TooManyEvents);
                 break;
             }
             if kind == YAML_STREAM_END_EVENT {
