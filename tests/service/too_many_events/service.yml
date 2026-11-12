@@ -1,0 +1,6 @@
+# The configuration of the service for this test ({{port:service}}).
+port: {{port:service}}
+data_dir: target/test-service/too_many_events
+allowed_hosts: [127.0.0.1]
+allowed_env: {}
+allowed_ambient: []
