@@ -1,0 +1,8 @@
+# The configuration of the service for this test ({{port:service}}); one run at a time, a body arrives within 2 seconds.
+port: {{port:service}}
+data_dir: target/test-service/busy_costs_nothing
+allowed_hosts: [127.0.0.1]
+allowed_env: {}
+allowed_ambient: []
+max_runs: 1
+read_timeout_seconds: 2

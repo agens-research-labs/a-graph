@@ -15,6 +15,9 @@ mod bad_request;
 #[path = "body_too_large/body_too_large.rs"]
 mod body_too_large;
 
+#[path = "busy_costs_nothing/busy_costs_nothing.rs"]
+mod busy_costs_nothing;
+
 #[path = "config_limits/config_limits.rs"]
 mod config_limits;
 
