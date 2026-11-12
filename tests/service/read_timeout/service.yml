@@ -1,0 +1,7 @@
+# The configuration of the service for this test ({{port:service}}); the body of a request must arrive within a second.
+port: {{port:service}}
+data_dir: target/test-service/read_timeout
+allowed_hosts: [127.0.0.1]
+allowed_env: {}
+allowed_ambient: []
+read_timeout_seconds: 1

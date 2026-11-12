@@ -12,6 +12,9 @@ mod ambient_refused;
 #[path = "bad_request/bad_request.rs"]
 mod bad_request;
 
+#[path = "body_too_large/body_too_large.rs"]
+mod body_too_large;
+
 #[path = "config_limits/config_limits.rs"]
 mod config_limits;
 
@@ -71,6 +74,9 @@ mod run_fails;
 
 #[path = "run_ok/run_ok.rs"]
 mod run_ok;
+
+#[path = "read_timeout/read_timeout.rs"]
+mod read_timeout;
 
 #[path = "run_timeout/run_timeout.rs"]
 mod run_timeout;
