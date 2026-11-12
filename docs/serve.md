@@ -84,6 +84,11 @@ The graph is checked and built again for each request: requests share nothing bu
 request weighs at most 64 MiB, and its body must arrive within `read_timeout_seconds` (60 seconds when the file does
 not say): a request still arriving then is refused with 408 (`read_timeout`), and its connection is closed.
 
+While a request is checked and built, its graph is held in memory about five times over: a request of 64 MiB, such
+as a graph with a large media in `base64`, takes about 300 MB until it is built. Up to `max_runs` requests are checked
+at once, so with the default of 8 the service may need about 2 GB for them alone. Choose `max_runs` for the memory
+the service has.
+
 ## Sessions
 
 A request may name a `session`, a name of letters, digits, `-`, `_` and `.`, at most 64 characters; without it, the
