@@ -202,7 +202,7 @@ async fn accept(
     // parsing, the disk and the build are blocking work: they do not run on a thread of the executor
     let work = tokio::task::spawn_blocking({
         let app = app.clone();
-        move || setup(&app, &body).map(|(program, message, using)| (program, message, using, permit))
+        move || setup(&app, body).map(|(program, message, using)| (program, message, using, permit))
     })
     .await;
     work.unwrap_or_else(|e| {
@@ -218,22 +218,25 @@ async fn accept(
     })
 }
 
-/// The blocking part of `accept`.
-fn setup(app: &App, body: &[u8]) -> Result<(Program, String, SessionInUse), Response> {
+/// The blocking part of `accept`. Each copy of the graph is dropped as soon as the next one is made: the body, the
+/// text of `yml`, then the tree that is built.
+fn setup(app: &App, body: Bytes) -> Result<(Program, String, SessionInUse), Response> {
     let config = &app.config;
-    let request: Request = serde_json::from_slice(body).map_err(|e| {
+    let request: Request = serde_json::from_slice(&body).map_err(|e| {
         bad_request(format!(
             "the request must be a JSON object with `yml`, `message` and, if wanted, `session`: {e}"
         ))
     })?;
-    let session = request.session.unwrap_or_else(|| "default".to_string());
+    drop(body);
+    let Request { yml, message, session } = request;
+    let session = session.unwrap_or_else(|| "default".to_string());
     if !valid_session(&session) {
         return Err(bad_request(
             "`session` is a name of letters, digits, `-`, `_` and `.`, at most 64 characters".to_string(),
         ));
     }
-    let yml =
-        prepare(&request.yml, config, &session).map_err(|errors| failure(StatusCode::UNPROCESSABLE_ENTITY, &errors))?;
+    let root = prepare(&yml, config, &session).map_err(|errors| failure(StatusCode::UNPROCESSABLE_ENTITY, &errors))?;
+    drop(yml);
     // in use before the folder exists, so the sweep cannot delete it from under the request
     let mut using = app.runs.enter(&session);
     let folder = config.data_dir.join(&session);
@@ -267,7 +270,7 @@ fn setup(app: &App, body: &[u8]) -> Result<(Program, String, SessionInUse), Resp
             )
         })?;
     // the program is built again for each request: requests share nothing
-    let program = build_with_env(&yml, &config.allowed_env)
+    let program = build_with_env(root, &config.allowed_env)
         .map_err(|errors| failure(StatusCode::UNPROCESSABLE_ENTITY, &errors.0))?;
     if let Some(cap) = config.session_max_bytes {
         let over = folder_over(&folder, cap).map_err(|e| {
@@ -292,7 +295,7 @@ fn setup(app: &App, body: &[u8]) -> Result<(Program, String, SessionInUse), Resp
         }
     }
     using.accepted();
-    Ok((program, request.message, using))
+    Ok((program, message, using))
 }
 
 /// The answer that refuses a request when every permit to run is taken (503).

@@ -35,7 +35,12 @@ pub fn load(src: &str) -> Result<Document, Errors> {
             e.to_string(),
         )])
     })?;
+    load_value(root)
+}
 
+/// Validates a yml already parsed, as `load` does once it has parsed it: the service parses the yml itself, to
+/// check its rules, and hands the tree over instead of writing it again as text.
+pub fn load_value(root: Value) -> Result<Document, Errors> {
     let mut c = Collector::default();
     static DOCUMENT: Shape = Shape::Map(schema::DOCUMENT);
     check::check(&root, &DOCUMENT, &Path::root(), &mut c);

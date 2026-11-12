@@ -74,20 +74,19 @@ pub struct Program {
 /// From the command line every environment variable may be used: the one who writes the graph
 /// runs it, with their own variables.
 pub fn build(src: &str) -> Result<Program, Errors> {
-    build_with(src, None)
+    build_with(loader::load(src)?, None)
 }
 
-/// Like `build`, for a graph sent to the service: every environment variable the graph names, and
-/// every host its value goes to, must be in `allowed_env`. The variables of the log are checked
-/// with its url, before it is built; the others with the destinations. A variable refused is
-/// never read, so whether it is set is never told.
-pub fn build_with_env(src: &str, allowed_env: &AllowedEnv) -> Result<Program, Errors> {
-    build_with(src, Some(allowed_env))
+/// Like `build`, for a graph sent to the service, already parsed by the service (`root`): every
+/// environment variable the graph names, and every host its value goes to, must be in
+/// `allowed_env`. The variables of the log are checked with its url, before it is built; the
+/// others with the destinations. A variable refused is never read, so whether it is set is never
+/// told.
+pub fn build_with_env(root: serde_norway::Value, allowed_env: &AllowedEnv) -> Result<Program, Errors> {
+    build_with(loader::load_value(root)?, Some(allowed_env))
 }
 
-fn build_with(src: &str, allowed_env: Option<&AllowedEnv>) -> Result<Program, Errors> {
-    let mut doc: Document = loader::load(src)?;
-
+fn build_with(mut doc: Document, allowed_env: Option<&AllowedEnv>) -> Result<Program, Errors> {
     // the first block: the passport and the logging, before anything else
     let passport = doc.take(key::PASSPORT);
     let observability = doc.take(key::OBSERVABILITY);

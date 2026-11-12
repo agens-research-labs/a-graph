@@ -26,8 +26,8 @@ fn refuse(at: Path, rule: Rule, msg: impl Into<String>) -> Error {
     Error::new(Phase::Validation, at, rule, msg)
 }
 
-/// The yml, ready to be built: its paths inside `<data_dir>/<session>/`. `Err` has every rule it breaks.
-pub fn prepare(yml: &str, config: &ServiceConfig, session: &str) -> Result<String, Vec<Error>> {
+/// The yml, parsed and ready to be built: its paths inside `<data_dir>/<session>/`. `Err` has every rule it breaks.
+pub fn prepare(yml: &str, config: &ServiceConfig, session: &str) -> Result<Value, Vec<Error>> {
     match first_refused(yml) {
         Some(Found::Alias) => {
             return Err(vec![refuse(
@@ -94,7 +94,7 @@ pub fn prepare(yml: &str, config: &ServiceConfig, session: &str) -> Result<Strin
     if !errs.is_empty() {
         return Err(errs);
     }
-    serde_norway::to_string(&root).map_err(|e| vec![refuse(Path::root(), Rule::Parse, e.to_string())])
+    Ok(root)
 }
 
 /// The most events of the parser a yml may have. The parse that follows keeps every event, then builds a tree from
