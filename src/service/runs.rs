@@ -359,8 +359,8 @@ impl Runs {
     }
 
     /// Starts the run and gives back its id at once. The events the graph asks to show (its `verbose`)
-    /// are kept as the run goes; the outcome is kept when it ends. The permit is given back, and the session
-    /// let go, at the end. The run is stopped at the deadline of the shutdown, once `deadline` tells it.
+    /// are kept as the run goes; the outcome is kept when it ends. At the end the permit is given back, before the
+    /// outcome is kept, and the session is let go. The run is stopped at the deadline of the shutdown, once `deadline` tells it.
     pub(super) fn start(
         self: &Arc<Self>,
         mut program: Program,
@@ -382,7 +382,6 @@ impl Runs {
         }));
         let run_timeout = self.run_timeout;
         tokio::spawn(async move {
-            let _permit = permit;
             // the run is a task of its own, so that a panic in it still ends the run, as failed
             let outcome = tokio::spawn(async move { run_within(program, &message, run_timeout, deadline).await })
                 .await
@@ -394,6 +393,8 @@ impl Runs {
                         format!("the run stopped: {e}"),
                     ))
                 });
+            // given back before the run is seen as ended: a caller told the run ended can start another
+            drop(permit);
             state.finish(match outcome {
                 Ok(output) => Outcome::Done(output.to_json()),
                 Err(e) => Outcome::Failed(errors_json(&[e])),
