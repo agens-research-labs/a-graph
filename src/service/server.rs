@@ -325,14 +325,14 @@ async fn read_body(app: &App, request: HttpRequest) -> Result<Bytes, Response> {
 }
 
 async fn run(State(app): State<Arc<App>>, request: HttpRequest) -> Response {
+    // taken without waiting and before the body is read, so a request that is refused costs nothing; held while the
+    // body arrives and until the run ends, or dropped with a request that is not accepted
+    let Ok(permit) = app.permits.clone().try_acquire_owned() else {
+        return busy(app.config.max_runs);
+    };
     let body = match read_body(&app, request).await {
         Ok(body) => body,
         Err(refusal) => return refusal,
-    };
-    // taken without waiting, once the body is read; held until the run ends, or dropped with a request that is not
-    // accepted
-    let Ok(permit) = app.permits.clone().try_acquire_owned() else {
-        return busy(app.config.max_runs);
     };
     let (program, message, using, permit) = match accept(&app, body, permit).await {
         Ok(x) => x,
@@ -363,12 +363,12 @@ async fn run(State(app): State<Arc<App>>, request: HttpRequest) -> Response {
 }
 
 async fn start(State(app): State<Arc<App>>, request: HttpRequest) -> Response {
+    let Ok(permit) = app.permits.clone().try_acquire_owned() else {
+        return busy(app.config.max_runs);
+    };
     let body = match read_body(&app, request).await {
         Ok(body) => body,
         Err(refusal) => return refusal,
-    };
-    let Ok(permit) = app.permits.clone().try_acquire_owned() else {
-        return busy(app.config.max_runs);
     };
     let (program, message, using, permit) = match accept(&app, body, permit).await {
         Ok(x) => x,

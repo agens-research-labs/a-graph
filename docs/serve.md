@@ -60,9 +60,11 @@ services:
 - `GET /health` tells that the service is up.
 
 At most `max_runs` runs go on at once (8 when the file does not say), those of `POST /run` and of `POST /runs`
-together. A request beyond it is refused with 503 (`too_many_runs`) before it is checked, so it costs nothing: it is
-not queued, the caller tries again later. A run of `POST /run` whose caller hangs up goes on to its end, and holds
-its place until then.
+together. A request beyond it is refused with 503 (`too_many_runs`) before its body is read, so it costs nothing: it
+is not queued, the caller tries again later. A caller still sending the body when it is refused gets the 503, then
+the connection is closed, so its sending may fail. A request holds its place from the start, while its body arrives
+(at most `read_timeout_seconds`) and until its run ends. A run of `POST /run` whose caller hangs up goes on to its
+end, and holds its place until then.
 
 A run lasts at most `run_timeout_seconds` (an hour when the file does not say). Then it is stopped and ends as
 failed, with the rule `run_timeout`: `POST /run` answers 502, and a run of `POST /runs` ends with the state `failed`
