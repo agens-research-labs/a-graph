@@ -63,5 +63,9 @@ service and runs of the command line that share the file. Each write or cleanup 
 one step (a temporary file of its own, then renamed), so a reader sees it before or after a write, never half of it. A
 write or a cleanup of a file whose header is no longer valid is refused (`blackboard_header`) and leaves the file as it
 is.
+The new file keeps the permissions of the old one, its owner becomes the user of the process, and a hard link to the
+old file keeps the old content. A write or a cleanup of a blackboard that is a symbolic link is refused (`io`) and
+changes nothing: the yml names the file itself.
 If the process dies between the write of the temporary file and its rename, the temporary file stays next to the
-blackboard, and the blackboard stays as it was.
+blackboard, and the blackboard stays as it was. Each temporary file has a random name, so one left behind does not
+stop the next write.

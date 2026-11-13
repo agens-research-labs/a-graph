@@ -56,7 +56,10 @@ own, then renamed), so a reader sees the file before or after a write, never hal
 an exclusive lock on `<path>.lock`, a file left next to the memory, from the read of the file to its write: requests
 of the service and runs of the command line that share the file wait for each other and none of their records is
 lost. If the process dies between the write of the temporary file and its rename, the temporary file stays next to
-the memory, and the memory stays as it was.
+the memory, and the memory stays as it was. Each temporary file has a random name, so one left behind does not stop the
+next write. The new file keeps the permissions of the old one (a file set to 0600 stays 0600), its owner becomes the
+user of the process, and a hard link to the old file keeps the old content. A write to a memory that is a symbolic link
+fails the node (`io`) and changes nothing: the yml names the file itself.
 
 A file that is not a list of records fails the node that reads or writes it (`io`). The message says where, by line and
 column; what the parser says, which may quote a text of the file, is the `detail` of the error, written only as the

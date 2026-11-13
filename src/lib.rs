@@ -5,6 +5,7 @@ mod build;
 pub mod embeddings;
 pub mod error;
 pub mod external;
+mod files;
 pub mod gate;
 pub mod graph;
 pub mod loader;

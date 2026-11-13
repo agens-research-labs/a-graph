@@ -3,9 +3,7 @@
 
 mod header;
 
-use std::io::Write;
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde::Deserialize;
 use serde_norway::Value;
@@ -191,7 +189,7 @@ fn change_locked(path: &str, change: impl FnOnce(&str) -> String) -> Result<(), 
     let _held = lock_file(path)?;
     let content = std::fs::read_to_string(path).map_err(|e| Failure::Io(path.to_string(), e))?;
     header::header_end(&content).map_err(Failure::Header)?;
-    replace_file(path, &change(&content))
+    crate::files::replace(path, change(&content).as_bytes()).map_err(|e| Failure::Io(path.to_string(), e))
 }
 
 /// An exclusive lock on `<path>.lock`, held until the file is dropped.
@@ -205,29 +203,6 @@ fn lock_file(path: &str) -> Result<std::fs::File, Failure> {
         .map_err(|e| Failure::Io(name.clone(), e))?;
     file.lock().map_err(|e| Failure::Io(name, e))?;
     Ok(file)
-}
-
-/// Writes `content` to `path` in one step: a temporary file of its own, then renamed, so a reader sees
-/// the file before or after the write, never half of it.
-fn replace_file(path: &str, content: &str) -> Result<(), Failure> {
-    static WRITES: AtomicU64 = AtomicU64::new(0);
-    let temporary = format!(
-        "{path}.{}.{}.tmp",
-        std::process::id(),
-        WRITES.fetch_add(1, Ordering::Relaxed)
-    );
-    let written = std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&temporary)
-        .and_then(|mut f| f.write_all(content.as_bytes()))
-        .map_err(|e| Failure::Io(temporary.clone(), e))
-        .and_then(|()| std::fs::rename(&temporary, path).map_err(|e| Failure::Io(path.to_string(), e)));
-    if written.is_err() {
-        // The error of the write is the one that matters; the file may not even exist.
-        let _ = std::fs::remove_file(&temporary);
-    }
-    written
 }
 
 fn not_read(b: &Board, url: &str) -> Error {

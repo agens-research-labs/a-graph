@@ -1,9 +1,6 @@
 //! The file of a `json_file` memory: a list of records, one per node, each with the summary
 //! (`synt`) and the current exchanges (`chat`). This module reads it and chooses what a node gets.
 
-use std::io::Write;
-use std::sync::atomic::{AtomicU64, Ordering};
-
 use serde::{Deserialize, Serialize};
 
 use super::ChatConfig;
@@ -174,27 +171,10 @@ fn cosine(a: &[f32], b: &[f32]) -> f32 {
     if na == 0.0 || nb == 0.0 { 0.0 } else { dot / (na * nb) }
 }
 
-/// Writes `records` to `path` in one step: a temporary file of its own, then renamed.
+/// Writes `records` to `path` in one step (see `files::replace`).
 fn write_records(path: &str, records: &[Record]) -> Result<(), String> {
-    static WRITES: AtomicU64 = AtomicU64::new(0);
     let text = serde_json::to_string_pretty(records).map_err(|e| e.to_string())?;
-    let temporary = format!(
-        "{path}.{}.{}.tmp",
-        std::process::id(),
-        WRITES.fetch_add(1, Ordering::Relaxed)
-    );
-    let written = std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&temporary)
-        .and_then(|mut f| f.write_all(text.as_bytes()))
-        .map_err(|e| format!("cannot write `{temporary}`: {e}"))
-        .and_then(|()| std::fs::rename(&temporary, path).map_err(|e| format!("cannot replace `{path}`: {e}")));
-    if written.is_err() {
-        // The error of the write is the one that matters; the file may not even exist.
-        let _ = std::fs::remove_file(&temporary);
-    }
-    written
+    crate::files::replace(path, text.as_bytes()).map_err(|e| format!("cannot write `{path}`: {e}"))
 }
 
 /// An exclusive lock on `{path}.lock`, held until the file is dropped: the other programs and processes
