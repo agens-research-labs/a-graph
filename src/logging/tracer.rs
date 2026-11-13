@@ -28,6 +28,7 @@ struct Span {
 
 #[derive(Default)]
 struct State {
+    trace_id: Option<String>,
     open: HashMap<u64, Span>,
     done: Vec<Span>,
 }
@@ -111,11 +112,23 @@ impl Tracer {
             return;
         }
         let mut st = self.state.lock().unwrap();
+        if let Some(id) = &ev.trace_id {
+            st.trace_id = Some(id.clone());
+        }
         let number = |k: &str| ev.fields.iter().find(|(n, _)| n == k).and_then(|(_, v)| v.as_f64());
         let mut attributes: Vec<(String, Value)> = ev
             .fields
             .iter()
-            .map(|(k, v)| (format!("a_graph.{k}"), v.clone()))
+            .map(|(k, v)| {
+                (
+                    if k.starts_with("gen_ai.") {
+                        k.clone()
+                    } else {
+                        format!("a_graph.{k}")
+                    },
+                    v.clone(),
+                )
+            })
             .collect();
         if let Some(n) = &ev.node {
             attributes.push(("a_graph.node".into(), json!(n)));
@@ -149,7 +162,13 @@ impl Tracer {
             "run.end" | "group.end" | "node.end" => {
                 if let Some(mut s) = st.open.remove(&ev.span) {
                     s.end = ev.at;
-                    s.attributes.extend(attributes);
+                    for (key, value) in attributes {
+                        if let Some((_, old)) = s.attributes.iter_mut().find(|(k, _)| k == &key) {
+                            *old = value;
+                        } else {
+                            s.attributes.push((key, value));
+                        }
+                    }
                     st.done.push(s);
                 }
             }
@@ -208,7 +227,7 @@ impl Tracer {
     /// in the middle of them) end now, marked as interrupted. A failing send tells stderr and goes on.
     pub async fn flush(&self) {
         let now = now_nanos();
-        let mut spans = {
+        let (trace_id, mut spans) = {
             let mut st = self.state.lock().unwrap();
             let open: Vec<Span> = st
                 .open
@@ -220,13 +239,17 @@ impl Tracer {
                 })
                 .collect();
             st.done.extend(open);
-            std::mem::take(&mut st.done)
+            (
+                st.trace_id
+                    .take()
+                    .unwrap_or_else(|| uuid::Uuid::new_v4().simple().to_string()),
+                std::mem::take(&mut st.done),
+            )
         };
         if spans.is_empty() {
             return;
         }
         spans.sort_by_key(|s| (s.start, s.id));
-        let trace_id = format!("{:032x}", uuid::Uuid::new_v4().as_u128());
         let body = self.body(&trace_id, &spans).to_string();
         deliver(&self.client, &self.url, &self.headers, body, &self.delivery, "trace").await;
     }

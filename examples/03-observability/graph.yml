@@ -1,0 +1,36 @@
+# The hello graph with machine-readable logs and OTLP traces sent to the local Collector.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: hello-observability
+    description: One local model call, with correlated logs and traces.
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [localhost] } }
+observability: { level: debug }
+verbose: { level: off }
+trace: { endpoint: http://localhost:4318/v1/traces }
+models:
+  - id: local
+    provider: ollama
+    model: qwen3.5:4b
+    host: http://localhost:11434
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: answer
+      content:
+        system: "Answer in one short sentence."
+        user: "{{user_message}}"
+graph:
+  nodes:
+    - id: assistant
+      model: { id: local, reasoning: off, max_tokens: 300, temperature: 0 }
+      resources: { prompt: answer }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true }
+  edges:
+    - start: assistant

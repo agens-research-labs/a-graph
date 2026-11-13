@@ -18,6 +18,11 @@ async fn content_redacted() {
         Some(json!({ "boolValue": true }))
     );
     assert!(attribute(call, "a_graph.prompt").is_none() && attribute(call, "a_graph.answer").is_none());
+    assert!(attribute(call, "a_graph.system_prompt").is_none());
+    assert_eq!(
+        attribute(call, "gen_ai.provider.name"),
+        Some(json!({ "stringValue": "ollama" }))
+    );
     assert_eq!(
         attribute(call, "a_graph.input_tokens"),
         Some(json!({ "intValue": "1" }))

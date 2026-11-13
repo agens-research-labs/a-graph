@@ -51,7 +51,8 @@ The progress of the run is written on the standard error; the result is a JSON d
 ```
 
 `examples/02-sequence` connects two nodes: the first translates the message, the second shortens the translation. Run
-each example from its own folder.
+each example from its own folder. [`examples/03-observability`](examples/03-observability/README.md) adds correlated
+JSON logs and traces through a Docker Compose OpenTelemetry Collector and an in-memory Jaeger viewer.
 
 ## The command line
 

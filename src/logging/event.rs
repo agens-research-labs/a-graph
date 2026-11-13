@@ -23,6 +23,8 @@ pub struct Event {
     pub parent: u64,
     /// When the event happened, in nanoseconds since 1970; set when the runtime emits it.
     pub at: u64,
+    /// Run identity shared by structured logs and exported spans.
+    pub trace_id: Option<String>,
 }
 
 impl Event {
@@ -37,6 +39,7 @@ impl Event {
             span: 0,
             parent: 0,
             at: 0,
+            trace_id: None,
         }
     }
 
