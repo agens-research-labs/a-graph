@@ -192,3 +192,6 @@ mod refused_tool_call;
 
 #[path = "code_not_fixed/code_not_fixed.rs"]
 mod code_not_fixed;
+
+#[path = "batch_type_not_fixed/batch_type_not_fixed.rs"]
+mod batch_type_not_fixed;
