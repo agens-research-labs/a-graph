@@ -35,6 +35,18 @@ impl Identity {
             model,
             provider,
             detail: detail.into(),
+            said: None,
+        }
+    }
+
+    /// Like `invalid`, but `said` is a value the provider chose that `fixed_code` does not keep.
+    pub(crate) fn invalid_said(&self, detail: impl Into<String>, said: impl Into<String>) -> ModelError {
+        let (model, provider) = self.parts();
+        ModelError::InvalidResponse {
+            model,
+            provider,
+            detail: detail.into(),
+            said: Some(said.into()),
         }
     }
 

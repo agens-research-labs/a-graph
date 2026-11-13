@@ -3,6 +3,7 @@
 use serde_json::Value;
 
 use super::OpenAi;
+use crate::models::error::fixed_code;
 use crate::models::{ModelError, ModelResponse, ResponseInfo, StopReason, ToolCall, Usage};
 
 fn count(v: Option<&Value>, key: &str) -> u64 {
@@ -32,7 +33,12 @@ impl OpenAi {
             ("incomplete", _) => StopReason::MaxTokens,
             ("completed", _) => StopReason::End,
             ("cancelled", _) => StopReason::Other,
-            (other, _) => return Err(self.who.invalid(format!("unexpected status `{other}`"))),
+            (other, _) => {
+                return Err(match fixed_code(Some(other)) {
+                    Some(kept) => self.who.invalid(format!("unexpected status `{kept}`")),
+                    None => self.who.invalid_said("an unexpected status", other),
+                });
+            }
         };
         // a refusal part may come after a tool call: it is looked for first
         let refused = items

@@ -44,11 +44,14 @@ pub enum ModelError {
         said: Option<String>,
     },
 
+    /// `said` is a value the provider chose that `fixed_code` does not keep: a content, never part
+    /// of the message.
     #[error("model `{model}` ({provider}): invalid response: {detail}")]
     InvalidResponse {
         model: String,
         provider: String,
         detail: String,
+        said: Option<String>,
     },
 
     /// The output stopped before its end (`StopReason::is_cut`) while a schema was required, so the JSON is cut;
@@ -69,7 +72,9 @@ impl ModelError {
     /// What the provider wrote that made the error, if it did: a content, never part of the message.
     pub fn said(&self) -> Option<&str> {
         match self {
-            ModelError::Credentials { said, .. } | ModelError::Provider { said, .. } => said.as_deref(),
+            ModelError::Credentials { said, .. }
+            | ModelError::Provider { said, .. }
+            | ModelError::InvalidResponse { said, .. } => said.as_deref(),
             _ => None,
         }
     }

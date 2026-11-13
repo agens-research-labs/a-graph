@@ -45,8 +45,9 @@ run that fails ends with its error instead of `run.end`. A warning is an event o
 
 The `message` of an error never holds a content. What made the error, written by a model, a utility, a provider or a
 vector database, or held by a memory file (a verdict of a judge without `validation`, the answer of a react controller,
-what a utility wrote on its standard error, the text of an error of a provider or of a vector database, a text of a
-memory file that is not valid) is the content `detail` of the event, written only as the passport allows; in the trace
+what a utility wrote on its standard error, the text of an error of a provider or of a vector database, an unexpected
+value in the answer of a provider, a text of a memory file that is not valid) is the content `detail` of the event,
+written only as the passport allows; in the trace
 it is the attribute `a_graph.detail` of the interval the error ends. The caller of the run, on the command line or
 through the service, gets the `message` only.
 

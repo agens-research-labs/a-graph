@@ -3,6 +3,7 @@
 use serde_json::Value;
 
 use super::Gemini;
+use crate::models::error::fixed_code;
 use crate::models::{
     MediaOutput, ModelError, ModelInvocation, ModelResponse, ResponseInfo, StopReason, ToolCall, Usage,
 };
@@ -40,7 +41,12 @@ impl Gemini {
             // the output reached max_output_tokens (thinking tokens count in it)
             "incomplete" => StopReason::MaxTokens,
             "cancelled" => StopReason::Other,
-            other => return Err(self.who.invalid(format!("unexpected status `{other}`"))),
+            other => {
+                return Err(match fixed_code(Some(other)) {
+                    Some(kept) => self.who.invalid(format!("unexpected status `{kept}`")),
+                    None => self.who.invalid_said("an unexpected status", other),
+                });
+            }
         };
         let expected = self
             .media_format(&call.output_media)

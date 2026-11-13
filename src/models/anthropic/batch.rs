@@ -6,6 +6,7 @@ use serde_json::{Value, json};
 
 use super::Anthropic;
 use crate::models::batch::{may_create, patiently, refused_unless_over, submitted};
+use crate::models::error::fixed_code;
 use crate::models::{BatchEvent, BatchEvents, BatchOutcome, BatchRequest, BatchResult, BatchReturn, ModelError};
 
 impl Anthropic {
@@ -154,7 +155,13 @@ impl Anthropic {
             }
             Some("expired") => Err(self.provider_error("the batch expired before this request could run")),
             Some("canceled") => Err(self.provider_error("the batch was canceled before this request could run")),
-            other => Err(self.invalid(format!("unknown batch result type {other:?}"))),
+            other => Err(match fixed_code(other) {
+                Some(kept) => self.invalid(format!("unknown batch result type `{kept}`")),
+                None => match other {
+                    Some(t) => self.who.invalid_said("an unknown batch result type", t),
+                    None => self.invalid("the batch result has no `type`"),
+                },
+            }),
         }
     }
 }

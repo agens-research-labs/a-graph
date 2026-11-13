@@ -143,3 +143,8 @@ digits and `_`, 64 characters at most. The text of the provider, which may repea
 the error, written only as the passport allows (see [observability](observability.md)). The same holds for an
 answer that says it failed, for a batch that failed and for a request of a batch that failed, and for the server of
 the embeddings.
+
+An answer whose `status` (`openai`, `gemini`) or whose batch result `type` (`anthropic`) is none the program knows
+also fails the node. The value follows the same rule as a code: kept in the message only if it is made of letters,
+digits and `_`, 64 characters at most; otherwise the message says `an unexpected status` or `an unknown batch result
+type` and the value is the `detail`, written only as the passport allows.
