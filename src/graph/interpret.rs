@@ -10,7 +10,7 @@ use super::nodes::{Entity, Nodes};
 use crate::error::{Error, Path, Phase, Rule};
 use crate::external::External;
 use crate::models::{Llm, ModelManager, ModelRequirements, ProducedMedia};
-use crate::resources::{MediaKind, Origin, PromptBody, Resources, Source};
+use crate::resources::{MediaKind, Origin, PromptBody, Resources};
 use crate::schema::key;
 
 /// Every rule of the nodes that needs a manager. All the errors are returned, not only the first.
@@ -233,8 +233,8 @@ fn produced(
     out
 }
 
-/// The media a node reads: one from `resources` must have a source (and a path, if a utility changes it);
-/// one from `node` must be produced by a node connected before.
+/// The media a node reads: one from `resources` must have a source; one from `node` must be produced by a node
+/// connected before.
 fn media_input_rules(
     nodes: &Nodes,
     e: Entity,
@@ -251,11 +251,7 @@ fn media_input_rules(
         };
         match entry.from {
             InFrom::Resources => match &resource.origin {
-                Origin::Source(source) => {
-                    if !entry.utility.is_empty() && !matches!(source, Source::Path(_)) {
-                        errs.push(err(p.clone(), Rule::MediaUtilityPath, format!("media `{}` goes through a utility, which gets the path of a file: its source must be a `path`", entry.id)));
-                    }
-                }
+                Origin::Source(_) => {}
                 Origin::Generated { .. } | Origin::MadeByUtility => {
                     errs.push(err(
                         p.clone(),

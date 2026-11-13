@@ -31,15 +31,23 @@ utilities:
 A utility receives one JSON object and answers one, on its standard input and output (`stdio`) or as the body of a
 `POST` and of its answer (`http`).
 
-It receives a text, or a file by its path:
+It receives a text, or a file: by its path, or by its bytes in base64.
 
 ```json
 { "text": "..." }
 { "path": "docs/a.pdf", "mime_type": "application/pdf" }
+{ "data": "<base64>", "mime_type": "application/pdf" }
 ```
 
-`mime_type` comes from the extension of the file (pdf, docx, xlsx, pptx, html, md, txt, csv, json, png, jpg, webp,
-gif, mp3, wav, mp4), and is left out when the extension does not say it.
+A program (`stdio`) gets the path of a file on disk: a media from the resources with a `source: { path }`. Every other
+file comes as its bytes: a file for a service (`http`), which may not see the disk of a-graph, and a file in memory, a
+media in `base64` or a file made by a model, by a node or by the utility before. a-graph writes no file of its own for
+a utility.
+
+`mime_type` is the type of the file. For a file on disk it comes from the extension (pdf, docx, xlsx, pptx, html, md,
+txt, csv, json, png, jpg, webp, gif, mp3, wav, mp4), and is left out when the extension does not say it; for a media in
+`base64` it is the `mime_type` the graph gives, and is left out when the graph gives none; for a file made by a model,
+by a node or by a utility it is the type given by what made it.
 
 It answers a text, or a file in base64 with its type:
 
@@ -64,7 +72,7 @@ One id alone is a list of one.
 |---|---|---|
 | `message.input.utility` | the incoming text, from the user and from the node before | a text |
 | `message.output.utility` | the text the node produces, once, before every destination | a text |
-| `media.input[].utility` | a media the node reads; the first gets the path of the file | a text or an image |
+| `media.input[].utility` | a media the node reads, by its path or its bytes (see [the contract](#the-contract)) | a text or an image |
 | `media.output[].utility` | with `from: model`, the file the model made; with `from: message`, the text of the node | a file |
 | `external.vectordb[].utility.query` | the query, before it is turned into a vector and searched | a text |
 | `external.vectordb[].utility.chunks` | each chunk found, before the prompt | a text |

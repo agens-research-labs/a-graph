@@ -1,5 +1,6 @@
-//! Calling a utility. It receives ONE JSON object, `{ "text": ... }` or `{ "path": ..., "mime_type": ... }`,
-//! and answers ONE JSON object, `{ "text": ... }` or `{ "mime_type": ..., "data": "<base64>" }`.
+//! Calling a utility. It receives ONE JSON object, `{ "text": ... }`, `{ "path": ..., "mime_type": ... }` or
+//! `{ "data": "<base64>", "mime_type": ... }`, and answers ONE JSON object, `{ "text": ... }` or
+//! `{ "mime_type": ..., "data": "<base64>" }`.
 //! A utility that fails stops the run: no model is involved to read the reason, so the reason
 //! (the status of its program or of its answer) is the error, and what it wrote is its detail.
 
@@ -18,6 +19,11 @@ pub enum UtilityInput {
     File {
         path: String,
         mime_type: Option<String>,
+    },
+    /// A file in memory, as base64: the same shape a utility answers with. The type is given when it is known.
+    Data {
+        mime_type: Option<String>,
+        data: String,
     },
 }
 
@@ -41,6 +47,11 @@ impl UtilityInput {
                 mime_type: Some(m),
             } => json!({ "path": path, "mime_type": m }),
             UtilityInput::File { path, mime_type: None } => json!({ "path": path }),
+            UtilityInput::Data {
+                mime_type: Some(m),
+                data,
+            } => json!({ "data": data, "mime_type": m }),
+            UtilityInput::Data { mime_type: None, data } => json!({ "data": data }),
         }
     }
 }

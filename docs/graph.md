@@ -295,6 +295,7 @@ An Ollama server, called with `POST <host>/api/embed`.
 | `url` | no | text | A URL. It is not read yet: a node that uses it fails when it runs. |
 | `access` | no | any value | How to get in at the `url`, with `url` only. Its content is not defined yet. |
 | `base64` | no | text | The content itself, in base64. Only for a media. |
+| `mime_type` | no | text | The type of the content in `base64`, such as `application/pdf`, given to the utilities the media goes through. Only for a media, with `base64`. |
 
 ## `resources.tools[]`
 
@@ -353,6 +354,7 @@ A map with exactly one of these keys.
 | `url` | no | text | A URL. It is not read yet: a node that uses it fails when it runs. |
 | `access` | no | any value | How to get in at the `url`, with `url` only. Its content is not defined yet. |
 | `base64` | no | text | The content itself, in base64. Only for a media. |
+| `mime_type` | no | text | The type of the content in `base64`, such as `application/pdf`, given to the utilities the media goes through. Only for a media, with `base64`. |
 
 ## `resources.media[].generate`
 
@@ -612,7 +614,7 @@ The form with `url` and `access`:
 |---|---|---|---|
 | `id` | yes | the id of a media | The media. |
 | `from` | yes | `resources` or `node` | `resources`: a media with a `source`. `node`: a media produced by a node connected before (`media_not_from_node`); it arrives only if that node passes it on with `node: true`. |
-| `utility` | no | the id of an utility, or list of: the id of an utility | Utilities the media goes through before the node uses it. The first gets the path of a file; they must end with a text or an image. |
+| `utility` | no | the id of an utility, or list of: the id of an utility | Utilities the media goes through before the node uses it. A file on disk reaches a program as its path; everything else reaches a utility as its bytes. They must end with a text or an image. |
 
 ## `graph.nodes[].media.output[]`
 
@@ -732,7 +734,7 @@ The form with `url` and `access`:
 |---|---|---|---|
 | `id` | yes | the id of a media | The media. |
 | `from` | yes | `resources` or `node` | `resources`: a media with a `source`. `node`: a media produced by a node connected before (`media_not_from_node`); it arrives only if that node passes it on with `node: true`. |
-| `utility` | no | the id of an utility, or list of: the id of an utility | Utilities the media goes through before the node uses it. The first gets the path of a file; they must end with a text or an image. |
+| `utility` | no | the id of an utility, or list of: the id of an utility | Utilities the media goes through before the node uses it. A file on disk reaches a program as its path; everything else reaches a utility as its bytes. They must end with a text or an image. |
 
 ## `graph.nodes[].validation-node.message`
 

@@ -16,7 +16,7 @@ A media is everything that is not the text of a message: a document, an image, a
 ## Three kinds of media
 
 **A media that is read** has a `source`: exactly one of `path` (a file), `url` (with an optional `access`) and
-`base64` (the content itself).
+`base64` (the content itself, with an optional `mime_type`, its type, given to a utility).
 
 ```yaml
 - id: contract
@@ -51,9 +51,9 @@ An entry of `media.input` says where the media comes from:
   produces it, the file is not valid (`media_not_from_node`). It arrives only if that entry has `node: true`;
   otherwise the node fails when it runs.
 
-An entry may have a `utility`: the media goes through those utilities before the node uses it. The first gets the path
-of a file, so a media from the resources needs a `source: { path }` (`media_utility_path`); a media from a node is
-written to a temporary file, removed afterwards. The utilities must end with a text or an image.
+An entry may have a `utility`: the media goes through those utilities before the node uses it, a program by the path
+of a file on disk and every other utility by its bytes (see [the contract](utilities.md#the-contract)); a-graph writes
+no file for them. The utilities must end with a text or an image.
 
 What a model can read:
 

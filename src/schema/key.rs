@@ -98,6 +98,7 @@ keys! {
     SYSTEM = "system",
     USER = "user",
     BASE64 = "base64",
+    MIME_TYPE = "mime_type",
     TRANSPORT = "transport",
     EMBEDDING = "embedding",
     TEXT_FIELD = "text_field",

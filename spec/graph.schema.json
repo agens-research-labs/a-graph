@@ -946,7 +946,7 @@
                               "type": "array"
                             }
                           ],
-                          "description": "Utilities the media goes through before the node uses it. The first gets the path of a file; they must end with a text or an image."
+                          "description": "Utilities the media goes through before the node uses it. A file on disk reaches a program as its path; everything else reaches a utility as its bytes. They must end with a text or an image."
                         }
                       },
                       "required": [
@@ -1311,7 +1311,7 @@
                                   "type": "array"
                                 }
                               ],
-                              "description": "Utilities the media goes through before the node uses it. The first gets the path of a file; they must end with a text or an image."
+                              "description": "Utilities the media goes through before the node uses it. A file on disk reaches a program as its path; everything else reaches a utility as its bytes. They must end with a text or an image."
                             }
                           },
                           "required": [
@@ -2595,6 +2595,10 @@
                     "description": "The content itself, in base64. Only for a media.",
                     "type": "string"
                   },
+                  "mime_type": {
+                    "description": "The type of the content in `base64`, such as `application/pdf`, given to the utilities the media goes through. Only for a media, with `base64`.",
+                    "type": "string"
+                  },
                   "path": {
                     "description": "A file, relative to the folder the command is run from.",
                     "type": "string"
@@ -2703,6 +2707,10 @@
                   },
                   "base64": {
                     "description": "The content itself, in base64. Only for a media.",
+                    "type": "string"
+                  },
+                  "mime_type": {
+                    "description": "The type of the content in `base64`, such as `application/pdf`, given to the utilities the media goes through. Only for a media, with `base64`.",
                     "type": "string"
                   },
                   "path": {

@@ -1,12 +1,15 @@
 //! Where the program calls the utilities of a node: on the data that comes in and on the data that
 //! goes out. A chain runs in order, each utility getting what the one before answered.
 
+use base64::Engine;
+use base64::engine::general_purpose::STANDARD;
+
 use super::Program;
 use super::node::{Content, NodeInput};
 use crate::error::{Error, Path, Phase, Rule};
 use crate::logging::{Event, LogLevel};
 use crate::models::MediaOutput;
-use crate::utilities::{UtilityFailure, UtilityInput, UtilityOutput, call_utility, mime_of};
+use crate::utilities::{UtilityFailure, UtilityInput, UtilityOutput, UtilityTransport, call_utility, mime_of};
 
 /// The error of a utility that failed in `node`: its message, and what it wrote as the detail.
 fn failed(node: &str, why: UtilityFailure) -> Error {
@@ -113,31 +116,21 @@ impl Program {
 pub(super) enum Item {
     Text(String),
     Path(String),
-    Data { mime_type: String, data: String },
-}
-
-/// The extension a temporary file gets, from its type.
-fn extension_of(mime: &str) -> &'static str {
-    match mime {
-        "application/pdf" => "pdf",
-        "image/png" => "png",
-        "image/jpeg" => "jpg",
-        "image/webp" => "webp",
-        "image/gif" => "gif",
-        "audio/mpeg" => "mp3",
-        "audio/wav" => "wav",
-        "video/mp4" => "mp4",
-        "text/markdown" => "md",
-        "text/html" => "html",
-        "application/json" => "json",
-        m if m.starts_with("text/") => "txt",
-        _ => "bin",
-    }
+    Data {
+        mime_type: String,
+        data: String,
+    },
+    /// A media of the graph in base64, with the type the graph gives, if any.
+    Base64 {
+        mime_type: Option<String>,
+        data: String,
+    },
 }
 
 impl Program {
-    /// Runs an item through the utilities `ids`, in order. A file in memory is written to a temporary
-    /// file for the utility, which receives its path, and the file is removed after the call.
+    /// Runs an item through the utilities `ids`, in order. A file on disk reaches a program by its path and a
+    /// service by its bytes, since a service may not see the disk of a-graph; a file in memory reaches every utility
+    /// by its bytes. Nothing is written to disk.
     pub(super) async fn item_through(
         &self,
         node: &str,
@@ -145,7 +138,6 @@ impl Program {
         ids: &[String],
         start: Item,
     ) -> Result<Item, Error> {
-        static COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
         let fail = |msg: String| Error::new(Phase::Execution, Path::node(node), Rule::UtilityFailed, msg);
         let mut item = start;
         for id in ids {
@@ -153,42 +145,39 @@ impl Program {
                 .utilities
                 .get(id)
                 .ok_or_else(|| fail(format!("utility `{id}` is not built")))?;
-            let mut temporary: Option<std::path::PathBuf> = None;
             let input = match &item {
                 Item::Text(t) => UtilityInput::Text(t.clone()),
-                Item::Path(p) => UtilityInput::File {
-                    path: p.clone(),
-                    mime_type: mime_of(p),
-                },
-                Item::Data { mime_type, data } => {
-                    use base64::Engine;
-                    let bytes = base64::engine::general_purpose::STANDARD
-                        .decode(data)
-                        .map_err(|e| fail(format!("the file given to utility `{id}` is not valid base64: {e}")))?;
-                    let dir = std::env::temp_dir().join(format!("a-graph-{}", std::process::id()));
-                    std::fs::create_dir_all(&dir)
-                        .map_err(|e| fail(format!("cannot create `{}`: {e}", dir.display())))?;
-                    let path = dir.join(format!(
-                        "{}.{}",
-                        COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst),
-                        extension_of(mime_type)
-                    ));
-                    std::fs::write(&path, bytes)
-                        .map_err(|e| fail(format!("cannot write `{}`: {e}", path.display())))?;
-                    let shown = path.to_string_lossy().to_string();
-                    temporary = Some(path);
-                    UtilityInput::File {
-                        path: shown,
-                        mime_type: Some(mime_type.clone()),
+                Item::Path(p) => match &utility.transport {
+                    UtilityTransport::Stdio { .. } => UtilityInput::File {
+                        path: p.clone(),
+                        mime_type: mime_of(p),
+                    },
+                    UtilityTransport::Http { .. } => {
+                        let bytes = std::fs::read(p).map_err(|e| {
+                            Error::new(
+                                Phase::Execution,
+                                Path::node(node),
+                                Rule::Io,
+                                format!("cannot read `{p}`: {e}"),
+                            )
+                        })?;
+                        UtilityInput::Data {
+                            mime_type: mime_of(p),
+                            data: STANDARD.encode(bytes),
+                        }
                     }
-                }
+                },
+                Item::Data { mime_type, data } => UtilityInput::Data {
+                    mime_type: Some(mime_type.clone()),
+                    data: data.clone(),
+                },
+                Item::Base64 { mime_type, data } => UtilityInput::Data {
+                    mime_type: mime_type.clone(),
+                    data: data.clone(),
+                },
             };
             let started = std::time::Instant::now();
-            let answer = call_utility(utility, &input).await;
-            if let Some(path) = temporary {
-                let _ = std::fs::remove_file(path);
-            }
-            let answer = answer.map_err(|why| failed(node, why))?;
+            let answer = call_utility(utility, &input).await.map_err(|why| failed(node, why))?;
             self.emit(
                 Event::new(LogLevel::Debug, "utility.call")
                     .node(node)

@@ -1,6 +1,6 @@
 #!/bin/sh
 in=$(cat)
-path=$(echo "$in" | sed 's/.*"path":"\([^"]*\)".*/\1/')
+data=$(echo "$in" | sed -n 's/.*"data":"\([^"]*\)".*/\1/p')
 mime=$(echo "$in" | sed -n 's/.*"mime_type":"\([^"]*\)".*/\1/p')
-size=$(wc -c < "$path" | tr -d " ")
-printf '{"text":"converted %s %s %s bytes"}' "$(basename "$path")" "$mime" "$size"
+path=$(echo "$in" | sed -n 's/.*"path":"\([^"]*\)".*/\1/p')
+printf '{"text":"data [%s], type [%s], path [%s]"}' "$data" "$mime" "$path"

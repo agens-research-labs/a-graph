@@ -362,13 +362,21 @@ impl Program {
                 }
                 match self.resources.media.get(&entry.id).map(|m| &m.origin) {
                     Some(Origin::Source(Source::Path(p))) => Item::Path(p.clone()),
+                    Some(Origin::Source(Source::Base64 { data, mime_type })) => Item::Base64 {
+                        mime_type: mime_type.clone(),
+                        data: data.clone(),
+                    },
+                    // a url is not read yet: the node fails as it does without utilities
+                    Some(Origin::Source(Source::Url { .. })) => {
+                        return Err(fail(
+                            Rule::Io,
+                            format!("media `{}` is a url, which is not read yet", entry.id),
+                        ));
+                    }
                     _ => {
                         return Err(fail(
-                            Rule::MediaUtilityPath,
-                            format!(
-                                "media `{}` goes through a utility, which gets the path of a file",
-                                entry.id
-                            ),
+                            Rule::Io,
+                            format!("media `{}` is produced by a node, it cannot be read", entry.id),
                         ));
                     }
                 }
@@ -408,7 +416,7 @@ impl Program {
                     ),
                 )),
             },
-            Item::Path(_) => Err(fail(
+            Item::Path(_) | Item::Base64 { .. } => Err(fail(
                 Rule::UtilityFailed,
                 format!("media `{}`: the utilities gave no result", entry.id),
             )),
@@ -435,11 +443,11 @@ impl Program {
                     data: STANDARD.encode(b),
                 })
                 .map_err(|e| format!("cannot read `{p}`: {e}")),
-            (MediaKind::Img(f), Source::Base64(b)) => Ok(MediaInput::Image {
+            (MediaKind::Img(f), Source::Base64 { data: b, .. }) => Ok(MediaInput::Image {
                 format: f.clone(),
                 data: b.clone(),
             }),
-            (MediaKind::Md, Source::Base64(b)) => {
+            (MediaKind::Md, Source::Base64 { data: b, .. }) => {
                 let bytes = STANDARD
                     .decode(b)
                     .map_err(|e| format!("media `{id}` is not valid base64: {e}"))?;

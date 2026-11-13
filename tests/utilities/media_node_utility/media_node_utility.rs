@@ -4,7 +4,7 @@ fn here() -> &'static std::path::Path {
     std::path::Path::new(file!()).parent().unwrap()
 }
 
-/// A media from the node before is written to a temporary file for the utility, which is removed after.
+/// A media from the node before reaches a program as its bytes: no file is written.
 #[tokio::test]
 async fn media_node_utility() {
     crate::common::run::set_env();
@@ -26,11 +26,7 @@ async fn media_node_utility() {
     .unwrap();
     let content = sent(&seen)["messages"][1]["content"].as_str().unwrap().to_string();
     assert_eq!(
-        content, "converted 0.png image/png 6 bytes\n\nQ: q",
-        "the temporary file has the right extension and the decoded bytes"
+        content, "data [AAAAAAAA], type [image/png], path []\n\nQ: q",
+        "the utility gets the bytes and the type, no path"
     );
-    let left: Vec<_> = std::fs::read_dir(std::env::temp_dir().join(format!("a-graph-{}", std::process::id())))
-        .map(|d| d.flatten().collect())
-        .unwrap_or_default();
-    assert!(left.is_empty(), "the temporary file is removed: {left:?}");
 }

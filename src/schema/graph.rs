@@ -86,7 +86,7 @@ const MEDIA_IN: Shape = Shape::Map(&[
     Field::req(FROM, Shape::Words(&["resources", "node"])).doc(
         "`resources`: a media with a `source`. `node`: a media produced by a node connected before (`media_not_from_node`); it arrives only if that node passes it on with `node: true`.",
     ),
-    Field::opt(UTILITY, UTILITY_LIST).doc("Utilities the media goes through before the node uses it. The first gets the path of a file; they must end with a text or an image."),
+    Field::opt(UTILITY, UTILITY_LIST).doc("Utilities the media goes through before the node uses it. A file on disk reaches a program as its path; everything else reaches a utility as its bytes. They must end with a text or an image."),
 ]);
 
 const MEDIA_OUT: Shape = Shape::Map(&[

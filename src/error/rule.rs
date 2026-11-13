@@ -31,7 +31,6 @@ rules! {
     MediaNotFromNode => "media_not_from_node",
     MediaNotMade => "media_not_made",
     MediaNeedsUtility => "media_needs_utility",
-    MediaUtilityPath => "media_utility_path",
     MediaProviderFamily => "media_provider_family",
     MediaProviderConflict => "media_provider_conflict",
     MediaTypeUnsupported => "media_type_unsupported",
