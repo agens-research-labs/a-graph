@@ -72,6 +72,52 @@ A file is read in two steps. First the loader checks its shape and the links bet
 the whole file). Then each block is built by its own manager, which checks the rules of its content. The errors of
 all the steps are reported together.
 
+## Adding a provider
+
+A provider of the yml (`provider: ...`) is a value of `Model`; the code that calls it is an implementation of the
+trait `Llm` (`src/models/llm.rs`). There is one implementation for each API format, not for each company: `custom` is
+the code of `ollama` with another name, `azure_foundry` the code of `openai` or `anthropic` with another host and
+other credentials, `vertex_ai` the code of `anthropic` or `gemini` with Google credentials.
+
+First decide which case it is.
+
+**The API of an existing provider, at another host or with other credentials.** No new folder: a constructor next
+to the others (`OpenAi::azure`, `Anthropic::vertex`, `Ollama::custom`) that sets the base URL, the authentication
+and the name of the provider in the errors.
+
+**A new API format.** A folder `src/models/<name>/`, like the others:
+
+- `mod.rs`: the struct, its constructor, its `ERRORS` and `impl Llm`;
+- `request.rs`: a `ModelInvocation` written as the body the API expects;
+- `response.rs`: the answer read as a `ModelResponse`;
+- `batch.rs`, only if the API has batch jobs.
+
+What `impl Llm` must keep:
+
+- `check` refuses, without any call, what the API cannot do (`ModelRequirements`: reasoning, schema, media, tools,
+  batch), all the problems in one `ModelError::Unsupported`. A provider without batch refuses `req.batch` here and
+  answers `invoke_batch` with `unsupported`.
+- `invoke` makes one call, one round: the loop of the tools belongs to the node. The `StopReason` says why the answer
+  ended; `MaxTokens` and `ContextExceeded` are cut answers, whose tool calls are never run, and with a schema they
+  are `Identity::truncated`. A refused answer is `Refused`, with no tool calls.
+- The calls go through `http::send` (or `send_bytes`) with the `ErrorShape` of the provider: the JSON pointers of the
+  code and of the message of its error answers, and which answers are about the credentials. `api_error` reads them:
+  the message of the error says the status and the code, what the provider wrote is its `said`, written only where
+  the passport allows contents. Every other error is built with the methods of `Identity`.
+- `cancel_batch` stops a job that the run let go of; its default does nothing.
+
+In both cases:
+
+- `src/schema/models.rs`: the `Variant` of the provider, its fields and their descriptions; then the five generated
+  files (see [The schema of the graph file](#the-schema-of-the-graph-file)).
+- `src/models/spec.rs`: the value of `Provider`, the variant of `Model` and its reading in `read`.
+- `src/models/endpoint.rs`: the host of the model, its destinations and its secrets, for `allowed_hosts` and
+  `allowed_env`.
+- `src/models/manager.rs`: the variant in `build_llm`.
+- `docs/models.md`: what the provider supports and the code of its errors.
+- `tests/models/<name>/`: the calls against a mock server, at least a plain call, the stop reasons and the error
+  answers (`error_messages`).
+
 ## Tests
 
 - Every test lives in `tests/<topic>/<name>/`, with its code (`<name>.rs`), its graph file (`<name>.yml`) and its
