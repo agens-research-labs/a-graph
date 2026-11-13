@@ -25,6 +25,8 @@ pub const DEFAULT_MAX_RUNS: usize = 8;
 pub const DEFAULT_RUN_TIMEOUT_SECONDS: u64 = 3600;
 /// The longest the body of a request may take to arrive when the file does not say.
 pub const DEFAULT_READ_TIMEOUT_SECONDS: u64 = 60;
+/// How many requests of the same address may have their body still arriving at once when the file does not say.
+pub const DEFAULT_MAX_READING_PER_ADDRESS: usize = 2;
 
 #[derive(Debug, Clone)]
 pub struct ServiceConfig {
@@ -45,6 +47,9 @@ pub struct ServiceConfig {
     pub run_timeout_seconds: u64,
     /// Seconds the body of a request may take to arrive; then it is refused (`read_timeout`).
     pub read_timeout_seconds: u64,
+    /// The most requests of the same address whose body is still arriving at once; a request of that address
+    /// beyond it is refused before `max_runs` is even checked.
+    pub max_reading_per_address: usize,
     /// Seconds a session folder is kept after its last request; `None`: never deleted.
     pub session_retention_seconds: Option<u64>,
     /// The most a session folder may weigh before a request for it is refused; `None`: no cap.
@@ -119,6 +124,14 @@ impl ServiceConfig {
                 "`read_timeout_seconds` is at least 1",
             );
         }
+        let max_reading_per_address = o.opt::<u32>(key::MAX_READING_PER_ADDRESS, &mut errs);
+        if max_reading_per_address == Some(0) {
+            errs.add(
+                &Path::root().key(key::MAX_READING_PER_ADDRESS),
+                Rule::BadValue,
+                "`max_reading_per_address` is at least 1",
+            );
+        }
         let session_retention = o.opt::<u64>(key::SESSION_RETENTION_SECONDS, &mut errs);
         if session_retention == Some(0) {
             errs.add(
@@ -146,6 +159,8 @@ impl ServiceConfig {
                 max_runs: max_runs.map_or(DEFAULT_MAX_RUNS, |n| n as usize),
                 run_timeout_seconds: run_timeout.unwrap_or(DEFAULT_RUN_TIMEOUT_SECONDS),
                 read_timeout_seconds: read_timeout.unwrap_or(DEFAULT_READ_TIMEOUT_SECONDS),
+                max_reading_per_address: max_reading_per_address
+                    .map_or(DEFAULT_MAX_READING_PER_ADDRESS, |n| n as usize),
                 session_retention_seconds: session_retention,
                 session_max_bytes,
             }),

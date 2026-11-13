@@ -68,7 +68,9 @@ impl Endpoint {
             );
             responses.insert(
                 "503".into(),
-                errors("The service is running its most runs, `max_runs` (`too_many_runs`): try again later."),
+                errors(
+                    "The service is running its most runs, `max_runs`, or this address already has its most requests whose body is still arriving, `max_reading_per_address` (`too_many_runs`): try again later.",
+                ),
             );
             Value::Object(responses)
         };

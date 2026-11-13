@@ -35,6 +35,10 @@
       "description": "The folder of the sessions. Each session has its own folder, `<data_dir>/<session>/`, and every path of a graph sent to the service is moved inside it. It should be a folder of the service alone, not one that holds other things.",
       "type": "string"
     },
+    "max_reading_per_address": {
+      "description": "The most requests of the same address whose body is still arriving at once. A request of that address beyond it is refused with 503 (`too_many_runs`) before its body is read, even if `max_runs` has a free place. The default is 2, at least 1.",
+      "type": "integer"
+    },
     "max_runs": {
       "description": "The most runs going on at once, those of `POST /run` and of `POST /runs` together. A request beyond it is refused with 503 (`too_many_runs`) before it is checked, not queued. The default is 8, at least 1.",
       "type": "integer"
