@@ -33,6 +33,12 @@ mod file_no_header;
 #[path = "header_rules/header_rules.rs"]
 mod header_rules;
 
+#[path = "leftover_tmp_ignored/leftover_tmp_ignored.rs"]
+mod leftover_tmp_ignored;
+
+#[path = "link_refused/link_refused.rs"]
+mod link_refused;
+
 #[path = "memory_board_writes/memory_board_writes.rs"]
 mod memory_board_writes;
 

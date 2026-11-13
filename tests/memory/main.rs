@@ -18,11 +18,17 @@ mod concurrent_writes;
 #[path = "embedding_similar/embedding_similar.rs"]
 mod embedding_similar;
 
+#[path = "file_mode_kept/file_mode_kept.rs"]
+mod file_mode_kept;
+
 #[path = "json_file_builds/json_file_builds.rs"]
 mod json_file_builds;
 
 #[path = "length_zero/length_zero.rs"]
 mod length_zero;
+
+#[path = "link_refused/link_refused.rs"]
+mod link_refused;
 
 #[path = "live_chat_history/live_chat_history.rs"]
 mod live_chat_history;
