@@ -3,6 +3,9 @@
 #[path = "../common/mod.rs"]
 mod common;
 
+#[path = "correlated_logs/correlated_logs.rs"]
+mod correlated_logs;
+
 #[path = "collector_down/collector_down.rs"]
 mod collector_down;
 

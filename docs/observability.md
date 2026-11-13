@@ -16,10 +16,11 @@ verbose: { level: steps }
 
 ## Contents and the passport
 
-Some events carry contents: the prompt, the answer and the reasoning of a model, the result of a tool, the detail of an
-error. They are written only when the data classification of the passport is `sensitivity: public` with no
-`categories`. Otherwise every content is left out: the log writes `"content_redacted": true`, the trace writes the
-attribute `a_graph.content_redacted`, and the display says that the contents are hidden.
+Some events carry contents: the system and user prompts, the answer and the reasoning of a model, the result of a
+tool, the detail of an error. They are written only when the data classification of the passport is
+`sensitivity: public` with no `categories`. Otherwise every content is left out: the log writes
+`"content_redacted": true`, the trace writes the attribute `a_graph.content_redacted`, and the display says that
+the contents are hidden.
 
 ## The events
 
@@ -31,7 +32,7 @@ attribute `a_graph.content_redacted`, and the display says that the contents are
 | `node.end` | info | `model`, `input_tokens`, `output_tokens`, `duration`, `stop`, and `verdict` for a validation node | |
 | `group.start` | info | `pattern` (`linear`, `parallel`, `concurrent`, `batch`, `react`), `branches` | |
 | `group.end` | info | `pattern`, `duration` | |
-| `model.call` | debug | `model`, `input_tokens`, `output_tokens`, `duration` | `prompt`, `answer`, `reasoning` |
+| `model.call` | debug | `model`, `input_tokens`, `output_tokens`, `duration`, `gen_ai.*` (see below) | `system_prompt`, `prompt`, `answer`, `reasoning` |
 | `tool.call` | debug | `kind` (`tool`, `mcp`, `skill`), `name`, `duration`, `is_error` | `result` |
 | `utility.call` | debug | `id`, `place`, `duration` | |
 | `read.vectordb` | debug | `id`, `chunks`, `duration` | |
@@ -66,6 +67,19 @@ when there is one, `node`.
 - `{ file: <path> }`: a file;
 - `{ url: <endpoint>, headers: ... }`: an HTTP endpoint, as `application/x-ndjson` POSTs of at most 100 events each.
 
+Runtime records carry `trace_id` and `span_id`, shared with the exported trace. Each run gets a new trace ID,
+including when a program is reused. Before a run starts (for example during validation), these IDs are absent.
+IDs are present in runtime logs even when trace export is disabled.
+
+Model-call records retain `model` as the graph alias and add `gen_ai.provider.name`, `gen_ai.response.model`,
+`gen_ai.operation.name` (`chat`), and `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens`. The GenAI input
+count includes cache-read and cache-write tokens; the existing `input_tokens` remains the uncached count.
+`system_prompt` and `prompt` are the resolved system and current user text, not a reconstruction of the full
+provider request (history, media, schemas and tool rounds are not included).
+
+For machine-readable logs on stderr set `verbose: { level: off }`, or send the log to a separate file. Otherwise
+JSON records and human progress messages share stderr. Delivery/write failure notices are still plain text.
+
 A log that cannot be written never stops the run: the standard error says so.
 
 ## The trace
@@ -77,10 +91,15 @@ program sends **one** POST with the whole timeline, in OTLP over HTTP with JSON,
 - One trace for each run, with one span for the run, one for every group and every node, and inside a node one for
   every model call, tool call, MCP call, skill call and reading of a vector database or memory. The spans have their
   real start and duration, so the branches of a `parallel` group overlap.
-- The attributes of a span are the fields of its events; contents only as the passport allows.
+- The attributes of a span are the fields of its events, with unique keys (end values replace start values).
+  Application attributes use `a_graph.*`; `gen_ai.*` attributes retain their standard names.
+  Contents are included only as the passport allows.
 - The span of a failed run is marked as failed. The spans still open when the run failed are closed as
   `interrupted`.
 - The service name is `passport.adl.name`.
+
+For a runnable Collector → Jaeger demo, see [examples/03-observability](../examples/03-observability/README.md).
+It verifies the OTLP trace path; JSON logs stay local and no metrics are exported.
 
 ## Delivery over the network
 

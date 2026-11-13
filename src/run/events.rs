@@ -29,6 +29,7 @@ pub(super) fn here() -> Where {
 /// The numbers of the intervals of a trace, and which one each node that is running has.
 #[derive(Default)]
 pub(crate) struct Spans {
+    trace_id: std::sync::Mutex<Option<String>>,
     next: std::sync::atomic::AtomicU64,
     run: std::sync::atomic::AtomicU64,
     nodes: std::sync::Mutex<std::collections::HashMap<String, u64>>,
@@ -66,6 +67,10 @@ impl Program {
     pub(crate) fn emit(&self, mut ev: Event) {
         ev.depth = here().depth;
         ev.at = crate::logging::now_nanos();
+        ev.trace_id = self.spans.trace_id.lock().unwrap().clone();
+        if ev.span == 0 {
+            ev.span = self.parent_of(ev.node.as_deref());
+        }
         self.logger.log(&ev);
         self.verbose.show(&ev);
         if let Some(t) = &self.tracer {
@@ -94,6 +99,7 @@ impl Program {
     }
 
     pub(super) fn run_started(&self) {
+        *self.spans.trace_id.lock().unwrap() = Some(uuid::Uuid::new_v4().simple().to_string());
         let id = self.spans.id();
         self.spans.run.store(id, std::sync::atomic::Ordering::SeqCst);
         self.emit(Event::new(LogLevel::Info, "run.start").span(id, 0));
@@ -153,9 +159,20 @@ impl Program {
         let mut ev = Event::new(LogLevel::Debug, "model.call")
             .node(node)
             .field("model", model)
+            .field("gen_ai.provider.name", response.info.provider.clone())
+            .field("gen_ai.response.model", response.info.model.clone())
+            .field("gen_ai.operation.name", "chat")
+            .field(
+                "gen_ai.usage.input_tokens",
+                response.info.usage.input_tokens
+                    + response.info.usage.cache_read_tokens
+                    + response.info.usage.cache_write_tokens,
+            )
+            .field("gen_ai.usage.output_tokens", response.info.usage.output_tokens)
             .field("input_tokens", response.info.usage.input_tokens)
             .field("output_tokens", response.info.usage.output_tokens)
             .field("duration", response.info.execution_time)
+            .content("system_prompt", call.system.clone())
             .content("prompt", call.user.clone())
             .content("answer", answer);
         let reasoning = reasoning_text(&response.reasoning);

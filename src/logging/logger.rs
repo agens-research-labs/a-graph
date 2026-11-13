@@ -197,6 +197,12 @@ impl Logger {
         );
         line.insert("level".into(), json!(format!("{:?}", ev.level).to_lowercase()));
         line.insert("code".into(), json!(ev.code));
+        if let Some(id) = &ev.trace_id {
+            line.insert("trace_id".into(), json!(id));
+            if ev.span != 0 {
+                line.insert("span_id".into(), json!(format!("{:016x}", ev.span)));
+            }
+        }
         if let Some(n) = &ev.node {
             line.insert("node".into(), json!(n));
         }
