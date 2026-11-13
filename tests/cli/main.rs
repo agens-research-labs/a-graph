@@ -24,6 +24,9 @@ mod log_on_stderr;
 #[path = "log_on_stdout/log_on_stdout.rs"]
 mod log_on_stdout;
 
+#[path = "no_temp_dir/no_temp_dir.rs"]
+mod no_temp_dir;
+
 #[path = "print_outputs/print_outputs.rs"]
 mod print_outputs;
 

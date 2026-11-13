@@ -3,6 +3,9 @@
 #[path = "../common/mod.rs"]
 mod common;
 
+#[path = "base64_gets_data/base64_gets_data.rs"]
+mod base64_gets_data;
+
 #[path = "board_gets_changed/board_gets_changed.rs"]
 mod board_gets_changed;
 
@@ -17,6 +20,9 @@ mod call_timeout;
 
 #[path = "cannot_start/cannot_start.rs"]
 mod cannot_start;
+
+#[path = "chain_gets_data/chain_gets_data.rs"]
+mod chain_gets_data;
 
 #[path = "exit_error/exit_error.rs"]
 mod exit_error;
@@ -53,6 +59,9 @@ mod host_refused;
 
 #[path = "http_error/http_error.rs"]
 mod http_error;
+
+#[path = "http_gets_data/http_gets_data.rs"]
+mod http_gets_data;
 
 #[path = "http_roundtrip/http_roundtrip.rs"]
 mod http_roundtrip;
@@ -122,6 +131,9 @@ mod unknown_in_message;
 
 #[path = "unknown_in_places/unknown_in_places.rs"]
 mod unknown_in_places;
+
+#[path = "url_not_read/url_not_read.rs"]
+mod url_not_read;
 
 #[path = "vectordb_utility/vectordb_utility.rs"]
 mod vectordb_utility;

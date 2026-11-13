@@ -12,6 +12,9 @@ mod all_errors_together;
 #[path = "builds_five/builds_five.rs"]
 mod builds_five;
 
+#[path = "mime_needs_base64/mime_needs_base64.rs"]
+mod mime_needs_base64;
+
 #[path = "missing_block/missing_block.rs"]
 mod missing_block;
 
