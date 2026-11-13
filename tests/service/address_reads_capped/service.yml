@@ -1,0 +1,10 @@
+# The configuration of the service for this test ({{port:service}}); up to 4 runs, but 2 bodies still arriving
+# of the same address, within 3 seconds.
+port: {{port:service}}
+data_dir: target/test-service/address_reads_capped
+allowed_hosts: [127.0.0.1]
+allowed_env: {}
+allowed_ambient: []
+max_runs: 4
+read_timeout_seconds: 3
+max_reading_per_address: 2
