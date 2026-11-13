@@ -19,6 +19,8 @@ pub struct Resp {
     pub body: String,
     /// The `location` header, for a redirect.
     pub location: Option<String>,
+    /// Sends the body one byte at a time, this long apart: a server that answers and then drips.
+    pub drip: Option<std::time::Duration>,
 }
 
 impl Resp {
@@ -27,6 +29,7 @@ impl Resp {
             status: 200,
             body: body.into(),
             location: None,
+            drip: None,
         }
     }
     pub fn status(status: u16, body: impl Into<String>) -> Self {
@@ -34,6 +37,7 @@ impl Resp {
             status,
             body: body.into(),
             location: None,
+            drip: None,
         }
     }
     pub fn redirect(status: u16, to: impl Into<String>) -> Self {
@@ -41,6 +45,14 @@ impl Resp {
             status,
             body: String::new(),
             location: Some(to.into()),
+            drip: None,
+        }
+    }
+    /// The same answer, its body sent one byte every `every`.
+    pub fn dripping(self, every: std::time::Duration) -> Self {
+        Resp {
+            drip: Some(every),
+            ..self
         }
     }
 }
@@ -148,13 +160,26 @@ async fn start(
                             release.notified().await;
                         }
                         let location = resp.location.map(|l| format!("location: {l}\r\n")).unwrap_or_default();
-                        let out = format!(
-                            "HTTP/1.1 {} X\r\ncontent-type: application/json\r\n{location}content-length: {}\r\n\r\n{}",
+                        let head = format!(
+                            "HTTP/1.1 {} X\r\ncontent-type: application/json\r\n{location}content-length: {}\r\n\r\n",
                             resp.status,
                             resp.body.len(),
-                            resp.body
                         );
-                        sock.write_all(out.as_bytes()).await.unwrap();
+                        match resp.drip {
+                            None => sock.write_all(format!("{head}{}", resp.body).as_bytes()).await.unwrap(),
+                            Some(every) => {
+                                // the client may give up halfway: then the connection is closed
+                                if sock.write_all(head.as_bytes()).await.is_err() {
+                                    return;
+                                }
+                                for byte in resp.body.as_bytes() {
+                                    tokio::time::sleep(every).await;
+                                    if sock.write_all(std::slice::from_ref(byte)).await.is_err() {
+                                        return;
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             });

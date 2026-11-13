@@ -51,7 +51,9 @@ endpoints set in the environment or in the AWS profile (`AWS_ENDPOINT_URL` and s
 called are the hosts checked.
 
 A call to a model that does not end within 10 minutes is abandoned and fails like a network error. On `bedrock` the
-same limit applies to each call to Bedrock and to S3 (the batch files).
+same limit applies to each call to Bedrock and to S3, and to the reading of each batch result file. The limit covers
+the retries of the AWS SDK too: a call that fails after 9 minutes has one minute left for them. The upload of the
+input of a batch is a call too: a file of some hundred MB on a slow link may not fit in it.
 
 ## What each provider can do
 

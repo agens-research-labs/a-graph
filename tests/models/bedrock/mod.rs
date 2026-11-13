@@ -212,3 +212,6 @@ mod refused_tool_call;
 
 #[path = "call_timeout/call_timeout.rs"]
 mod call_timeout;
+
+#[path = "batch_slow_file/batch_slow_file.rs"]
+mod batch_slow_file;

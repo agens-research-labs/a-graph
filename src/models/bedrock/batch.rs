@@ -179,10 +179,15 @@ impl Bedrock {
                 .send()
                 .await
                 .map_err(|e| self.sdk_error(e))?;
-            let bytes = obj
-                .body
-                .collect()
+            // the call timeout of the SDK ends with the headers: the body is read under the same limit
+            let bytes = tokio::time::timeout(self.call_timeout, obj.body.collect())
                 .await
+                .map_err(|_| {
+                    self.who.network_text(format!(
+                        "a result file was not read within {} s",
+                        self.call_timeout.as_secs_f64()
+                    ))
+                })?
                 .map_err(|e| self.who.network_text(e.to_string()))?
                 .into_bytes();
             for line in String::from_utf8_lossy(&bytes).lines().filter(|l| !l.trim().is_empty()) {
