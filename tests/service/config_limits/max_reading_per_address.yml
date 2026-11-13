@@ -1,0 +1,7 @@
+# `max_reading_per_address` of 0.
+port: 17404
+data_dir: target/test-service/config_limits
+allowed_hosts: [127.0.0.1]
+allowed_env: {}
+allowed_ambient: []
+max_reading_per_address: 0

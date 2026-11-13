@@ -3,6 +3,9 @@
 #[path = "../common/mod.rs"]
 mod common;
 
+#[path = "address_reads_capped/address_reads_capped.rs"]
+mod address_reads_capped;
+
 #[path = "ambient_config/ambient_config.rs"]
 mod ambient_config;
 
