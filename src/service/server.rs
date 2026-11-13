@@ -526,3 +526,26 @@ async fn events(State(app): State<Arc<App>>, UrlPath(id): UrlPath<String>) -> Re
     });
     Sse::new(stream).keep_alive(KeepAlive::default()).into_response()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Each address has its own places, and a place comes back when its guard is dropped.
+    #[test]
+    fn reading_per_address() {
+        let reading = Arc::new(Reading::default());
+        let (a, b): (IpAddr, IpAddr) = ("10.0.0.1".parse().unwrap(), "10.0.0.2".parse().unwrap());
+        let first = reading.enter(a, 2).unwrap();
+        let _second = reading.enter(a, 2).unwrap();
+        assert!(reading.enter(a, 2).is_none());
+        // another address is not affected
+        let other = reading.enter(b, 2);
+        assert!(other.is_some());
+        drop(first);
+        assert!(reading.enter(a, 2).is_some());
+        // an address without requests is forgotten
+        drop(other);
+        assert!(!reading.per_address.lock().unwrap().contains_key(&b));
+    }
+}

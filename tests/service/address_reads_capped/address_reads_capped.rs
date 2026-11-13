@@ -59,10 +59,12 @@ async fn open_many(addr: &str, port: u16, route: &str, n: usize) -> (Vec<TcpStre
     for _ in 0..n {
         conns.push(headers_only(addr, port, route).await);
     }
+    // a refusal comes at once; one wait for all, so the requests still pending stay far from `read_timeout_seconds`
+    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
     let mut pending = Vec::new();
     let mut refused = Vec::new();
     for conn in conns {
-        match peek(conn, 300).await {
+        match peek(conn, 100).await {
             Ok(text) => refused.push(text),
             Err(conn) => pending.push(conn),
         }
@@ -71,8 +73,9 @@ async fn open_many(addr: &str, port: u16, route: &str, n: usize) -> (Vec<TcpStre
 }
 
 /// With `max_reading_per_address: 2`, of 4 requests of the same address whose body is still arriving, exactly
-/// 2 are accepted and 2 are refused with 503, even while `max_runs` (4) has free places; an address of its own
-/// is not affected. The place of the capped address is given back with the 408 of a body that never arrives.
+/// 2 are accepted and 2 are refused with 503, even while `max_runs` (4) has free places. The places are given back
+/// with the 408 of a body that never arrives. That another address has places of its own is checked by the unit test
+/// `reading_per_address`: macOS has no loopback address but 127.0.0.1.
 #[tokio::test]
 async fn address_reads_capped() {
     let (model, _seen) = listen(|_| Resp::ok(answer("ok"))).await;
@@ -86,10 +89,6 @@ async fn address_reads_capped() {
         assert!(text.starts_with("HTTP/1.1 503"), "{text}");
         assert!(text.contains("too_many_runs"), "{text}");
     }
-    // a different address has its own places: its request is accepted, and times out on its own
-    let text = answer_of(headers_only("127.0.0.2", s.port, "/run").await, 5).await;
-    assert!(text.starts_with("HTTP/1.1 408"), "{text}");
-
     // the two accepted requests give their place back with the 408 of a body that never arrives
     for conn in pending {
         let text = answer_of(conn, 5).await;
