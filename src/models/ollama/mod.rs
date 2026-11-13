@@ -11,7 +11,7 @@ mod response;
 use async_trait::async_trait;
 use serde_json::Value;
 
-use super::http;
+use super::http::{self, ErrorShape};
 use super::identity::Identity;
 use super::spec::LocalModel;
 use super::timing::timed;
@@ -20,6 +20,14 @@ use super::{
 };
 use crate::error::{Error, Path, Phase, Rule};
 use crate::resources::MediaKind;
+
+/// `{ "error": "..." }`, with no code. The server has no credentials of its own: a 401 or a 403 comes from
+/// something in front of it, and is the provider's.
+pub(crate) const ERRORS: ErrorShape = ErrorShape {
+    code: &[],
+    message: &["/error"],
+    credentials: |_, _| false,
+};
 
 pub struct Ollama {
     who: Identity,
@@ -57,15 +65,6 @@ impl Ollama {
             client,
         })
     }
-
-    /// The server answers `{"error": "..."}`.
-    fn api_error(&self, status: u16, body: &str) -> ModelError {
-        let said = serde_json::from_str::<Value>(body)
-            .ok()
-            .and_then(|v| v.get("error").and_then(Value::as_str).map(str::to_string))
-            .unwrap_or_else(|| body.chars().take(500).collect());
-        self.who.provider_said(Some(status), None, "", Some(said))
-    }
 }
 
 #[async_trait]
@@ -99,7 +98,7 @@ impl Llm for Ollama {
     async fn invoke(&self, call: &ModelInvocation) -> Result<ModelResponse, ModelError> {
         let body = self.request_body(call)?;
         let req = self.client.post(format!("{}/api/chat", self.base_url)).json(&body);
-        let (text, secs) = timed(http::send(&self.who, req, |status, body| self.api_error(status, body))).await;
+        let (text, secs) = timed(http::send(&self.who, req, &ERRORS)).await;
         let value: Value =
             serde_json::from_str(&text?).map_err(|e| self.who.invalid(format!("the answer is not JSON: {e}")))?;
         self.parse_chat(call.schema.is_some(), &value, secs)

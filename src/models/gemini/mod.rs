@@ -15,7 +15,7 @@ use serde_json::Value;
 use std::fmt;
 
 use super::auth::{GoogleAdc, TokenSource};
-use super::http;
+use super::http::{self, ErrorShape, refused_credentials};
 use super::identity::Identity;
 use super::spec::{ApiModel, Model, VertexModel};
 use super::timing::timed;
@@ -35,6 +35,14 @@ enum Auth {
     /// `Authorization: Bearer <token>`; the token comes from ambient credentials (Vertex AI).
     Bearer(Box<dyn TokenSource>),
 }
+
+/// `{ "error": { "code": 404, "message", "status": "NOT_FOUND" } }`, or the same inside a one-element array:
+/// `code` is the HTTP status, the code of the error is `status`. A key that is not valid comes back as 400.
+const ERRORS: ErrorShape = ErrorShape {
+    code: &["/error/status"],
+    message: &["/error/message"],
+    credentials: |status, body| refused_credentials(status, body) || body.contains("API_KEY_INVALID"),
+};
 
 pub struct Gemini {
     who: Identity,
@@ -166,29 +174,6 @@ impl Gemini {
         }
         Ok(h)
     }
-
-    /// Google answers `{"error": {...}}`, or the same inside a one-element array.
-    fn api_error(&self, status: u16, body: &str) -> ModelError {
-        let parsed = serde_json::from_str::<Value>(body).ok();
-        let error = parsed
-            .as_ref()
-            .and_then(|v| if v.is_array() { v.get(0) } else { Some(v) })
-            .and_then(|v| v.get("error"));
-        // `{ "error": { "code": 404, "message", "status": "NOT_FOUND" } }`: `code` is the HTTP status, the code of the
-        // error is `status`
-        let code = error.and_then(|e| e.get("status")).and_then(Value::as_str);
-        let said = error
-            .and_then(|e| e.get("message"))
-            .and_then(Value::as_str)
-            .map(str::to_string)
-            .unwrap_or_else(|| body.chars().take(500).collect());
-        let key_invalid = body.contains("API_KEY_INVALID");
-        if status == 401 || status == 403 || key_invalid {
-            self.who.credentials_refused(Some(status), code, Some(said))
-        } else {
-            self.who.provider_said(Some(status), code, "", Some(said))
-        }
-    }
 }
 
 #[async_trait]
@@ -228,7 +213,7 @@ impl Llm for Gemini {
     async fn invoke(&self, call: &ModelInvocation) -> Result<ModelResponse, ModelError> {
         let body = self.request_body(call)?;
         let req = self.client.post(&self.url).headers(self.headers().await?).json(&body);
-        let (text, secs) = timed(http::send(&self.who, req, |status, body| self.api_error(status, body))).await;
+        let (text, secs) = timed(http::send(&self.who, req, &ERRORS)).await;
         let value: Value =
             serde_json::from_str(&text?).map_err(|e| self.who.invalid(format!("the answer is not JSON: {e}")))?;
         self.parse_interaction(call, &value, secs)

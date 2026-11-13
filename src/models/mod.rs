@@ -33,6 +33,7 @@ pub use invocation::*;
 pub use llm::Llm;
 pub use manager::ModelManager;
 pub use mistral::Mistral;
+pub(crate) use ollama::ERRORS as OLLAMA_ERRORS;
 pub use ollama::Ollama;
 pub use openai::OpenAi;
 pub use reasoning::{Modality, Reasoning};

@@ -58,7 +58,7 @@ impl OpenAi {
             .post(format!("{}/files", self.base_url))
             .headers(self.headers().await?)
             .multipart(form);
-        let file = self.parse_json(crate::models::http::send(&self.who, req, |s, b| self.api_error(s, b)).await?)?;
+        let file = self.parse_json(crate::models::http::send(&self.who, req, &super::ERRORS).await?)?;
         let file_id = file
             .get("id")
             .and_then(Value::as_str)
@@ -211,6 +211,6 @@ impl OpenAi {
             .client
             .get(format!("{}{path}", self.base_url))
             .headers(self.headers().await?);
-        crate::models::http::send(&self.who, req, |s, b| self.api_error(s, b)).await
+        crate::models::http::send(&self.who, req, &super::ERRORS).await
     }
 }

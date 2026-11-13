@@ -5,7 +5,7 @@ use serde_json::{Value, json};
 
 use super::Embedder;
 use crate::error::{Error, Path, Phase, Rule};
-use crate::models::{Identity, ModelError, http_client, http_send};
+use crate::models::{Identity, ModelError, OLLAMA_ERRORS, http_client, http_send};
 
 pub struct OllamaEmbedding {
     who: Identity,
@@ -32,14 +32,6 @@ impl OllamaEmbedding {
             client,
         })
     }
-
-    fn api_error(&self, status: u16, body: &str) -> ModelError {
-        let said = serde_json::from_str::<Value>(body)
-            .ok()
-            .and_then(|v| v.get("error").and_then(Value::as_str).map(str::to_string))
-            .unwrap_or_else(|| body.chars().take(500).collect());
-        self.who.provider_said(Some(status), None, "", Some(said))
-    }
 }
 
 #[async_trait]
@@ -49,7 +41,7 @@ impl Embedder for OllamaEmbedding {
             .client
             .post(format!("{}/api/embed", self.base_url))
             .json(&json!({ "model": self.model, "input": texts }));
-        let text = http_send(&self.who, req, |status, body| self.api_error(status, body)).await?;
+        let text = http_send(&self.who, req, &OLLAMA_ERRORS).await?;
         let value: Value =
             serde_json::from_str(&text).map_err(|e| self.who.invalid(format!("the answer is not JSON: {e}")))?;
         let vectors = value

@@ -18,7 +18,7 @@ use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use serde_json::Value;
 
 use super::auth::{AzureAmbient, GoogleAdc, TokenSource};
-use super::http;
+use super::http::{self, ErrorShape, refused_credentials};
 use super::identity::Identity;
 use super::spec::{AnthropicModel, AzureCredentials, AzureModel, Model, VertexModel};
 use super::timing::timed;
@@ -52,6 +52,13 @@ enum Auth {
     /// `Authorization: Bearer <token>`; the token comes from ambient credentials.
     Bearer(Box<dyn TokenSource>),
 }
+
+/// `{ "error": { "type", "message" } }`: the type is the code.
+const ERRORS: ErrorShape = ErrorShape {
+    code: &["/error/type"],
+    message: &["/error/message"],
+    credentials: refused_credentials,
+};
 
 pub struct Anthropic {
     who: Identity,
@@ -249,31 +256,9 @@ impl Anthropic {
         self.who.invalid(detail)
     }
 
-    /// An error answer: 401 and 403 are about the credentials, any other is the provider's.
-    /// `{ "error": { "type", "message" } }`: the type is the code, the message what the provider said.
-    fn api_error(&self, status: u16, body: &str) -> ModelError {
-        let v = serde_json::from_str::<Value>(body).ok();
-        let code = v
-            .as_ref()
-            .and_then(|v| v.pointer("/error/type"))
-            .and_then(Value::as_str);
-        let said = v
-            .as_ref()
-            .and_then(|v| v.pointer("/error/message").and_then(Value::as_str).map(str::to_string))
-            .unwrap_or_else(|| body.chars().take(500).collect());
-        if status == 401 || status == 403 {
-            self.who.credentials_refused(Some(status), code, Some(said))
-        } else {
-            self.who.provider_said(Some(status), code, "", Some(said))
-        }
-    }
-
     /// POST/GET and read the whole body; `Err` is already a `ModelError`.
     async fn send(&self, req: reqwest::RequestBuilder) -> Result<String, ModelError> {
-        http::send(&self.who, req.headers(self.headers().await?), |status, body| {
-            self.api_error(status, body)
-        })
-        .await
+        http::send(&self.who, req.headers(self.headers().await?), &ERRORS).await
     }
 }
 

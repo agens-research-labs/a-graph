@@ -15,7 +15,7 @@ use serde_json::Value;
 use std::fmt;
 use std::time::Duration;
 
-use super::http;
+use super::http::{self, ErrorShape, refused_credentials};
 use super::identity::Identity;
 use super::spec::ApiModel;
 use super::timing::timed;
@@ -30,6 +30,14 @@ pub(super) const PROVIDER: &str = "mistral";
 const BASE_URL: &str = "https://api.mistral.ai";
 /// How often a batch is polled. There is no maximum wait: it ends when Mistral says so.
 const POLL_INTERVAL: Duration = Duration::from_secs(30);
+
+/// `{ "message" }`, or `{ "detail": [...] }` for a body it cannot read. No fixed code: a validation error
+/// lists what was sent (`detail[].input`).
+const ERRORS: ErrorShape = ErrorShape {
+    code: &[],
+    message: &["/message", "/detail"],
+    credentials: refused_credentials,
+};
 
 pub struct Mistral {
     who: Identity,
@@ -101,33 +109,13 @@ impl Mistral {
         Ok(h)
     }
 
-    /// Mistral answers `{"message": "..."}`, or `{"detail": [...]}` for a body it cannot read.
-    fn api_error(&self, status: u16, body: &str) -> ModelError {
-        let parsed = serde_json::from_str::<Value>(body).ok();
-        // no fixed code: a validation error lists what was sent (`detail[].input`)
-        let said = parsed
-            .as_ref()
-            .and_then(|v| {
-                v.get("message")
-                    .and_then(Value::as_str)
-                    .map(str::to_string)
-                    .or_else(|| v.get("detail").map(|d| d.to_string()))
-            })
-            .unwrap_or_else(|| body.chars().take(500).collect());
-        if status == 401 || status == 403 {
-            self.who.credentials_refused(Some(status), None, Some(said))
-        } else {
-            self.who.provider_said(Some(status), None, "", Some(said))
-        }
-    }
-
     async fn post_text(&self, path: &str, body: &Value) -> Result<String, ModelError> {
         let req = self
             .client
             .post(format!("{}{path}", self.base_url))
             .headers(self.headers()?)
             .json(body);
-        http::send(&self.who, req, |status, body| self.api_error(status, body)).await
+        http::send(&self.who, req, &ERRORS).await
     }
 
     async fn get_text(&self, path: &str) -> Result<String, ModelError> {
@@ -135,7 +123,7 @@ impl Mistral {
             .client
             .get(format!("{}{path}", self.base_url))
             .headers(self.headers()?);
-        http::send(&self.who, req, |status, body| self.api_error(status, body)).await
+        http::send(&self.who, req, &ERRORS).await
     }
 }
 

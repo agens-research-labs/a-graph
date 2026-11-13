@@ -17,7 +17,7 @@ use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderName, HeaderValue};
 use serde_json::Value;
 
 use super::auth::{AzureAmbient, TokenSource};
-use super::http;
+use super::http::{self, ErrorShape, refused_credentials};
 use super::identity::Identity;
 use super::spec::{ApiModel, AzureCredentials, AzureModel};
 use super::timing::timed;
@@ -39,6 +39,13 @@ enum Auth {
     /// `Authorization: Bearer <token>`; the token comes from ambient credentials (Azure).
     Token(Box<dyn TokenSource>),
 }
+
+/// `{ "error": { "message", "type", "code" } }`: the code, or else the type, is the code.
+pub(super) const ERRORS: ErrorShape = ErrorShape {
+    code: &["/error/code", "/error/type"],
+    message: &["/error/message"],
+    credentials: refused_credentials,
+};
 
 pub struct OpenAi {
     who: Identity,
@@ -180,34 +187,13 @@ impl OpenAi {
         Ok(h)
     }
 
-    /// OpenAI answers `{"error": {"message", "type", "code"}}`; 401 and 403 are about the credentials.
-    /// `{ "error": { "message", "type", "code" } }`: the code, or else the type, is the code; the
-    /// message what the provider said.
-    fn api_error(&self, status: u16, body: &str) -> ModelError {
-        let v = serde_json::from_str::<Value>(body).ok();
-        let code = v.as_ref().and_then(|v| {
-            v.pointer("/error/code")
-                .and_then(Value::as_str)
-                .or_else(|| v.pointer("/error/type").and_then(Value::as_str))
-        });
-        let said = v
-            .as_ref()
-            .and_then(|v| v.pointer("/error/message").and_then(Value::as_str).map(str::to_string))
-            .unwrap_or_else(|| body.chars().take(500).collect());
-        if status == 401 || status == 403 {
-            self.who.credentials_refused(Some(status), code, Some(said))
-        } else {
-            self.who.provider_said(Some(status), code, "", Some(said))
-        }
-    }
-
     async fn post_text(&self, path: &str, body: &Value) -> Result<String, ModelError> {
         let req = self
             .client
             .post(format!("{}{path}", self.base_url))
             .headers(self.headers().await?)
             .json(body);
-        http::send(&self.who, req, |status, body| self.api_error(status, body)).await
+        http::send(&self.who, req, &ERRORS).await
     }
 
     async fn post_bytes(&self, path: &str, body: &Value) -> Result<Vec<u8>, ModelError> {
@@ -216,7 +202,7 @@ impl OpenAi {
             .post(format!("{}{path}", self.base_url))
             .headers(self.headers().await?)
             .json(body);
-        http::send_bytes(&self.who, req, |status, body| self.api_error(status, body)).await
+        http::send_bytes(&self.who, req, &ERRORS).await
     }
 }
 
