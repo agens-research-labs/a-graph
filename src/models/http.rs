@@ -20,8 +20,9 @@ pub(crate) struct ErrorShape {
     /// The code of the error: the first pointer that holds a text. It is kept only if it is a fixed code
     /// (`fixed_code`), never a text that may quote the request.
     pub(crate) code: &'static [&'static str],
-    /// What the provider said: the first pointer that holds a value, as JSON when it is not a text. It is the
-    /// `said` of the error, a content; without it, the first 500 characters of the body.
+    /// What the provider said: the first pointer that holds a value, as JSON cut at 500 characters when it is not
+    /// a text (a list of problems may quote the whole request). It is the `said` of the error, a content; without
+    /// it, the first 500 characters of the body.
     pub(crate) message: &'static [&'static str],
     /// Whether the answer is about the credentials, from its status and its body.
     pub(crate) credentials: fn(u16, &str) -> bool,
@@ -46,7 +47,7 @@ pub(crate) fn api_error(who: &Identity, status: u16, body: &str, shape: &ErrorSh
             shape.message.iter().find_map(|p| match v.pointer(p)? {
                 Value::Null => None,
                 Value::String(s) => Some(s.clone()),
-                other => Some(other.to_string()),
+                other => Some(other.to_string().chars().take(500).collect()),
             })
         })
         .unwrap_or_else(|| body.chars().take(500).collect());
@@ -117,11 +118,16 @@ mod tests {
         );
     }
 
-    /// A value that is not a text is kept as JSON; a body that is not JSON is kept, cut at 500 characters.
+    /// A value that is not a text is kept as JSON, a body that is not JSON as it is; both are cut at 500 characters.
     #[test]
     fn said_without_text() {
         let e = read(422, r#"{ "detail": [{ "input": "x" }] }"#);
         assert_eq!(e.said(), Some(r#"[{"input":"x"}]"#));
+        let e = read(
+            422,
+            &format!(r#"{{ "detail": [{{ "input": "{}" }}] }}"#, "a".repeat(600)),
+        );
+        assert_eq!(e.said().map(|s| s.chars().count()), Some(500));
         let e = read(500, &"a".repeat(600));
         assert_eq!(e.said().map(str::len), Some(500));
     }

@@ -103,7 +103,8 @@ What `impl Llm` must keep:
 - The calls go through `http::send` (or `send_bytes`) with the `ErrorShape` of the provider: the JSON pointers of the
   code and of the message of its error answers, and which answers are about the credentials. `api_error` reads them:
   the message of the error says the status and the code, what the provider wrote is its `said`, written only where
-  the passport allows contents. Every other error is built with the methods of `Identity`.
+  the passport allows contents. Every other error is built with the methods of `Identity`. `bedrock` is the
+  exception: it calls through the AWS SDK and maps the errors of the SDK itself.
 - `cancel_batch` stops a job that the run let go of; its default does nothing.
 
 In both cases:
