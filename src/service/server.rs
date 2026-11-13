@@ -1,15 +1,17 @@
 //! The HTTP side. `POST /run` answers when the graph is done. `POST /runs` starts it and answers at once with
 //! the id of the run; `GET /runs/{id}/events` sends its events as they happen and `GET /runs/{id}` tells its state.
 
+use std::collections::HashMap;
 use std::convert::Infallible;
-use std::sync::Arc;
+use std::net::{IpAddr, SocketAddr};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use tokio::time::Instant;
 
 use axum::Router;
 use axum::body::Bytes;
-use axum::extract::{DefaultBodyLimit, FromRequest, Path as UrlPath, Request as HttpRequest, State};
+use axum::extract::{ConnectInfo, DefaultBodyLimit, FromRequest, Path as UrlPath, Request as HttpRequest, State};
 use axum::http::StatusCode;
 use axum::response::sse::{Event as SseEvent, KeepAlive, Sse};
 use axum::response::{IntoResponse, Response};
@@ -50,8 +52,51 @@ struct App {
     runs: Arc<Runs>,
     /// One permit for each run that may go on, held until the run ends.
     permits: Arc<Semaphore>,
+    /// How many requests of each address have their body still arriving right now.
+    reading: Arc<Reading>,
     /// The deadline of the shutdown, once the service is told to stop: the runs still going on are stopped then.
     deadline: watch::Receiver<Option<Instant>>,
+}
+
+/// How many requests of each address have their body still arriving; a place is held only for that, and given
+/// back as soon as the body is read or refused, never for the rest of the request or the run.
+#[derive(Default)]
+struct Reading {
+    per_address: Mutex<HashMap<IpAddr, usize>>,
+}
+
+impl Reading {
+    /// A place for `addr`, if it has fewer than `cap` already; `None` otherwise.
+    fn enter(self: &Arc<Self>, addr: IpAddr, cap: usize) -> Option<ReadingGuard> {
+        let mut per_address = self.per_address.lock().unwrap();
+        let n = per_address.entry(addr).or_insert(0);
+        if *n >= cap {
+            return None;
+        }
+        *n += 1;
+        Some(ReadingGuard {
+            reading: self.clone(),
+            addr,
+        })
+    }
+}
+
+/// Gives the place of `addr` back when dropped, whatever ended its wait for the body.
+struct ReadingGuard {
+    reading: Arc<Reading>,
+    addr: IpAddr,
+}
+
+impl Drop for ReadingGuard {
+    fn drop(&mut self) {
+        let mut per_address = self.reading.per_address.lock().unwrap();
+        if let Some(n) = per_address.get_mut(&self.addr) {
+            *n -= 1;
+            if *n == 0 {
+                per_address.remove(&self.addr);
+            }
+        }
+    }
 }
 
 /// Listens on the port of the config until `shutdown` is ready. Then it takes no new request, and waits at most
@@ -83,6 +128,7 @@ pub async fn serve(config: ServiceConfig, shutdown: impl Future<Output = ()> + S
     let (told, mut deadline) = watch::channel(None::<Instant>);
     let app = app.layer(DefaultBodyLimit::max(BODY_LIMIT)).with_state(Arc::new(App {
         permits: permits.clone(),
+        reading: Arc::new(Reading::default()),
         config,
         runs,
         deadline: deadline.clone(),
@@ -96,7 +142,9 @@ pub async fn serve(config: ServiceConfig, shutdown: impl Future<Output = ()> + S
         eprintln!("a-graph: shutting down");
         let _ = told.send(Some(Instant::now() + Duration::from_secs(SHUTDOWN_SECONDS)));
     };
-    let server = axum::serve(listener, app).with_graceful_shutdown(signal).into_future();
+    let server = axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
+        .with_graceful_shutdown(signal)
+        .into_future();
     // the server ends when every connection has ended, so a caller still connected when its run is stopped at the
     // deadline gets the answer of that run. A connection that does not end (a run that does not close) must not hold
     // the service past the time the runs have to close
@@ -307,6 +355,18 @@ fn busy(max_runs: usize) -> Response {
     )
 }
 
+/// The answer that refuses a request when its address already has `max_reading_per_address` whose body is
+/// still arriving (503), even if `max_runs` has a free place.
+fn busy_address(cap: usize) -> Response {
+    let message = format!(
+        "this address already has its most requests whose body is arriving (max_reading_per_address: {cap}): try again later"
+    );
+    failure(
+        StatusCode::SERVICE_UNAVAILABLE,
+        &[Error::new(Phase::Execution, Path::root(), Rule::TooManyRuns, message)],
+    )
+}
+
 /// The body of a request, read within `read_timeout_seconds`. It is read as `Bytes`, so the limit of
 /// `DefaultBodyLimit` and the answers of axum to a body too large (413) or cut (400) are those of the extractor; a
 /// body still arriving at the deadline is refused (408), and the connection is closed with the answer.
@@ -327,7 +387,15 @@ async fn read_body(app: &App, request: HttpRequest) -> Result<Bytes, Response> {
     }
 }
 
-async fn run(State(app): State<Arc<App>>, request: HttpRequest) -> Response {
+async fn run(
+    State(app): State<Arc<App>>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    request: HttpRequest,
+) -> Response {
+    // taken before the permit of `max_runs`: an address already at its cap costs the service nothing
+    let Some(reading) = app.reading.enter(addr.ip(), app.config.max_reading_per_address) else {
+        return busy_address(app.config.max_reading_per_address);
+    };
     // taken without waiting and before the body is read, so a request that is refused costs nothing; held while the
     // body arrives and until the run ends, or dropped with a request that is not accepted
     let Ok(permit) = app.permits.clone().try_acquire_owned() else {
@@ -337,6 +405,8 @@ async fn run(State(app): State<Arc<App>>, request: HttpRequest) -> Response {
         Ok(body) => body,
         Err(refusal) => return refusal,
     };
+    // the address has its place back: the rest of the request and the run do not count against its cap
+    drop(reading);
     let (program, message, using, permit) = match accept(&app, body, permit).await {
         Ok(x) => x,
         Err(refusal) => return refusal,
@@ -365,7 +435,14 @@ async fn run(State(app): State<Arc<App>>, request: HttpRequest) -> Response {
     }
 }
 
-async fn start(State(app): State<Arc<App>>, request: HttpRequest) -> Response {
+async fn start(
+    State(app): State<Arc<App>>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    request: HttpRequest,
+) -> Response {
+    let Some(reading) = app.reading.enter(addr.ip(), app.config.max_reading_per_address) else {
+        return busy_address(app.config.max_reading_per_address);
+    };
     let Ok(permit) = app.permits.clone().try_acquire_owned() else {
         return busy(app.config.max_runs);
     };
@@ -373,6 +450,7 @@ async fn start(State(app): State<Arc<App>>, request: HttpRequest) -> Response {
         Ok(body) => body,
         Err(refusal) => return refusal,
     };
+    drop(reading);
     let (program, message, using, permit) = match accept(&app, body, permit).await {
         Ok(x) => x,
         Err(refusal) => return refusal,

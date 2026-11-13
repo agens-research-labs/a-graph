@@ -312,7 +312,7 @@
                 }
               }
             },
-            "description": "The service is running its most runs, `max_runs` (`too_many_runs`): try again later."
+            "description": "The service is running its most runs, `max_runs`, or this address already has its most requests whose body is still arriving, `max_reading_per_address` (`too_many_runs`): try again later."
           }
         },
         "summary": "Runs a graph and answers when it is done."
@@ -402,7 +402,7 @@
                 }
               }
             },
-            "description": "The service is running its most runs, `max_runs` (`too_many_runs`): try again later."
+            "description": "The service is running its most runs, `max_runs`, or this address already has its most requests whose body is still arriving, `max_reading_per_address` (`too_many_runs`): try again later."
           }
         },
         "summary": "Starts a graph and answers at once with the id of the run, to watch it while it goes."

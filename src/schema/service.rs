@@ -23,6 +23,9 @@ pub const SERVICE: &[Field] = &[
     Field::opt(MAX_RUNS, Shape::Int).doc("The most runs going on at once, those of `POST /run` and of `POST /runs` together. A request beyond it is refused with 503 (`too_many_runs`) before it is checked, not queued. The default is 8, at least 1."),
     Field::opt(RUN_TIMEOUT_SECONDS, Shape::Int).doc("The longest a run may last. Then it is stopped and ends as failed (`run_timeout`). The default is 3600, at least 1."),
     Field::opt(READ_TIMEOUT_SECONDS, Shape::Int).doc("The longest the service waits for the whole body of `POST /run` or `POST /runs`. A request still arriving then is refused with 408 (`read_timeout`). A body of 64 MiB takes about 54 seconds at 10 Mbit/s. The default is 60, at least 1."),
+    Field::opt(MAX_READING_PER_ADDRESS, Shape::Int).doc(
+        "The most requests of the same address whose body is still arriving at once. A request of that address beyond it is refused with 503 (`too_many_runs`) before its body is read, even if `max_runs` has a free place. The default is 2, at least 1.",
+    ),
     Field::opt(SESSION_RETENTION_SECONDS, Shape::Int).doc(
         "How long a session folder is kept after its last request. Then the whole folder is deleted (its memories, blackboards and media), unless a run is still using it. Without this key nothing is ever deleted. At least 1.",
     ),

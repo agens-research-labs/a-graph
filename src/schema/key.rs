@@ -44,6 +44,7 @@ keys! {
     MAX_RUNS = "max_runs",
     RUN_TIMEOUT_SECONDS = "run_timeout_seconds",
     READ_TIMEOUT_SECONDS = "read_timeout_seconds",
+    MAX_READING_PER_ADDRESS = "max_reading_per_address",
     SESSION_RETENTION_SECONDS = "session_retention_seconds",
     SESSION_MAX_BYTES = "session_max_bytes",
 

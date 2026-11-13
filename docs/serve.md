@@ -84,6 +84,13 @@ The graph is checked and built again for each request: requests share nothing bu
 request weighs at most 64 MiB, and its body must arrive within `read_timeout_seconds` (60 seconds when the file does
 not say): a request still arriving then is refused with 408 (`read_timeout`), and its connection is closed.
 
+At most `max_reading_per_address` requests of the same address may have their body still arriving at once (2 when the
+file does not say), for `POST /run` and `POST /runs` together; a request of that address beyond it is refused with
+503 (`too_many_runs`) before its body is read, even while `max_runs` still has a free place. Its place is given back
+as soon as the body is read or refused. A reverse proxy that buffers the whole body before passing the request on, as
+nginx does by default (`proxy_request_buffering on`), never sends a request whose body is still arriving, so it never
+reaches this cap; every request then comes from the proxy's own address.
+
 While a request is checked and built, its graph is held in memory about three times over: a request of 64 MiB, such
 as a graph with a large media in `base64`, takes about 200 MB until it is built. Up to `max_runs` requests are checked
 at once, so with the default of 8 the service may need about 1.2 GB for them alone. Choose `max_runs` for the memory
