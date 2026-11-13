@@ -16,6 +16,17 @@ async fn error_messages() {
     );
     assert_eq!(e.said(), Some("model 'nope:1b' not found"));
 
+    // the server has no credentials of its own: a 401 comes from something in front of it
+    let (r, _) = one_call(
+        call("q"),
+        Resp::status(401, json!({ "error": "unauthorized" }).to_string()),
+    )
+    .await;
+    assert!(
+        matches!(&r, Err(ModelError::Provider { status: Some(401), said: Some(s), .. }) if s == "unauthorized"),
+        "{r:?}"
+    );
+
     let (r, _) = one_call(call("q"), Resp::ok("not json")).await;
     assert!(matches!(r, Err(ModelError::InvalidResponse { .. })));
 
