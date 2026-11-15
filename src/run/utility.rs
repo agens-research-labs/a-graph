@@ -1,15 +1,12 @@
 //! Where the program calls the utilities of a node: on the data that comes in and on the data that
 //! goes out. A chain runs in order, each utility getting what the one before answered.
 
-use base64::Engine;
-use base64::engine::general_purpose::STANDARD;
-
 use super::Program;
 use super::node::{Content, NodeInput};
 use crate::error::{Error, Path, Phase, Rule};
 use crate::logging::{Event, LogLevel};
 use crate::models::MediaOutput;
-use crate::utilities::{UtilityFailure, UtilityInput, UtilityOutput, UtilityTransport, call_utility, mime_of};
+use crate::utilities::{UtilityFailure, UtilityInput, UtilityOutput, call_utility, input_of};
 
 /// The error of a utility that failed in `node`: its message, and what it wrote as the detail.
 fn failed(node: &str, why: UtilityFailure) -> Error {
@@ -147,26 +144,14 @@ impl Program {
                 .ok_or_else(|| fail(format!("utility `{id}` is not built")))?;
             let input = match &item {
                 Item::Text(t) => UtilityInput::Text(t.clone()),
-                Item::Path(p) => match &utility.transport {
-                    UtilityTransport::Stdio { .. } => UtilityInput::File {
-                        path: p.clone(),
-                        mime_type: mime_of(p),
-                    },
-                    UtilityTransport::Http { .. } => {
-                        let bytes = std::fs::read(p).map_err(|e| {
-                            Error::new(
-                                Phase::Execution,
-                                Path::node(node),
-                                Rule::Io,
-                                format!("cannot read `{p}`: {e}"),
-                            )
-                        })?;
-                        UtilityInput::Data {
-                            mime_type: mime_of(p),
-                            data: STANDARD.encode(bytes),
-                        }
-                    }
-                },
+                Item::Path(p) => input_of(utility, p).map_err(|e| {
+                    Error::new(
+                        Phase::Execution,
+                        Path::node(node),
+                        Rule::Io,
+                        format!("cannot read `{p}`: {e}"),
+                    )
+                })?,
                 Item::Data { mime_type, data } => UtilityInput::Data {
                     mime_type: Some(mime_type.clone()),
                     data: data.clone(),

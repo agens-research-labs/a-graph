@@ -6,5 +6,5 @@
 mod call;
 mod manager;
 
-pub use call::{UtilityFailure, UtilityInput, UtilityOutput, call_utility, mime_of};
+pub use call::{UtilityFailure, UtilityInput, UtilityOutput, call_utility, input_of, mime_of};
 pub use manager::{Utility, UtilityManager, UtilityTransport};

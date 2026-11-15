@@ -6,6 +6,8 @@
 
 use std::time::Duration;
 
+use base64::Engine;
+use base64::engine::general_purpose::STANDARD;
 use serde_json::{Value, json};
 
 use super::{Utility, UtilityTransport};
@@ -79,6 +81,21 @@ pub fn mime_of(path: &str) -> Option<String> {
         _ => return None,
     };
     Some(mime.to_string())
+}
+
+/// A file on disk, as `utility` takes it: a program by its path, a service by its bytes, since a service may not
+/// see the disk of a-graph.
+pub fn input_of(utility: &Utility, path: &str) -> std::io::Result<UtilityInput> {
+    match &utility.transport {
+        UtilityTransport::Stdio { .. } => Ok(UtilityInput::File {
+            path: path.to_string(),
+            mime_type: mime_of(path),
+        }),
+        UtilityTransport::Http { .. } => Ok(UtilityInput::Data {
+            mime_type: mime_of(path),
+            data: STANDARD.encode(std::fs::read(path)?),
+        }),
+    }
 }
 
 /// Why a utility failed. `message` never holds what the utility wrote, `detail` does: it is a content,
