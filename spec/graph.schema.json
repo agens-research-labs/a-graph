@@ -2855,6 +2855,10 @@
       "additionalProperties": false,
       "description": "The timeline of the run, sent to a collector when the run ends. Without this block there is no trace.",
       "properties": {
+        "capture_content": {
+          "description": "Whether trace attributes include prompts, answers, reasoning and error details. The default is false. Enabling this never overrides passport redaction; logs and the live display retain their own behavior.",
+          "type": "boolean"
+        },
         "endpoint": {
           "description": "The OpenTelemetry collector, as the exact URL of the POST (for example `http://host:4318/v1/traces`). At the end of the run, also when it fails, the whole timeline is sent in one POST, in OTLP over HTTP with JSON. A POST that fails is tried again up to 3 times; what cannot be delivered is dropped, with a notice on the standard error.",
           "type": "string"
@@ -2875,6 +2879,10 @@
           },
           "description": "The headers of the POST, each read from an environment variable.",
           "type": "object"
+        },
+        "max_content_bytes": {
+          "description": "The most UTF-8 bytes of each trace content attribute, at least 1; the default is 4096. Truncation preserves character boundaries and adds a_graph.content_truncated=true.",
+          "type": "integer"
         }
       },
       "required": [

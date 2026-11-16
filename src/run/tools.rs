@@ -171,16 +171,15 @@ impl Program {
         let mut rounds = 0u32;
 
         loop {
-            let mut response = llm
-                .invoke(&call)
+            let mut response = self
+                .invoke_model(
+                    &id,
+                    self.nodes.model().get(node).map(|m| m.id.as_str()).unwrap_or_default(),
+                    llm,
+                    &call,
+                )
                 .await
                 .map_err(|e| fail(Rule::ModelFailed, e.to_string()).with_detail_if(e.said()))?;
-            self.model_called(
-                &id,
-                self.nodes.model().get(node).map(|m| m.id.as_str()).unwrap_or_default(),
-                &call,
-                &response,
-            );
             usage += response.info.usage;
             time += response.info.execution_time;
             if response.tools_call.is_empty() {

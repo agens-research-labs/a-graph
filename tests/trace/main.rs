@@ -6,6 +6,15 @@ mod common;
 #[path = "correlated_logs/correlated_logs.rs"]
 mod correlated_logs;
 
+#[path = "content_policy/content_policy.rs"]
+mod content_policy;
+
+#[path = "cancelled_model/cancelled_model.rs"]
+mod cancelled_model;
+
+#[path = "partial_success/partial_success.rs"]
+mod partial_success;
+
 #[path = "collector_down/collector_down.rs"]
 mod collector_down;
 

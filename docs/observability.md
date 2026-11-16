@@ -20,7 +20,7 @@ Some events carry contents: the system and user prompts, the answer and the reas
 tool, the detail of an error. They are written only when the data classification of the passport is
 `sensitivity: public` with no `categories`. Otherwise every content is left out: the log writes
 `"content_redacted": true`, the trace writes the attribute `a_graph.content_redacted`, and the display says that
-the contents are hidden.
+the contents are hidden. Even for public data, traces require the separate opt-in `trace.capture_content: true`.
 
 ## The events
 
@@ -32,6 +32,8 @@ the contents are hidden.
 | `node.end` | info | `model`, `input_tokens`, `output_tokens`, `duration`, `stop`, and `verdict` for a validation node | |
 | `group.start` | info | `pattern` (`linear`, `parallel`, `concurrent`, `batch`, `react`), `branches` | |
 | `group.end` | info | `pattern`, `duration` | |
+| `model.start` | debug | `model`, `gen_ai.request.model`, `gen_ai.provider.name`, `gen_ai.operation.name` | |
+| `model.error` | error | `model`, `gen_ai.provider.name`, `error.type`, `http.response.status_code` when available, `duration`, `message` | `system_prompt`, `prompt`, `detail` |
 | `model.call` | debug | `model`, `input_tokens`, `output_tokens`, `duration`, `gen_ai.*` (see below) | `system_prompt`, `prompt`, `answer`, `reasoning` |
 | `tool.call` | debug | `kind` (`tool`, `mcp`, `skill`), `name`, `duration`, `is_error` | `result` |
 | `utility.call` | debug | `id`, `place`, `duration` | |
@@ -78,7 +80,8 @@ count includes cache-read and cache-write tokens; the existing `input_tokens` re
 provider request (history, media, schemas and tool rounds are not included).
 
 For machine-readable logs on stderr set `verbose: { level: off }`, or send the log to a separate file. Otherwise
-JSON records and human progress messages share stderr. Delivery/write failure notices are still plain text.
+JSON records and human progress messages share stderr. Delivery/write failure notices and the CLI's final error
+summary are still plain text; use a separate log file when you need a strictly JSON-only stream on failures too.
 
 A log that cannot be written never stops the run: the standard error says so.
 
@@ -94,9 +97,29 @@ program sends **one** POST with the whole timeline, in OTLP over HTTP with JSON,
 - The attributes of a span are the fields of its events, with unique keys (end values replace start values).
   Application attributes use `a_graph.*`; `gen_ai.*` attributes retain their standard names.
   Contents are included only as the passport allows.
-- The span of a failed run is marked as failed. The spans still open when the run failed are closed as
-  `interrupted`.
-- The service name is `passport.adl.name`.
+- Non-batch model invocations open a `CLIENT` span before calling the provider, and close it on success or error.
+  Run, group and node spans are `INTERNAL`. Provider errors retain a bounded-category `error.type`, provider identity
+  and HTTP status when the provider error exposes one; no token counts are invented for failed calls. The failing
+  call's open ancestors are marked as failed too. An in-flight model call cancelled by a timeout or shutdown is
+  closed at flush, marked `interrupted` with `error.type=cancelled`.
+- Other spans still open at failure are closed as `interrupted`. A failed run is marked as failed.
+- The service name is `passport.adl.name`. `service.version` and the instrumentation scope version identify the
+  a-graph binary (`CARGO_PKG_VERSION`); `a_graph.graph.version` identifies `passport.adl.version`.
+
+Trace contents are disabled by default, independently of the JSON log and display. To include them for public data:
+
+```yaml
+trace:
+  endpoint: http://localhost:4318/v1/traces
+  capture_content: true
+  max_content_bytes: 4096
+```
+
+`max_content_bytes` defaults to 4096, must be at least 1, and applies separately to each prompt, answer, reasoning or
+error-detail attribute. Truncation preserves UTF-8 boundaries and adds `a_graph.content_truncated=true`. This is a
+per-content-field limit, not a cap on the number of spans or the entire export. The passport can still forbid all
+contents; enabling capture never bypasses redaction. Logs and the live display retain their existing passport-based
+policy and are not affected by these trace-only settings.
 
 For a runnable Collector → Jaeger demo, see [examples/03-observability](../examples/03-observability/README.md).
 It verifies the OTLP trace path; JSON logs stay local and no metrics are exported.
@@ -106,6 +129,11 @@ It verifies the OTLP trace path; JSON logs stay local and no metrics are exporte
 The log sent to a URL and the trace are delivered the same way. Each POST has a timeout of 10 seconds; a network error,
 a 5xx or a 429 is tried again up to 3 times, waiting longer each time. Any other refusal is final. What cannot be
 delivered is dropped, with a notice on the standard error: it never stops the run.
+
+An OTLP HTTP 200 can report `partialSuccess`. Trace delivery reads the response (at most 64 KiB) and reports the
+rejected span count, including warning-only responses with zero rejections. It never retries a partially accepted
+batch. Malformed or unreadable successful responses are reported as acceptance unknown, without replaying data.
+Remote error-message text is not printed. These OTLP rules do not change delivery of JSON logs.
 
 ## The display
 

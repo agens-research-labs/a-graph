@@ -523,11 +523,10 @@ impl Program {
             // the controller ends with the usage and the time of all its turns, as a node with tools does
             let (mut usage, mut time) = (Default::default(), 0.0);
             loop {
-                let response = llm
-                    .invoke(&call)
+                let response = self
+                    .invoke_model(&cid, &prepared.model, llm, &call)
                     .await
                     .map_err(|e| error(Rule::ModelFailed, e.to_string()).with_detail_if(e.said()))?;
-                self.model_called(&cid, &prepared.model, &call, &response);
                 usage += response.info.usage;
                 time += response.info.execution_time;
                 let routing = response.structured.clone().filter(Value::is_object).ok_or_else(|| {

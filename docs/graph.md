@@ -96,6 +96,8 @@ The form with `url` and `headers`:
 |---|---|---|---|
 | `endpoint` | yes | text | The OpenTelemetry collector, as the exact URL of the POST (for example `http://host:4318/v1/traces`). At the end of the run, also when it fails, the whole timeline is sent in one POST, in OTLP over HTTP with JSON. A POST that fails is tried again up to 3 times; what cannot be delivered is dropped, with a notice on the standard error. |
 | `headers` | no | map of names to: secret | The headers of the POST, each read from an environment variable. |
+| `capture_content` | no | `true` or `false` | Whether trace attributes include prompts, answers, reasoning and error details. The default is false. Enabling this never overrides passport redaction; logs and the live display retain their own behavior. |
+| `max_content_bytes` | no | whole number | The most UTF-8 bytes of each trace content attribute, at least 1; the default is 4096. Truncation preserves character boundaries and adds a_graph.content_truncated=true. |
 
 ## `verbose`
 

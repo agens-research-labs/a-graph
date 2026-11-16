@@ -17,7 +17,7 @@ verbose: { level: off }
 models:
   - id: m
     provider: ollama
-    model: m
+    model: requested-model
     host: http://127.0.0.1:{{port:model}}
     input: [text]
     output: [text]

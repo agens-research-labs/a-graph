@@ -10,7 +10,10 @@ passport:
     permissions: { network: { allowed_hosts: [localhost] } }
 observability: { level: debug }
 verbose: { level: off }
-trace: { endpoint: http://localhost:4318/v1/traces }
+trace:
+  endpoint: http://localhost:4318/v1/traces
+  capture_content: true  # demo inputs are public; production defaults to no content
+  max_content_bytes: 4096
 models:
   - id: local
     provider: ollama

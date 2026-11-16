@@ -22,12 +22,10 @@ impl Program {
             .models
             .get(&prepared.model)
             .ok_or_else(|| fail(Rule::UnknownRef, format!("model `{}` is not built", prepared.model)))?;
-        let response = llm
-            .invoke(&prepared.call)
+        let response = self
+            .invoke_model(&id, &prepared.model, llm, &prepared.call)
             .await
             .map_err(|e| fail(Rule::ModelFailed, e.to_string()).with_detail_if(e.said()))?;
-
-        self.model_called(&id, &prepared.model, &prepared.call, &response);
         let verdict = response
             .structured
             .clone()

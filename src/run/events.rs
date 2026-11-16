@@ -8,7 +8,7 @@ use serde_json::Value;
 use super::Program;
 use crate::graph::Entity;
 use crate::logging::{Event, LogLevel};
-use crate::models::{ModelInvocation, ModelResponse};
+use crate::models::{Llm, ModelError, ModelInvocation, ModelResponse};
 
 /// Where the code that runs is: how many groups it is inside of, and the interval of the trace
 /// of the innermost one (0 = the run itself).
@@ -149,8 +149,73 @@ impl Program {
         self.emit(ev);
     }
 
-    /// One call to a model, with the text it got and the text it gave.
-    pub(super) fn model_called(&self, node: &str, model: &str, call: &ModelInvocation, response: &ModelResponse) {
+    /// Trace a provider-independent invocation, including failure and cancellation (an open span at flush).
+    pub(super) async fn invoke_model(
+        &self,
+        node: &str,
+        model: &str,
+        llm: &dyn Llm,
+        call: &ModelInvocation,
+    ) -> Result<ModelResponse, ModelError> {
+        let mut start = self.traced(
+            Event::new(LogLevel::Debug, "model.start")
+                .node(node)
+                .field("model", model),
+        );
+        if let Some(spec) = self.models.spec(model) {
+            start = start
+                .field("gen_ai.request.model", spec.common().model.clone())
+                .field("gen_ai.provider.name", spec.provider_name());
+        }
+        start = start.field("gen_ai.operation.name", "chat");
+        let (span, parent) = (start.span, start.parent);
+        self.emit(start);
+        let began = Instant::now();
+        let result = llm.invoke(call).await;
+        match &result {
+            Ok(response) => self.model_called(node, model, call, response, span, parent),
+            Err(error) => {
+                let (provider, kind, status) = match error {
+                    ModelError::Unsupported { provider, .. } => (provider, "unsupported", None),
+                    ModelError::Credentials { provider, .. } => (provider, "credentials", None),
+                    ModelError::Network { provider, .. } => (provider, "network", None),
+                    ModelError::Provider { provider, status, .. } => (provider, "provider", *status),
+                    ModelError::InvalidResponse { provider, .. } => (provider, "invalid_response", None),
+                    ModelError::Truncated { provider, .. } => (provider, "truncated", None),
+                    ModelError::MimeMismatch { provider, .. } => (provider, "mime_mismatch", None),
+                };
+                let mut ev = Event::new(LogLevel::Error, "model.error")
+                    .node(node)
+                    .span(span, parent)
+                    .field("model", model)
+                    .field("gen_ai.provider.name", provider.clone())
+                    .field("error.type", kind)
+                    .field("message", "model invocation failed")
+                    .field("duration", began.elapsed().as_secs_f64())
+                    .content("system_prompt", call.system.clone())
+                    .content("prompt", call.user.clone());
+                if let Some(status) = status {
+                    ev = ev.field("http.response.status_code", status);
+                }
+                if let Some(detail) = error.said() {
+                    ev = ev.content("detail", detail);
+                }
+                self.emit(ev);
+            }
+        }
+        result
+    }
+
+    /// One successful call, with the text it got and the text it gave.
+    fn model_called(
+        &self,
+        node: &str,
+        model: &str,
+        call: &ModelInvocation,
+        response: &ModelResponse,
+        span: u64,
+        parent: u64,
+    ) {
         let answer = response
             .message
             .clone()
@@ -179,7 +244,7 @@ impl Program {
         if !reasoning.is_empty() {
             ev = ev.content("reasoning", reasoning);
         }
-        self.emit(self.traced(ev));
+        self.emit(ev.span(span, parent));
     }
 
     /// A group begins: its interval, and when it began.
