@@ -373,7 +373,10 @@ impl Program {
                             format!("media `{}` is a url, which is not read yet", entry.id),
                         ));
                     }
-                    _ => {
+                    None => {
+                        return Err(fail(Rule::Io, format!("media `{}` is not declared", entry.id)));
+                    }
+                    Some(_) => {
                         return Err(fail(
                             Rule::Io,
                             format!("media `{}` is produced by a node, it cannot be read", entry.id),
