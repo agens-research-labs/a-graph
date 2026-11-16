@@ -118,8 +118,17 @@ impl std::fmt::Display for UtilityFailure {
     }
 }
 
-/// Calls `utility`. `Err` says why it failed, with the id of the utility.
+/// Calls `utility`. `Err` says why it failed, with the id of the utility. A file in memory that is not valid base64
+/// is not sent.
 pub async fn call_utility(utility: &Utility, input: &UtilityInput) -> Result<UtilityOutput, UtilityFailure> {
+    if let UtilityInput::Data { data, .. } = input
+        && let Err(e) = STANDARD.decode(data)
+    {
+        return Err(UtilityFailure {
+            message: format!("utility `{}`: the file it is given is not valid base64", utility.id),
+            detail: Some(e.to_string()),
+        });
+    }
     let arguments = input.to_json();
     let call = async {
         match &utility.transport {

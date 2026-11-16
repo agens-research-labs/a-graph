@@ -21,6 +21,9 @@ mod call_timeout;
 #[path = "cannot_start/cannot_start.rs"]
 mod cannot_start;
 
+#[path = "chain_bad_data/chain_bad_data.rs"]
+mod chain_bad_data;
+
 #[path = "chain_gets_data/chain_gets_data.rs"]
 mod chain_gets_data;
 

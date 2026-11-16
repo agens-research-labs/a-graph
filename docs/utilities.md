@@ -61,7 +61,9 @@ It answers a text, or a file in base64 with its type:
 A utility that fails stops the run, with its exit status or the status of its answer. What it wrote, on its standard
 error or in the body of its answer, is the `detail` of the error: a content, written only as the passport allows (see
 [observability](observability.md)). No model is involved to read the reason. A utility that answers neither `text` nor
-`mime_type` with `data`, or that does not answer within `timeout`, fails too (`utility_failed`).
+`mime_type` with `data`, or that does not answer within `timeout`, fails too (`utility_failed`). A file in memory that
+is not valid base64 is not sent: the utility that would get it fails (`utility_failed`), and why the base64 is not
+valid is the `detail`.
 
 ## Where a node uses them
 
