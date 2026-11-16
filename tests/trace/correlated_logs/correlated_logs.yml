@@ -10,6 +10,7 @@ passport:
     permissions: { network: { allowed_hosts: [127.0.0.1] } }
 observability: { level: debug, output: { file: ./target/test-output/correlated_logs.log } }
 trace:
+  capture_content: true
   endpoint: http://127.0.0.1:{{port:collector}}/v1/traces
   headers:
     Authorization: { env: TRACE_TOKEN }

@@ -44,7 +44,37 @@ pub(super) async fn deliver(
             .send()
             .await
         {
-            Ok(r) if r.status().is_success() => return,
+            Ok(mut r) if r.status().is_success() => {
+                if what == "trace" {
+                    // A 200 can still reject spans. Never replay a partially accepted batch.
+                    // Bound the response and never print remote error messages (untrusted content).
+                    let mut bytes = Vec::new();
+                    loop {
+                        match r.chunk().await {
+                            Ok(Some(chunk)) if bytes.len() + chunk.len() <= 65536 => bytes.extend_from_slice(&chunk),
+                            Ok(None) => {
+                                match trace_reply(&bytes) {
+                                    Ok(Some(rejected)) => eprintln!(
+                                        "a-graph: trace endpoint reported partial success ({rejected} rejected spans); not retried"
+                                    ),
+                                    Ok(None) => {}
+                                    Err(message) => {
+                                        eprintln!("a-graph: {message}; trace acceptance is unknown; not retried")
+                                    }
+                                }
+                                break;
+                            }
+                            _ => {
+                                eprintln!(
+                                    "a-graph: cannot read bounded OTLP response; trace acceptance is unknown; not retried"
+                                );
+                                break;
+                            }
+                        }
+                    }
+                }
+                return;
+            }
             Ok(r) if r.status().is_client_error() && r.status() != reqwest::StatusCode::TOO_MANY_REQUESTS => {
                 eprintln!("a-graph: the {what} endpoint refused the data ({})", r.status());
                 return;
@@ -57,4 +87,26 @@ pub(super) async fn deliver(
         }
     }
     eprintln!("a-graph: {what} data dropped after {} attempts: {last}", d.retries + 1);
+}
+
+/// Only the rejected count is safe to report. A populated partialSuccess is never retried,
+/// including warning-only responses with zero rejected spans.
+fn trace_reply(body: &[u8]) -> Result<Option<u64>, &'static str> {
+    let response: serde_json::Value = serde_json::from_slice(body).map_err(|_| "invalid OTLP response")?;
+    let object = response.as_object().ok_or("invalid OTLP response")?;
+    let Some(partial) = object.get("partialSuccess") else {
+        return Ok(None);
+    };
+    let partial = partial.as_object().ok_or("invalid OTLP partial-success response")?;
+    let rejected = match partial.get("rejectedSpans") {
+        None => 0,
+        Some(serde_json::Value::String(s)) => s.parse::<u64>().map_err(|_| "invalid OTLP rejected span count")?,
+        Some(v) => v.as_u64().ok_or("invalid OTLP rejected span count")?,
+    };
+    let warning = match partial.get("errorMessage") {
+        None => false,
+        Some(serde_json::Value::String(message)) => !message.is_empty(),
+        Some(_) => return Err("invalid OTLP partial-success message"),
+    };
+    Ok((rejected > 0 || warning).then_some(rejected))
 }

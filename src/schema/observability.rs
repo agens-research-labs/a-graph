@@ -27,6 +27,8 @@ pub(super) const TRACE: Shape = Shape::Map(&[
         "The OpenTelemetry collector, as the exact URL of the POST (for example `http://host:4318/v1/traces`). At the end of the run, also when it fails, the whole timeline is sent in one POST, in OTLP over HTTP with JSON. A POST that fails is tried again up to 3 times; what cannot be delivered is dropped, with a notice on the standard error.",
     ),
     Field::opt(HEADERS, HEADERS_OF_SECRETS).doc("The headers of the POST, each read from an environment variable."),
+    Field::opt(CAPTURE_CONTENT, Shape::Bool).doc("Whether trace attributes include prompts, answers, reasoning and error details. The default is false. Enabling this never overrides passport redaction; logs and the live display retain their own behavior."),
+    Field::opt(MAX_CONTENT_BYTES, Shape::Int).doc("The most UTF-8 bytes of each trace content attribute, at least 1; the default is 4096. Truncation preserves character boundaries and adds a_graph.content_truncated=true."),
 ]);
 
 pub(super) const VERBOSE: Shape = Shape::Map(&[Field::req(LEVEL, Shape::Words(&["off", "steps", "detail"])).doc(

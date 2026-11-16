@@ -18,6 +18,7 @@ use crate::schema::key;
 struct Span {
     id: u64,
     parent: u64,
+    kind: u8,
     name: String,
     start: u64,
     end: u64,
@@ -39,6 +40,9 @@ pub struct Tracer {
     headers: reqwest::header::HeaderMap,
     delivery: Delivery,
     redaction: Redaction,
+    capture_content: bool,
+    max_content_bytes: usize,
+    graph_version: Option<String>,
     /// The name the collector shows for the service: the name of the passport.
     service: String,
     state: Mutex<State>,
@@ -82,6 +86,11 @@ impl Tracer {
             reqwest::header::CONTENT_TYPE,
             reqwest::header::HeaderValue::from_static("application/json"),
         );
+        let capture_content = t.opt::<bool>(key::CAPTURE_CONTENT, &mut errs).unwrap_or(false);
+        let max_content_bytes = t.opt::<usize>(key::MAX_CONTENT_BYTES, &mut errs).unwrap_or(4096);
+        if max_content_bytes == 0 {
+            errs.add(&base.key(key::MAX_CONTENT_BYTES), Rule::BadValue, "must be at least 1");
+        }
         let delivery = Delivery::default();
         let client = match crate::net::client().timeout(delivery.timeout).build() {
             Ok(c) => Some(c),
@@ -90,7 +99,8 @@ impl Tracer {
                 None
             }
         };
-        let service = passport_name(passport).unwrap_or_else(|| "a-graph".to_string());
+        let service = passport_field(passport.clone(), key::NAME).unwrap_or_else(|| "a-graph".to_string());
+        let graph_version = passport_field(passport, key::VERSION);
         match (url, client, errs.0.is_empty()) {
             (Some(url), Some(client), true) => Ok(Some(Tracer {
                 client,
@@ -98,6 +108,9 @@ impl Tracer {
                 headers: map,
                 delivery,
                 redaction,
+                capture_content,
+                max_content_bytes,
+                graph_version,
                 service,
                 state: Mutex::new(State::default()),
             })),
@@ -121,7 +134,7 @@ impl Tracer {
             .iter()
             .map(|(k, v)| {
                 (
-                    if k.starts_with("gen_ai.") {
+                    if k.starts_with("gen_ai.") || k == "error.type" || k.starts_with("http.response.") {
                         k.clone()
                     } else {
                         format!("a_graph.{k}")
@@ -135,8 +148,19 @@ impl Tracer {
         }
         let mut contents: Vec<(String, Value)> = Vec::new();
         if !ev.content.is_empty() {
-            if self.redaction.allow_content {
-                contents.extend(ev.content.iter().map(|(k, v)| (format!("a_graph.{k}"), json!(v))));
+            if self.redaction.allow_content && self.capture_content {
+                let mut truncated = false;
+                for (key, text) in &ev.content {
+                    let mut end = text.len().min(self.max_content_bytes);
+                    while !text.is_char_boundary(end) {
+                        end -= 1;
+                    }
+                    truncated |= end < text.len();
+                    contents.push((format!("a_graph.{key}"), json!(&text[..end])));
+                }
+                if truncated {
+                    contents.push(("a_graph.content_truncated".into(), json!(true)));
+                }
             } else {
                 contents.push(("a_graph.content_redacted".into(), json!(true)));
             }
@@ -153,32 +177,20 @@ impl Tracer {
         match ev.code.as_str() {
             "run.start" => open(&mut st, ev, "run".into(), attributes),
             "group.start" => open(&mut st, ev, text("pattern"), attributes),
+            "model.start" => open(&mut st, ev, format!("model {}", text("model")), attributes),
             "node.start" => open(
                 &mut st,
                 ev,
                 format!("node {}", ev.node.clone().unwrap_or_default()),
                 attributes,
             ),
-            "run.end" | "group.end" | "node.end" => {
+            "run.end" | "group.end" | "node.end" | "model.call" => {
                 if let Some(mut s) = st.open.remove(&ev.span) {
                     s.end = ev.at;
-                    for (key, value) in attributes {
-                        if let Some((_, old)) = s.attributes.iter_mut().find(|(k, _)| k == &key) {
-                            *old = value;
-                        } else {
-                            s.attributes.push((key, value));
-                        }
-                    }
+                    merge_attributes(&mut s.attributes, attributes);
                     st.done.push(s);
                 }
             }
-            "model.call" => point(
-                &mut st,
-                ev,
-                format!("model {}", text("model")),
-                attributes,
-                number("duration"),
-            ),
             "tool.call" => {
                 let error = ev
                     .fields
@@ -214,8 +226,14 @@ impl Tracer {
             _ if ev.level == LogLevel::Error => {
                 if let Some(mut s) = st.open.remove(&ev.span) {
                     s.end = ev.at;
-                    s.error = Some(format!("{}: {}", ev.code, text("message")));
-                    s.attributes.extend(contents);
+                    let message = format!("{}: {}", ev.code, text("message"));
+                    s.error = Some(message.clone());
+                    merge_attributes(&mut s.attributes, attributes);
+                    let mut parent = s.parent;
+                    while let Some(ancestor) = st.open.get_mut(&parent) {
+                        ancestor.error = Some(message.clone());
+                        parent = ancestor.parent;
+                    }
                     st.done.push(s);
                 }
             }
@@ -229,12 +247,22 @@ impl Tracer {
         let now = now_nanos();
         let (trace_id, mut spans) = {
             let mut st = self.state.lock().unwrap();
+            // Interrupted descendants must not extend past the already-closed run span.
+            let ended = st
+                .done
+                .iter()
+                .find(|s| s.parent == 0 && s.name == "run")
+                .map(|s| s.end)
+                .unwrap_or(now);
             let open: Vec<Span> = st
                 .open
                 .drain()
                 .map(|(_, mut s)| {
-                    s.end = now;
+                    s.end = ended.max(s.start);
                     s.error.get_or_insert_with(|| "interrupted".to_string());
+                    if s.kind == 3 {
+                        merge_attributes(&mut s.attributes, vec![("error.type".into(), json!("cancelled"))]);
+                    }
                     s
                 })
                 .collect();
@@ -263,7 +291,7 @@ impl Tracer {
                     "traceId": trace_id,
                     "spanId": format!("{:016x}", s.id),
                     "name": s.name,
-                    "kind": 1,
+                    "kind": s.kind,
                     "startTimeUnixNano": s.start.to_string(),
                     "endTimeUnixNano": s.end.max(s.start).to_string(),
                     "attributes": s.attributes.iter().map(|(k, v)| json!({ "key": k, "value": any_value(v) })).collect::<Vec<_>>(),
@@ -277,9 +305,16 @@ impl Tracer {
                 span
             })
             .collect();
+        let mut resource = vec![
+            json!({ "key": "service.name", "value": { "stringValue": self.service } }),
+            json!({ "key": "service.version", "value": { "stringValue": env!("CARGO_PKG_VERSION") } }),
+        ];
+        if let Some(version) = &self.graph_version {
+            resource.push(json!({ "key": "a_graph.graph.version", "value": { "stringValue": version } }));
+        }
         json!({ "resourceSpans": [{
-            "resource": { "attributes": [{ "key": "service.name", "value": { "stringValue": self.service } }] },
-            "scopeSpans": [{ "scope": { "name": "a-graph" }, "spans": spans }],
+            "resource": { "attributes": resource },
+            "scopeSpans": [{ "scope": { "name": "a-graph", "version": env!("CARGO_PKG_VERSION") }, "spans": spans }],
         }] })
     }
 }
@@ -290,6 +325,7 @@ fn open(st: &mut State, ev: &Event, name: String, attributes: Vec<(String, Value
         Span {
             id: ev.span,
             parent: ev.parent,
+            kind: if ev.code == "model.start" { 3 } else { 1 },
             name,
             start: ev.at,
             end: ev.at,
@@ -304,6 +340,7 @@ fn point(st: &mut State, ev: &Event, name: String, attributes: Vec<(String, Valu
     st.done.push(Span {
         id: ev.span,
         parent: ev.parent,
+        kind: 1,
         name,
         start: ev.at.saturating_sub(took),
         end: ev.at,
@@ -331,9 +368,19 @@ pub fn now_nanos() -> u64 {
         .unwrap_or(0)
 }
 
-/// `passport.adl.name`.
-fn passport_name(passport: Option<Yml>) -> Option<String> {
+fn merge_attributes(target: &mut Vec<(String, Value)>, attributes: Vec<(String, Value)>) {
+    for (key, value) in attributes {
+        if let Some((_, old)) = target.iter_mut().find(|(k, _)| k == &key) {
+            *old = value;
+        } else {
+            target.push((key, value));
+        }
+    }
+}
+
+/// An identity field of `passport.adl`.
+fn passport_field(passport: Option<Yml>, field: &str) -> Option<String> {
     let mut errs = Errs::default();
     let mut p = Obj::new(passport?, Path::root().key(key::PASSPORT), &mut errs)?;
-    p.sub(key::ADL, &mut errs)?.opt::<String>(key::NAME, &mut errs)
+    p.sub(key::ADL, &mut errs)?.opt::<String>(field, &mut errs)
 }

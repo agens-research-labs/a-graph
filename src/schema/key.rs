@@ -55,6 +55,8 @@ keys! {
     URL = "url",
     HEADERS = "headers",
     ENDPOINT = "endpoint",
+    CAPTURE_CONTENT = "capture_content",
+    MAX_CONTENT_BYTES = "max_content_bytes",
 
     // common
     ID = "id",

@@ -242,10 +242,9 @@ impl Program {
             .models
             .get(&synt.model)
             .ok_or_else(|| fail(Rule::UnknownRef, format!("model `{}` is not built", synt.model)))?;
-        let response = llm.invoke(&call).await.map_err(|e| {
+        let response = self.invoke_model(node, &synt.model, llm, &call).await.map_err(|e| {
             fail(Rule::ModelFailed, format!("summary of memory `{}`: {e}", memory.id)).with_detail_if(e.said())
         })?;
-        self.model_called(node, &synt.model, &call, &response);
         let (stop, thought) = (response.stop_reason, !response.reasoning.is_empty());
         let summary = response.message.filter(|m| !m.trim().is_empty()).ok_or_else(|| {
             fail(

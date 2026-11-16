@@ -44,8 +44,12 @@ if the trace is absent; a successful model call alone does not prove trace deliv
 
 - This is a **trace** pipeline. Application JSON logs remain local; they are not OTLP logs and must
   not be sent directly to the Collector's OTLP logs endpoint. There is no metrics pipeline here.
-- The passport deliberately declares **public** data: system/user prompts and answers are exported.
-  Use non-public classification for sensitive inputs; contents will be redacted.
+- The passport deliberately declares **public** data and the demo sets `trace.capture_content: true`:
+  system/user prompts and answers are exported, capped at 4096 UTF-8 bytes per field. The default outside
+  this demo is no trace content. Use non-public classification for sensitive inputs; contents will be redacted.
+- Model calls are CLIENT spans with requested/returned model metadata. Failures retain their own error span;
+  in-flight calls cancelled at shutdown/timeout are retained as interrupted. Resource attributes identify
+  both the a-graph binary version and graph version.
 - Only Collector ingestion (`4318`) and the Jaeger UI (`16686`) are exposed, on loopback. No auth or
   TLS is configured. Container-internal OTLP is plaintext. This is a local demo, not a production
   security configuration.

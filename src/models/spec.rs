@@ -167,6 +167,21 @@ impl Model {
         &self.common().id
     }
 
+    /// Configured provider identity, available even when an invocation never returns.
+    pub fn provider_name(&self) -> &'static str {
+        match self {
+            Self::Anthropic(_) => "anthropic",
+            Self::Openai(_) => "openai",
+            Self::Gemini(_) => "gemini",
+            Self::Mistral(_) => "mistral",
+            Self::Bedrock(_) => "bedrock",
+            Self::VertexAi(_) => "vertex_ai",
+            Self::AzureFoundry(_) => "azure_foundry",
+            Self::Ollama(_) => "ollama",
+            Self::Custom(_) => "custom",
+        }
+    }
+
     pub fn output(&self) -> &[Modality] {
         &self.common().output
     }
