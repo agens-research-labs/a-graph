@@ -2592,7 +2592,7 @@
                     "description": "How to get in at the `url`, with `url` only. Its content is not defined yet."
                   },
                   "base64": {
-                    "description": "The content itself, in base64. Only for a media.",
+                    "description": "The content itself, in base64, checked when the graph loads. Only for a media.",
                     "type": "string"
                   },
                   "mime_type": {
@@ -2706,7 +2706,7 @@
                     "description": "How to get in at the `url`, with `url` only. Its content is not defined yet."
                   },
                   "base64": {
-                    "description": "The content itself, in base64. Only for a media.",
+                    "description": "The content itself, in base64, checked when the graph loads. Only for a media.",
                     "type": "string"
                   },
                   "mime_type": {

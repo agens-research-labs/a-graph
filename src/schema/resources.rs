@@ -9,7 +9,7 @@ const SOURCE_BODY: Shape = Shape::Map(&[
     Field::opt(PATH, Shape::Text).doc("A file, relative to the folder the command is run from."),
     Field::opt(URL, Shape::Text).doc("A URL. It is not read yet: a node that uses it fails when it runs."),
     Field::opt(ACCESS, Shape::Any).doc("How to get in at the `url`, with `url` only. Its content is not defined yet."),
-    Field::opt(BASE64, Shape::Text).doc("The content itself, in base64. Only for a media."),
+    Field::opt(BASE64, Shape::Text).doc("The content itself, in base64, checked when the graph loads. Only for a media."),
     Field::opt(MIME_TYPE, Shape::Text).doc("The type of the content in `base64`, such as `application/pdf`, given to the utilities the media goes through. Only for a media, with `base64`."),
 ]);
 

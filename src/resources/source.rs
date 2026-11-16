@@ -1,5 +1,7 @@
 //! Where the content of a prompt or of a media comes from.
 
+use base64::Engine;
+use base64::engine::general_purpose::STANDARD;
 use serde_norway::Value;
 
 use super::common::{Errs, Obj};
@@ -20,7 +22,8 @@ pub enum Source {
     },
 }
 
-/// A source has exactly one of `path`, `url`, `base64`; `access` goes with `url` only, `mime_type` with `base64` only.
+/// A source has exactly one of `path`, `url`, `base64`; `access` goes with `url` only, `mime_type` with `base64` only;
+/// `base64` must decode.
 pub(super) fn build(mut o: Obj, allow_base64: bool, errs: &mut Errs) -> Option<Source> {
     let path = o.opt::<String>(key::PATH, errs);
     let url = o.opt::<String>(key::URL, errs);
@@ -49,6 +52,13 @@ pub(super) fn build(mut o: Obj, allow_base64: bool, errs: &mut Errs) -> Option<S
     if base64.is_some() && !allow_base64 {
         errs.forbid(&at, key::BASE64, true, "base64 is not allowed here");
         return None;
+    }
+    if let Some(Err(e)) = base64.as_ref().map(|b| STANDARD.decode(b)) {
+        errs.add(
+            &at.key(key::BASE64),
+            Rule::BadValue,
+            format!("`base64` is not valid: {e}"),
+        );
     }
     match (path, url, base64) {
         (Some(p), _, _) => Some(Source::Path(p)),

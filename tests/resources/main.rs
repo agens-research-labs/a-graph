@@ -9,6 +9,9 @@ mod access_needs_url;
 #[path = "all_errors_together/all_errors_together.rs"]
 mod all_errors_together;
 
+#[path = "base64_not_valid/base64_not_valid.rs"]
+mod base64_not_valid;
+
 #[path = "builds_five/builds_five.rs"]
 mod builds_five;
 

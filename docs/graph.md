@@ -294,7 +294,7 @@ An Ollama server, called with `POST <host>/api/embed`.
 | `path` | no | text | A file, relative to the folder the command is run from. |
 | `url` | no | text | A URL. It is not read yet: a node that uses it fails when it runs. |
 | `access` | no | any value | How to get in at the `url`, with `url` only. Its content is not defined yet. |
-| `base64` | no | text | The content itself, in base64. Only for a media. |
+| `base64` | no | text | The content itself, in base64, checked when the graph loads. Only for a media. |
 | `mime_type` | no | text | The type of the content in `base64`, such as `application/pdf`, given to the utilities the media goes through. Only for a media, with `base64`. |
 
 ## `resources.tools[]`
@@ -353,7 +353,7 @@ A map with exactly one of these keys.
 | `path` | no | text | A file, relative to the folder the command is run from. |
 | `url` | no | text | A URL. It is not read yet: a node that uses it fails when it runs. |
 | `access` | no | any value | How to get in at the `url`, with `url` only. Its content is not defined yet. |
-| `base64` | no | text | The content itself, in base64. Only for a media. |
+| `base64` | no | text | The content itself, in base64, checked when the graph loads. Only for a media. |
 | `mime_type` | no | text | The type of the content in `base64`, such as `application/pdf`, given to the utilities the media goes through. Only for a media, with `base64`. |
 
 ## `resources.media[].generate`
