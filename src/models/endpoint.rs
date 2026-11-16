@@ -34,6 +34,16 @@ impl Model {
         })
     }
 
+    /// Primary configured destination, available before invocation (also for SDK-backed models).
+    /// Only host and effective port are returned; URL credentials, path and query are never retained.
+    pub(crate) fn server(&self) -> Option<(String, u16)> {
+        let (host, port) = match self {
+            Model::Ollama(local) | Model::Custom(local) => crate::net::host_port_of(&local.host)?,
+            _ => (self.host().ok()?, Some(443)),
+        };
+        Some((host.trim_start_matches('[').trim_end_matches(']').to_string(), port?))
+    }
+
     /// Every destination of the model, `at` being where it is in the yml: its endpoint and, for a
     /// Bedrock batch, the control API and the S3 buckets. The other batches use the endpoint.
     pub fn destinations(&self, at: &Path) -> Vec<Destination> {

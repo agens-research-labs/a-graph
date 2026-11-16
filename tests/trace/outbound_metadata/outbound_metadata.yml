@@ -1,0 +1,29 @@
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: outbound-test
+    description: Only safe destination metadata is exported.
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+trace:
+  endpoint: http://127.0.0.1:{{port:collector}}/v1/traces
+models:
+  - id: m
+    provider: ollama
+    model: requested-model
+    host: http://DO_NOT_EXPORT_USER:DO_NOT_EXPORT_PASSWORD@127.0.0.1:{{port:model}}/DO_NOT_EXPORT_PATH?token=DO_NOT_EXPORT_QUERY
+    input: [text]
+    output: [text]
+graph:
+  nodes:
+    - id: s
+      model: { id: m }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true }
+  edges:
+    - start: s

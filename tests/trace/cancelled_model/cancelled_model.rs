@@ -27,6 +27,12 @@ async fn cancelled_model() {
     let call = named(&spans, "model m");
     assert_eq!(call["kind"], 3);
     assert_eq!(
+        attribute(call, "server.address"),
+        Some(json!({"stringValue": "127.0.0.1"}))
+    );
+    assert!(attribute(call, "server.port").is_some());
+    assert!(attribute(call, "http.response.status_code").is_none());
+    assert_eq!(
         attribute(call, "gen_ai.provider.name"),
         Some(json!({"stringValue": "ollama"}))
     );

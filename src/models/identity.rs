@@ -115,7 +115,8 @@ impl Identity {
         ModelError::Network {
             model,
             provider,
-            source: Box::new(e),
+            // Destination metadata is recorded separately; URLs can contain credentials or query secrets.
+            source: Box::new(e.without_url()),
         }
     }
 

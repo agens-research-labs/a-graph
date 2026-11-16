@@ -65,7 +65,7 @@ pub(crate) async fn send(
     req: reqwest::RequestBuilder,
     errors: &ErrorShape,
 ) -> Result<String, ModelError> {
-    let resp = req.send().await.map_err(|e| who.network(e))?;
+    let resp = send_observed(who, req).await?;
     let status = resp.status();
     let text = resp.text().await.map_err(|e| who.network(e))?;
     if status.is_success() {
@@ -81,13 +81,23 @@ pub(crate) async fn send_bytes(
     req: reqwest::RequestBuilder,
     errors: &ErrorShape,
 ) -> Result<Vec<u8>, ModelError> {
-    let resp = req.send().await.map_err(|e| who.network(e))?;
+    let resp = send_observed(who, req).await?;
     let status = resp.status();
     if status.is_success() {
         return resp.bytes().await.map(|b| b.to_vec()).map_err(|e| who.network(e));
     }
     let text = resp.text().await.map_err(|e| who.network(e))?;
     Err(api_error(who, status.as_u16(), &text, errors))
+}
+
+/// Building once gives telemetry the actual method and destination, not an inferred URL.
+async fn send_observed(who: &Identity, req: reqwest::RequestBuilder) -> Result<reqwest::Response, ModelError> {
+    let (client, request) = req.build_split();
+    let request = request.map_err(|e| who.network(e))?;
+    let first = super::http_telemetry::started(&request);
+    let response = client.execute(request).await.map_err(|e| who.network(e))?;
+    super::http_telemetry::responded(first, response.status().as_u16());
+    Ok(response)
 }
 
 #[cfg(test)]

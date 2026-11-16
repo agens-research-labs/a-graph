@@ -134,7 +134,13 @@ impl Tracer {
             .iter()
             .map(|(k, v)| {
                 (
-                    if k.starts_with("gen_ai.") || k == "error.type" || k.starts_with("http.response.") {
+                    if k.starts_with("gen_ai.")
+                        || k == "error.type"
+                        || k.starts_with("http.response.")
+                        || k.starts_with("http.request.")
+                        || k.starts_with("server.")
+                        || k == "url.scheme"
+                    {
                         k.clone()
                     } else {
                         format!("a_graph.{k}")

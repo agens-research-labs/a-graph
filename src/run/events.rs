@@ -166,14 +166,17 @@ impl Program {
             start = start
                 .field("gen_ai.request.model", spec.common().model.clone())
                 .field("gen_ai.provider.name", spec.provider_name());
+            if let Some((server, port)) = spec.server() {
+                start = start.field("server.address", server).field("server.port", port);
+            }
         }
         start = start.field("gen_ai.operation.name", "chat");
         let (span, parent) = (start.span, start.parent);
         self.emit(start);
         let began = Instant::now();
-        let result = llm.invoke(call).await;
-        match &result {
-            Ok(response) => self.model_called(node, model, call, response, span, parent),
+        let (result, http) = crate::models::http_telemetry::observe(llm.invoke(call)).await;
+        let mut event = match &result {
+            Ok(response) => self.model_called(node, model, call, response),
             Err(error) => {
                 let (provider, kind, status) = match error {
                     ModelError::Unsupported { provider, .. } => (provider, "unsupported", None),
@@ -200,22 +203,22 @@ impl Program {
                 if let Some(detail) = error.said() {
                     ev = ev.content("detail", detail);
                 }
-                self.emit(ev);
+                ev
+            }
+        };
+        for (key, value) in http.fields() {
+            if let Some((_, old)) = event.fields.iter_mut().find(|(existing, _)| existing == &key) {
+                *old = value;
+            } else {
+                event = event.field(key, value);
             }
         }
+        self.emit(event.span(span, parent));
         result
     }
 
     /// One successful call, with the text it got and the text it gave.
-    fn model_called(
-        &self,
-        node: &str,
-        model: &str,
-        call: &ModelInvocation,
-        response: &ModelResponse,
-        span: u64,
-        parent: u64,
-    ) {
+    fn model_called(&self, node: &str, model: &str, call: &ModelInvocation, response: &ModelResponse) -> Event {
         let answer = response
             .message
             .clone()
@@ -244,7 +247,7 @@ impl Program {
         if !reasoning.is_empty() {
             ev = ev.content("reasoning", reasoning);
         }
-        self.emit(ev.span(span, parent));
+        ev
     }
 
     /// A group begins: its interval, and when it began.

@@ -6,6 +6,12 @@ mod common;
 #[path = "correlated_logs/correlated_logs.rs"]
 mod correlated_logs;
 
+#[path = "outbound_metadata/outbound_metadata.rs"]
+mod outbound_metadata;
+
+#[path = "outbound_parallel/outbound_parallel.rs"]
+mod outbound_parallel;
+
 #[path = "content_policy/content_policy.rs"]
 mod content_policy;
 
