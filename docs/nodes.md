@@ -27,8 +27,10 @@ fails when it runs. How the two messages reach the prompt is explained in [promp
 
 ## The run of a node
 
-1. The incoming text goes through the utilities of `message.input.utility`, if any. The changed text is the one used
-   from here on: in the prompt, in the queries to the vector databases and memories, and in what the memory saves.
+1. The messages the node takes go through the utilities of `message.input.utility`, if any. The changed text is the
+   one used from here on: in the prompt, in the queries to the vector databases and memories, and in what the memory
+   saves. A message the node does not take is not changed: on a node that does not take the message of the user, a
+   vector database with `query: user_message` searches with the message as the user wrote it.
 2. The node reads what it declares: the vector databases (`{{chunks}}`), the memories (the history and the summary),
    the blackboard if it reads it, the media of `media.input`.
 3. The placeholders of the prompt are filled, and the model is called.

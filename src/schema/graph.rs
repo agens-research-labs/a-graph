@@ -112,7 +112,7 @@ const UTILITY_LIST: Shape = Shape::Either(&[Shape::Ref(Kind::Utility), Shape::Li
 const MESSAGE_INPUT: Shape = Shape::Map(&[
     Field::opt(USER_MESSAGE, Shape::Bool).doc("`true`: the node takes the message of the user, the one given to the command. The default is `false`."),
     Field::opt(AGENT_MESSAGE, Shape::Bool).doc("`true`: the node takes what the node connected before sends on. The default is `false`."),
-    Field::opt(UTILITY, UTILITY_LIST).doc("Utilities that change the incoming text, which is then used everywhere: in the prompt, in the queries and in what the memories save."),
+    Field::opt(UTILITY, UTILITY_LIST).doc("Utilities that change the messages the node takes, which are then used everywhere: in the prompt, in the queries and in what the memories save. A message the node does not take is not changed."),
 ]);
 
 const MESSAGE_INPUT_FIELD: Field = Field::opt(INPUT, MESSAGE_INPUT).doc("Where the text of the node comes from.");

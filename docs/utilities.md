@@ -72,7 +72,7 @@ One id alone is a list of one.
 
 | Place | What goes through | What they must give back |
 |---|---|---|
-| `message.input.utility` | the incoming text, from the user and from the node before | a text |
+| `message.input.utility` | the messages the node takes, from the user and from the node before | a text |
 | `message.output.utility` | the text the node produces, once, before every destination | a text |
 | `media.input[].utility` | a media the node reads, by its path or its bytes (see [the contract](#the-contract)) | a text or an image |
 | `media.output[].utility` | with `from: model`, the file the model made; with `from: message`, the text of the node | a file |

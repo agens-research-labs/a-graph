@@ -639,7 +639,7 @@ The form with `url` and `access`:
 |---|---|---|---|
 | `user_message` | no | `true` or `false` | `true`: the node takes the message of the user, the one given to the command. The default is `false`. |
 | `agent_message` | no | `true` or `false` | `true`: the node takes what the node connected before sends on. The default is `false`. |
-| `utility` | no | the id of an utility, or list of: the id of an utility | Utilities that change the incoming text, which is then used everywhere: in the prompt, in the queries and in what the memories save. |
+| `utility` | no | the id of an utility, or list of: the id of an utility | Utilities that change the messages the node takes, which are then used everywhere: in the prompt, in the queries and in what the memories save. A message the node does not take is not changed. |
 
 ## `graph.nodes[].message.output`
 
@@ -748,7 +748,7 @@ The form with `url` and `access`:
 |---|---|---|---|
 | `user_message` | no | `true` or `false` | `true`: the node takes the message of the user, the one given to the command. The default is `false`. |
 | `agent_message` | no | `true` or `false` | `true`: the node takes what the node connected before sends on. The default is `false`. |
-| `utility` | no | the id of an utility, or list of: the id of an utility | Utilities that change the incoming text, which is then used everywhere: in the prompt, in the queries and in what the memories save. |
+| `utility` | no | the id of an utility, or list of: the id of an utility | Utilities that change the messages the node takes, which are then used everywhere: in the prompt, in the queries and in what the memories save. A message the node does not take is not changed. |
 
 ## `step`
 

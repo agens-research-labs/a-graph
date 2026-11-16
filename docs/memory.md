@@ -80,8 +80,9 @@ The `read.utility` changes each message read and the summary.
 
 ## Writing
 
-After the node answers, the exchange of this turn is saved in the record of the node: the message the node received
-(the message of the user, or else the message of the node before) and its answer, only the roles that `write` allows.
+After the node answers, the exchange of this turn is saved in the record of the node: the message the node took (the
+message of the user if the node takes it, or else the message of the node before; none if it takes neither) and its
+answer, only the roles that `write` allows.
 Any combination is allowed, for example only the messages of the user; what comes back later is what was saved.
 
 The `write.utility` changes what is saved, after the utilities of `message.output`; the vector of a saved message is

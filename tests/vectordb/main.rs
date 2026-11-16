@@ -51,6 +51,9 @@ mod qdrant_refuses_tenant;
 #[path = "qdrant_rules/qdrant_rules.rs"]
 mod qdrant_rules;
 
+#[path = "query_original_text/query_original_text.rs"]
+mod query_original_text;
+
 #[path = "search_timeout/search_timeout.rs"]
 mod search_timeout;
 

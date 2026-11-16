@@ -1,0 +1,59 @@
+# The node takes only the message of the node before and has `message.input.utility`; its vectordb searches with the message of the user as it was written (model {{port:model}}, embedding {{port:embedding}}, qdrant {{port:vectordb}}).
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:{{port:model}}
+    input: [text]
+    output: [text]
+embeddings:
+  - id: emb
+    provider: ollama
+    model: embeddinggemma
+    host: http://127.0.0.1:{{port:embedding}}
+utilities:
+  - id: up
+    transport: stdio
+    command: /bin/sh
+    args: ["tests/vectordb/query_original_text/files/scripts/up.sh"]
+    timeout: 5
+resources:
+  prompts:
+    - id: pr
+      content:
+        system: "Answer with the context."
+        user: "Context: {{chunks}} / From the node before: {{agent_message}}"
+external:
+  vectordb:
+    - id: contracts_db
+      provider: qdrant
+      url: http://127.0.0.1:{{port:vectordb}}
+      collection: contracts
+      top_k: 2
+      embedding: emb
+      text_field: text
+graph:
+  nodes:
+    - id: n
+      model: { id: m, max_tokens: 50 }
+      resources: { prompt: pr }
+      external:
+        vectordb:
+          - { id: contracts_db, query: user_message }
+      message:
+        input: { agent_message: true, utility: up }
+        output: { assistant_message: true }
+  edges:
+    - start: n
+    - end: n

@@ -1035,7 +1035,7 @@
                             "type": "array"
                           }
                         ],
-                        "description": "Utilities that change the incoming text, which is then used everywhere: in the prompt, in the queries and in what the memories save."
+                        "description": "Utilities that change the messages the node takes, which are then used everywhere: in the prompt, in the queries and in what the memories save. A message the node does not take is not changed."
                       }
                     },
                     "required": [],
@@ -1354,7 +1354,7 @@
                                 "type": "array"
                               }
                             ],
-                            "description": "Utilities that change the incoming text, which is then used everywhere: in the prompt, in the queries and in what the memories save."
+                            "description": "Utilities that change the messages the node takes, which are then used everywhere: in the prompt, in the queries and in what the memories save. A message the node does not take is not changed."
                           }
                         },
                         "required": [],

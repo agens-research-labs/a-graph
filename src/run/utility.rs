@@ -57,28 +57,25 @@ impl Program {
         Ok(text)
     }
 
-    /// The incoming text of a node (`message.input.utility`): the one from the user and the one from
-    /// the previous node go through the chain. What comes out is the text the node uses everywhere.
+    /// The incoming text of a node (`message.input.utility`): the messages the node takes go through the
+    /// chain, the one it does not take stays as it came. What comes out is the text the node uses everywhere.
     pub(super) async fn transform_input(
         &self,
         node: crate::graph::Entity,
         input: &NodeInput,
     ) -> Result<NodeInput, Error> {
-        let ids = self
-            .nodes
-            .message()
-            .get(node)
-            .map(|m| m.input_utility.clone())
-            .unwrap_or_default();
+        let message = self.nodes.message().get(node);
+        let ids = message.map(|m| m.input_utility.clone()).unwrap_or_default();
         if ids.is_empty() {
             return Ok(input.clone());
         }
+        let wants = message.and_then(|m| m.input).unwrap_or_default();
         let name = self.nodes.id(node).unwrap_or_default().to_string();
         let mut out = input.clone();
-        if let Some(t) = input.user_message.clone() {
+        if let Some(t) = input.user_message.clone().filter(|_| wants.user_message) {
             out.user_message = Some(self.text_through(&name, "message.input", &ids, t).await?);
         }
-        if let Some(t) = input.agent_message.clone() {
+        if let Some(t) = input.agent_message.clone().filter(|_| wants.agent_message) {
             out.agent_message = Some(self.text_through(&name, "message.input", &ids, t).await?);
         }
         Ok(out)
