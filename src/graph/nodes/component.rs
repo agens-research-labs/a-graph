@@ -144,7 +144,7 @@ pub struct MediaOut {
 pub struct Message {
     pub input: Option<MessageInput>,
     pub output: Option<MessageOutput>,
-    /// Ids of `utilities` the incoming text goes through, in order.
+    /// Ids of `utilities` the messages the node takes go through, in order.
     pub input_utility: Vec<String>,
 }
 

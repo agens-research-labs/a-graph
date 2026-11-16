@@ -32,7 +32,7 @@ impl Program {
         };
 
         // the message the node takes is what the exchanges are compared with
-        let query = input.user_message.clone().or_else(|| input.agent_message.clone());
+        let query = self.taken(node, input);
         for m in &external.memory {
             let began = std::time::Instant::now();
             let memory = self
@@ -96,6 +96,19 @@ impl Program {
         }
         Ok(read)
     }
+
+    /// The message the node took, the one its memories save and compare: the message of the user when the node
+    /// takes it, else the message of the node before when it takes that, else none.
+    fn taken(&self, node: Entity, input: &NodeInput) -> Option<String> {
+        let wants = self.nodes.message().get(node).and_then(|m| m.input).unwrap_or_default();
+        if wants.user_message {
+            input.user_message.clone()
+        } else if wants.agent_message {
+            input.agent_message.clone()
+        } else {
+            None
+        }
+    }
 }
 
 /// The prompt of a summary when the memory does not name one.
@@ -117,6 +130,7 @@ impl Program {
             return Ok(());
         };
 
+        let taken = self.taken(node, input);
         for m in &external.memory {
             if !m.write.user && !m.write.assistant {
                 continue;
@@ -132,11 +146,7 @@ impl Program {
                     format!("memory `{}` is kept in a vectordb, which is not supported yet", m.id),
                 ));
             };
-            let question = input
-                .user_message
-                .clone()
-                .or_else(|| input.agent_message.clone())
-                .filter(|_| m.write.user);
+            let question = taken.clone().filter(|_| m.write.user);
             // what is saved has gone through the utilities of the memory; the vector is of that text
             let question = match question {
                 Some(q) => Some(self.text_through(&id, "memory.write", &m.write_utility, q).await?),

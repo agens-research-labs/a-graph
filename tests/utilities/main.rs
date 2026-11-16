@@ -117,6 +117,12 @@ mod output_to_next;
 #[path = "single_id/single_id.rs"]
 mod single_id;
 
+#[path = "skips_agent_text/skips_agent_text.rs"]
+mod skips_agent_text;
+
+#[path = "skips_user_text/skips_user_text.rs"]
+mod skips_user_text;
+
 #[path = "stdio_rules/stdio_rules.rs"]
 mod stdio_rules;
 

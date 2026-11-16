@@ -1,0 +1,42 @@
+# The node takes only the message of the node before: `message.input.utility` never gets the one of the user (model mock {{port:model}}).
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:{{port:model}}
+    input: [text]
+    output: [text]
+utilities:
+  - id: guard
+    transport: stdio
+    command: /bin/sh
+    args: ["tests/utilities/skips_user_text/files/scripts/guard.sh"]
+    timeout: 5
+resources:
+  prompts:
+    - id: pr
+      content:
+        system: "Be brief."
+        user: "From the node before: {{agent_message}}"
+graph:
+  nodes:
+    - id: n
+      model: { id: m, max_tokens: 50 }
+      resources: { prompt: pr }
+      message:
+        input: { agent_message: true, utility: guard }
+        output: { assistant_message: true }
+  edges:
+    - start: n
+    - end: n

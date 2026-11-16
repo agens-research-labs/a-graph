@@ -54,6 +54,9 @@ mod memory_ref_rules;
 #[path = "no_file_is_empty/no_file_is_empty.rs"]
 mod no_file_is_empty;
 
+#[path = "no_input_saves_answer/no_input_saves_answer.rs"]
+mod no_input_saves_answer;
+
 #[path = "no_synt_no_placeholder/no_synt_no_placeholder.rs"]
 mod no_synt_no_placeholder;
 
@@ -69,8 +72,14 @@ mod reads_history;
 #[path = "reasoning_not_saved/reasoning_not_saved.rs"]
 mod reasoning_not_saved;
 
+#[path = "saves_node_message/saves_node_message.rs"]
+mod saves_node_message;
+
 #[path = "saves_vector/saves_vector.rs"]
 mod saves_vector;
+
+#[path = "similar_by_node_message/similar_by_node_message.rs"]
+mod similar_by_node_message;
 
 #[path = "summaries_overlap/summaries_overlap.rs"]
 mod summaries_overlap;
