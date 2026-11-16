@@ -1,0 +1,43 @@
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: outbound-parallel
+    description: Parallel requests keep their own server metadata.
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+trace:
+  endpoint: http://127.0.0.1:{{port:collector}}/v1/traces
+models:
+  - id: m1
+    provider: ollama
+    model: first
+    host: http://127.0.0.1:{{port:first}}
+    input: [text]
+    output: [text]
+  - id: m2
+    provider: ollama
+    model: second
+    host: http://127.0.0.1:{{port:second}}
+    input: [text]
+    output: [text]
+graph:
+  nodes:
+    - { id: s, model: { id: m1 }, message: { input: { user_message: true }, output: { assistant_message: true, node: true } } }
+    - { id: i, model: { id: m1 }, message: { input: { user_message: true }, output: { assistant_message: true, node: true } } }
+    - { id: a, model: { id: m1 }, message: { input: { user_message: true }, output: { assistant_message: true, node: true } } }
+    - { id: b, model: { id: m2 }, message: { input: { user_message: true }, output: { assistant_message: true, node: true } } }
+    - { id: f, model: { id: m1 }, message: { input: { user_message: true }, output: { assistant_message: true, node: true } } }
+    - { id: z, model: { id: m1 }, message: { input: { user_message: true }, output: { assistant_message: true } } }
+  edges:
+    - start: s
+    - parallel:
+        - in: i
+        - fan:
+            - next: a
+            - next: b
+        - out: f
+    - end: z

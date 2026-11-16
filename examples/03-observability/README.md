@@ -25,7 +25,9 @@ examples/03-observability/compose.yml logs collector` before running the graph.
 Open <http://localhost:16686>, select service **hello-observability**, and find traces. Allow a few
 seconds for the Collector's batch to arrive. Each run has three spans: `run` → `node assistant` →
 `model local`. Expand the model span to inspect provider, actual model, tokens, system prompt,
-user prompt and answer.
+user prompt and answer. The model span also shows `server.address=localhost`, `server.port=11434`,
+`url.scheme=http`, `http.request.method=POST` and the actual `http.response.status_code` (normally 200).
+These describe the primary REST request, not a separate HTTP span; trace-context propagation is not enabled.
 
 The JSON log's `trace_id` is also a direct lookup:
 

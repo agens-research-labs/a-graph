@@ -73,6 +73,20 @@ Runtime records carry `trace_id` and `span_id`, shared with the exported trace. 
 including when a program is reused. Before a run starts (for example during validation), these IDs are absent.
 IDs are present in runtime logs even when trace export is disabled.
 
+Model-start records include the configured `server.address` and effective `server.port`, without URL userinfo,
+path or query. These remain available for cancelled calls and SDK-backed providers. Model completion records add
+safe metadata observed by the shared REST transport: `server.address`, `server.port`, `url.scheme`,
+`http.request.method` and `http.response.status_code` when a response was received. A network failure has no invented
+HTTP status; an HTTP 200 followed by an invalid model response still records HTTP 200 alongside the model error.
+
+These attributes describe the **first** shared-transport REST request of the logical model invocation. If that
+invocation makes more than one request, `a_graph.http_request_count` records the count instead of silently replacing
+the primary request's metadata with a later request's. Metadata is bounded and isolated between parallel invocations.
+SDK traffic bypassing this transport gets configured destination metadata only; HTTP method/status are not guessed.
+This does not add individual HTTP/retry spans or propagate `traceparent`/`tracestate`. No URL paths, query strings,
+credentials, request headers or bodies are captured by this instrumentation. Reqwest network errors also omit their
+URL so that query secrets cannot leak through the run's error message.
+
 Model-call records retain `model` as the graph alias and add `gen_ai.provider.name`, `gen_ai.response.model`,
 `gen_ai.operation.name` (`chat`), and `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens`. The GenAI input
 count includes cache-read and cache-write tokens; the existing `input_tokens` remains the uncached count.
@@ -95,7 +109,8 @@ program sends **one** POST with the whole timeline, in OTLP over HTTP with JSON,
   every model call, tool call, MCP call, skill call and reading of a vector database or memory. The spans have their
   real start and duration, so the branches of a `parallel` group overlap.
 - The attributes of a span are the fields of its events, with unique keys (end values replace start values).
-  Application attributes use `a_graph.*`; `gen_ai.*` attributes retain their standard names.
+  Application attributes use `a_graph.*`; `gen_ai.*`, `server.*`, HTTP method/status, `url.scheme` and `error.type`
+  retain their standard names.
   Contents are included only as the passport allows.
 - Non-batch model invocations open a `CLIENT` span before calling the provider, and close it on success or error.
   Run, group and node spans are `INTERNAL`. Provider errors retain a bounded-category `error.type`, provider identity

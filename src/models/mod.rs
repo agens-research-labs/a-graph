@@ -8,6 +8,7 @@ mod endpoint;
 mod error;
 mod gemini;
 mod http;
+pub(crate) mod http_telemetry;
 mod identity;
 mod invocation;
 mod llm;
