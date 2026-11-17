@@ -236,6 +236,7 @@ impl Program {
             top_p: None,
             max_tokens: Some(synt.max_tokens),
             reasoning: None,
+            logprobs: None,
             tool_rounds: Vec::new(),
         };
         let llm = self

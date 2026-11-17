@@ -39,6 +39,12 @@ impl Ollama {
                 body.insert("think".into(), json!("high"));
             }
         }
+        if let Some(n) = call.logprobs {
+            body.insert("logprobs".into(), json!(true));
+            if n > 0 {
+                body.insert("top_logprobs".into(), json!(n));
+            }
+        }
         let mut options = Map::new();
         if let Some(t) = call.temperature {
             options.insert("temperature".into(), json!(t));

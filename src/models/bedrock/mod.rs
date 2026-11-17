@@ -162,6 +162,9 @@ impl Llm for Bedrock {
         if !req.output_media.is_empty() {
             problems.push("media output is text only for now".to_string());
         }
+        if req.logprobs.is_some() {
+            problems.push("the Converse API of Bedrock gives no logprobs".to_string());
+        }
         if req.batch && req.schema.is_some() {
             problems.push("a batch on Bedrock cannot use an output schema".to_string());
         }

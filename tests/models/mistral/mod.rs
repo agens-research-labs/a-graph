@@ -42,6 +42,7 @@ fn call(user: &str) -> ModelInvocation {
         top_p: None,
         max_tokens: None,
         reasoning: None,
+        logprobs: None,
         tool_rounds: vec![],
     }
 }
@@ -164,3 +165,9 @@ mod cut_tool_call;
 
 #[path = "validation_input/validation_input.rs"]
 mod validation_input;
+
+#[path = "logprobs_asked/logprobs_asked.rs"]
+mod logprobs_asked;
+
+#[path = "logprobs_speech_refused/logprobs_speech_refused.rs"]
+mod logprobs_speech_refused;

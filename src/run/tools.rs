@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use futures_util::future::join_all;
 
 use super::Program;
+use super::node::logprobs_missing;
 use crate::error::{Error, Path, Phase, Rule};
 use crate::gate::{self, ToolOutcome};
 use crate::graph::nodes::component::DEFAULT_MAX_ROUNDS;
@@ -150,7 +151,8 @@ impl Program {
     /// Calls the model until it stops asking for tools. Each tool, and each MCP server, may be
     /// called at most its `max_iter` times in this run of the node, and the model may ask for tools in at most
     /// `max_rounds` rounds; asking once more is an error.
-    /// `usage` and the time of the final response are the sum of all the calls.
+    /// `usage` and the time of the final response are the sum of all the calls; its `logprobs` are those of
+    /// all the calls, in order.
     pub(super) async fn invoke_with_tools(
         &self,
         node: Entity,
@@ -161,7 +163,7 @@ impl Program {
         let fail = |rule: Rule, msg: String| Error::new(Phase::Execution, Path::node(&id), rule, msg);
         let mut used: HashMap<String, u32> = HashMap::new();
         let mut activated: std::collections::HashSet<String> = std::collections::HashSet::new();
-        let (mut usage, mut time) = (Default::default(), 0.0);
+        let (mut usage, mut time, mut logprobs) = (Default::default(), 0.0, Vec::new());
         let max_rounds = self
             .nodes
             .resources()
@@ -182,9 +184,15 @@ impl Program {
                 .map_err(|e| fail(Rule::ModelFailed, e.to_string()).with_detail_if(e.said()))?;
             usage += response.info.usage;
             time += response.info.execution_time;
+            if let Some(why) = logprobs_missing(&call, &response) {
+                return Err(fail(Rule::ModelFailed, why));
+            }
+            // the tokens of every call, in order: the last list is the final answer
+            logprobs.append(&mut response.logprobs);
             if response.tools_call.is_empty() {
                 response.info.usage = usage;
                 response.info.execution_time = time;
+                response.logprobs = logprobs;
                 return Ok(response);
             }
 

@@ -30,6 +30,7 @@ fn call(user: &str) -> ModelInvocation {
         top_p: None,
         max_tokens: None,
         reasoning: None,
+        logprobs: None,
         tool_rounds: vec![],
     }
 }
@@ -104,3 +105,9 @@ mod live_own_error;
 
 #[path = "cut_tool_call/cut_tool_call.rs"]
 mod cut_tool_call;
+
+#[path = "logprobs_asked/logprobs_asked.rs"]
+mod logprobs_asked;
+
+#[path = "logprobs_malformed/logprobs_malformed.rs"]
+mod logprobs_malformed;

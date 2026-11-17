@@ -53,6 +53,7 @@ fn call(user: &str) -> ModelInvocation {
         top_p: None,
         max_tokens: None,
         reasoning: None,
+        logprobs: None,
         tool_rounds: vec![],
     }
 }
@@ -215,3 +216,6 @@ mod call_timeout;
 
 #[path = "batch_slow_file/batch_slow_file.rs"]
 mod batch_slow_file;
+
+#[path = "no_logprobs/no_logprobs.rs"]
+mod no_logprobs;

@@ -125,6 +125,7 @@ const NODE_MESSAGE: Shape = Shape::Map(&[
             Field::opt(ASSISTANT_MESSAGE, Shape::Bool).doc("`true`: the answer goes to the final output. The default is `false`."),
             Field::opt(NODE, Shape::Bool).doc("`true`: the answer goes to the node connected after, as its `agent_message`. The default is `false`."),
             Field::opt(REASONING, Shape::Bool).doc("`true`: the reasoning of the model goes to the final output too. It never goes to another node. The default is `false`."),
+            Field::opt(LOGPROBS, Shape::Int).doc("From 0 to 20: the log probability of every token of the answer goes to the final output too, with that many most likely alternatives for each token; on `ollama` and `custom` a model that reasons gives those of its reasoning too, before them. It never goes to another node. Only on `openai`, `mistral`, `ollama`, `custom` and `azure_foundry` with publisher `openai`. Without it nothing is asked."),
             Field::opt(SCHEMA, Shape::Any).doc("A JSON Schema, written as JSON in a text or as YAML: the model answers in that shape, and the answer is a JSON value."),
             Field::opt(UTILITY, UTILITY_LIST).doc("Utilities that change the answer once, before every destination."),
         ]),

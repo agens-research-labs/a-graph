@@ -4,7 +4,7 @@ use serde_json::Value;
 
 use super::OpenAi;
 use crate::models::error::fixed_code;
-use crate::models::{ModelError, ModelResponse, ResponseInfo, StopReason, ToolCall, Usage};
+use crate::models::{ModelError, ModelResponse, ResponseInfo, StopReason, ToolCall, Usage, token_logprobs};
 
 fn count(v: Option<&Value>, key: &str) -> u64 {
     v.and_then(|v| v.get(key)).and_then(Value::as_u64).unwrap_or(0)
@@ -56,6 +56,8 @@ impl OpenAi {
         let (mut text, mut refusal) = (String::new(), String::new());
         let mut reasoning = Vec::new();
         let mut tools_call = Vec::new();
+        // the tokens of every text part, in order; a refusal has none
+        let mut tokens = Vec::new();
         for item in items {
             match item.get("type").and_then(Value::as_str) {
                 // opaque: the tool loop sends them back as they are
@@ -64,7 +66,12 @@ impl OpenAi {
                     for part in item.get("content").and_then(Value::as_array).into_iter().flatten() {
                         match part.get("type").and_then(Value::as_str) {
                             Some("output_text") => {
-                                text.push_str(part.get("text").and_then(Value::as_str).unwrap_or_default())
+                                text.push_str(part.get("text").and_then(Value::as_str).unwrap_or_default());
+                                let list = part.get("logprobs").and_then(Value::as_array);
+                                tokens.extend(
+                                    token_logprobs(list.map(Vec::as_slice).unwrap_or_default())
+                                        .map_err(|e| self.who.invalid(e))?,
+                                );
                             }
                             Some("refusal") => {
                                 refusal.push_str(part.get("refusal").and_then(Value::as_str).unwrap_or_default())
@@ -143,6 +150,7 @@ impl OpenAi {
             media: Vec::new(),
             tools_call,
             reasoning,
+            logprobs: vec![tokens],
             stop_reason,
             stop_detail: Some(
                 incomplete

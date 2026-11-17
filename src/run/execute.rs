@@ -19,12 +19,13 @@ use tokio::task::JoinSet;
 
 use super::events::{CTX, Where, here};
 use super::judge::Verdict;
+use super::node::logprobs_missing;
 use super::{Content, Delivery, NodeInput, NodeOutput, Program};
 use crate::error::{Error, Path, Phase, Rule};
 use crate::graph::Entity;
 use crate::graph::edges::{Group, Pattern, React, Step};
 use crate::graph::nodes::component::OnError;
-use crate::models::{BatchRequest, ChatEntry, MediaOutput, Role};
+use crate::models::{BatchRequest, ChatEntry, MediaOutput, Role, TokenLogprob};
 use crate::schema::key;
 
 /// What a node sent to the final output.
@@ -34,6 +35,8 @@ pub struct OutputItem {
     pub message: Option<Content>,
     pub media: Vec<MediaOutput>,
     pub reasoning: Vec<Value>,
+    /// One list of tokens for each call to the model, in order.
+    pub logprobs: Vec<Vec<TokenLogprob>>,
 }
 
 /// The final output: the items in the order of the edges.
@@ -207,6 +210,7 @@ impl Program {
                     message: Some(Content::Text(format!("reasons: {reasons}\nlog: {log}"))),
                     media: Vec::new(),
                     reasoning: Vec::new(),
+                    logprobs: Vec::new(),
                 };
                 Ran {
                     delivery: Delivery::default(),
@@ -227,11 +231,13 @@ impl Program {
     /// What a node sent on, and what it sent to the final output.
     fn parts(&self, node: Entity, out: NodeOutput) -> (Delivery, Option<OutputItem>) {
         let a = out.assistant;
-        let item = (a.message.is_some() || !a.media.is_empty() || !a.reasoning.is_empty()).then(|| OutputItem {
+        let given = a.message.is_some() || !a.media.is_empty() || !a.reasoning.is_empty() || !a.logprobs.is_empty();
+        let item = given.then(|| OutputItem {
             agent_id: self.nodes.id(node).unwrap_or_default().to_string(),
             message: a.message,
             media: a.media,
             reasoning: a.reasoning,
+            logprobs: a.logprobs,
         });
         (out.node, item)
     }
@@ -410,10 +416,13 @@ impl Program {
                     .id
                     .parse()
                     .map_err(|_| node_error(chunk[0], format!("the batch answered an unknown request `{}`", r.id)))?;
-                answers[i] = Some(
-                    r.result
-                        .map_err(|e| node_error(i, e.to_string()).with_detail_if(e.said()))?,
-                );
+                let response = r
+                    .result
+                    .map_err(|e| node_error(i, e.to_string()).with_detail_if(e.said()))?;
+                if let Some(why) = logprobs_missing(&prepared[i].call, &response) {
+                    return Err(node_error(i, why));
+                }
+                answers[i] = Some(response);
             }
         }
         let mut done = Vec::with_capacity(nodes.len());
@@ -520,6 +529,8 @@ impl Program {
             let remembered = call.history.clone();
 
             let (mut turns, mut items, mut dispatched) = (Vec::new(), Vec::new(), 0u32);
+            // the tokens of every turn, in order: those of the whole routing output, not only of `answer`
+            let mut logprobs = Vec::new();
             // the controller ends with the usage and the time of all its turns, as a node with tools does
             let (mut usage, mut time) = (Default::default(), 0.0);
             loop {
@@ -529,6 +540,10 @@ impl Program {
                     .map_err(|e| error(Rule::ModelFailed, e.to_string()).with_detail_if(e.said()))?;
                 usage += response.info.usage;
                 time += response.info.execution_time;
+                if let Some(why) = logprobs_missing(&call, &response) {
+                    return Err(error(Rule::ModelFailed, why));
+                }
+                logprobs.extend(response.logprobs.iter().cloned());
                 let routing = response.structured.clone().filter(Value::is_object).ok_or_else(|| {
                     error(
                         Rule::BadValue,
@@ -547,6 +562,7 @@ impl Program {
                     let mut last = response;
                     (last.message, last.structured) = (Some(answer.to_string()), None);
                     (last.info.usage, last.info.execution_time) = (usage, time);
+                    last.logprobs = std::mem::take(&mut logprobs);
                     let (delivery, item) =
                         self.parts(controller, self.finish_node(controller, &prepared.input, last).await?);
                     items.extend(item);

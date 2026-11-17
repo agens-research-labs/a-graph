@@ -186,6 +186,9 @@ impl Llm for Gemini {
         if req.batch {
             problems.push("batch is not available in the Gemini Interactions API yet".to_string());
         }
+        if req.logprobs.is_some() {
+            problems.push("the Gemini Interactions API gives no logprobs".to_string());
+        }
         for t in &req.input_media {
             match t {
                 MediaKind::Md | MediaKind::Img(_) => {}

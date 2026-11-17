@@ -235,6 +235,9 @@ impl Llm for OpenAi {
         if let Err(mut p) = self.media_kind(&req.output_media) {
             problems.append(&mut p);
         }
+        if req.logprobs.is_some() && !req.output_media.is_empty() {
+            problems.push("a produced media gives no logprobs".to_string());
+        }
         if problems.is_empty() {
             Ok(())
         } else {

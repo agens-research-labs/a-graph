@@ -11,6 +11,8 @@ pub struct ModelRequirements {
     pub top_p: Option<f64>,
     pub max_tokens: Option<u32>,
     pub reasoning: Option<Reasoning>,
+    /// The log probabilities of the tokens are asked, with this many alternatives each.
+    pub logprobs: Option<u32>,
     /// The output schema, as a JSON object.
     pub schema: Option<Value>,
     /// Types of the media the node sends.

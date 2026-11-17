@@ -275,6 +275,9 @@ impl Llm for Anthropic {
         if !req.output_media.is_empty() {
             problems.push("anthropic produces text only".to_string());
         }
+        if req.logprobs.is_some() {
+            problems.push("anthropic gives no logprobs".to_string());
+        }
         for t in &req.input_media {
             match t {
                 MediaKind::Md => {}

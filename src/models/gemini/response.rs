@@ -159,6 +159,7 @@ impl Gemini {
             media,
             tools_call,
             reasoning,
+            logprobs: Vec::new(),
             stop_reason,
             stop_detail: Some(status.to_string()),
             info: ResponseInfo {

@@ -47,3 +47,6 @@ mod routing_kept_out;
 
 #[path = "controller_error/controller_error.rs"]
 mod controller_error;
+
+#[path = "logprobs_every_turn/logprobs_every_turn.rs"]
+mod logprobs_every_turn;

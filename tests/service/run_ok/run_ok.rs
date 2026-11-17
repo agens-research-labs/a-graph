@@ -24,7 +24,7 @@ async fn run_ok() {
     assert_eq!(status, 200, "{body}");
     assert_eq!(
         body,
-        json!({ "items": [{ "node": "b", "message": "the lease lasts 12 months", "media": [], "reasoning": [] }] })
+        json!({ "items": [{ "node": "b", "message": "the lease lasts 12 months", "media": [], "reasoning": [], "logprobs": [] }] })
     );
     let first: Value = serde_json::from_str(&seen.lock().unwrap()[0].body).unwrap();
     assert_eq!(first["messages"][1]["content"], "Q: how long?");

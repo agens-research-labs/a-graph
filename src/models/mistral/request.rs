@@ -46,6 +46,12 @@ impl Mistral {
         if let Some(p) = call.top_p {
             body.insert("top_p".into(), json!(p));
         }
+        if let Some(n) = call.logprobs {
+            body.insert("logprobs".into(), json!(true));
+            if n > 0 {
+                body.insert("top_logprobs".into(), json!(n));
+            }
+        }
         Ok(Value::Object(body))
     }
 

@@ -57,6 +57,11 @@ pub fn interpret(
                         .and_then(|x| x.output.as_ref())
                         .and_then(|o| o.schema.clone())
                 }),
+            logprobs: nodes
+                .message()
+                .get(e)
+                .and_then(|x| x.output.as_ref())
+                .and_then(|o| o.logprobs),
             input_media: input_kinds(nodes, e, resources),
             output_media: produced(nodes, e, id, &at, resources, &mut writers, &mut errs),
             uses_tools: uses_tools(nodes, e),
@@ -87,6 +92,7 @@ fn uses_tools(nodes: &Nodes, e: Entity) -> bool {
 #[derive(Default)]
 struct Asked {
     schema: Option<serde_json::Value>,
+    logprobs: Option<u32>,
     input_media: Vec<MediaKind>,
     output_media: Vec<ProducedMedia>,
     uses_tools: bool,
@@ -123,6 +129,7 @@ fn check_model(at: &Path, m: &NodeModel, asked: Asked, models: &ModelManager, er
         top_p: m.top_p,
         max_tokens: m.max_tokens,
         reasoning: m.reasoning,
+        logprobs: asked.logprobs,
         schema: asked.schema,
         input_media: asked.input_media,
         output_media: asked.output_media,

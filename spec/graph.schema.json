@@ -1049,6 +1049,10 @@
                         "description": "`true`: the answer goes to the final output. The default is `false`.",
                         "type": "boolean"
                       },
+                      "logprobs": {
+                        "description": "From 0 to 20: the log probability of every token of the answer goes to the final output too, with that many most likely alternatives for each token; on `ollama` and `custom` a model that reasons gives those of its reasoning too, before them. It never goes to another node. Only on `openai`, `mistral`, `ollama`, `custom` and `azure_foundry` with publisher `openai`. Without it nothing is asked.",
+                        "type": "integer"
+                      },
                       "node": {
                         "description": "`true`: the answer goes to the node connected after, as its `agent_message`. The default is `false`.",
                         "type": "boolean"

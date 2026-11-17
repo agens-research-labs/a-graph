@@ -1,0 +1,42 @@
+# One node `n` with a tool, that asks the logprobs of every call (model on {{port:model}}, started by the test).
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:{{port:model}}
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: p_q
+      content: { system: "", user: "Q({{user_message}})" }
+  tools:
+    - id: t
+      description: "Tells what it received"
+      max_iter: 2
+      timeout: 30
+      transport: stdio
+      command: /bin/sh
+      args: ["tests/tools/logprobs_every_call/files/tools/echo.sh"]
+      parameters: { type: object, properties: { city: { type: string } }, required: [city] }
+graph:
+  nodes:
+    - id: n
+      model: { id: m }
+      resources: { prompt: p_q, tools: [t] }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true, logprobs: 0 }
+  edges:
+    - start: n

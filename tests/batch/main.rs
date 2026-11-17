@@ -44,3 +44,6 @@ mod stopped_cancels;
 
 #[path = "tools_refused/tools_refused.rs"]
 mod tools_refused;
+
+#[path = "logprobs_missing/logprobs_missing.rs"]
+mod logprobs_missing;

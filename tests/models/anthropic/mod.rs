@@ -43,6 +43,7 @@ fn call(user: &str) -> ModelInvocation {
         top_p: None,
         max_tokens: Some(100),
         reasoning: None,
+        logprobs: None,
         tool_rounds: vec![],
     }
 }
@@ -195,3 +196,6 @@ mod code_not_fixed;
 
 #[path = "batch_type_not_fixed/batch_type_not_fixed.rs"]
 mod batch_type_not_fixed;
+
+#[path = "no_logprobs/no_logprobs.rs"]
+mod no_logprobs;

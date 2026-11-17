@@ -3,7 +3,7 @@
 use serde_json::{Value, json};
 
 use super::Ollama;
-use crate::models::{ModelError, ModelResponse, ResponseInfo, StopReason, ToolCall, Usage};
+use crate::models::{ModelError, ModelResponse, ResponseInfo, StopReason, ToolCall, Usage, token_logprobs};
 
 impl Ollama {
     pub(crate) fn parse_chat(&self, schema: bool, v: &Value, execution_time: f64) -> Result<ModelResponse, ModelError> {
@@ -15,6 +15,9 @@ impl Ollama {
             "length" => StopReason::MaxTokens,
             _ => StopReason::Other,
         };
+
+        let list = v.get("logprobs").and_then(Value::as_array);
+        let tokens = token_logprobs(list.map(Vec::as_slice).unwrap_or_default()).map_err(|e| self.who.invalid(e))?;
 
         let mut tools_call = Vec::new();
         for (n, c) in msg
@@ -100,6 +103,7 @@ impl Ollama {
             media: Vec::new(),
             tools_call,
             reasoning,
+            logprobs: vec![tokens],
             stop_reason,
             stop_detail: Some(done_reason.to_string()),
             info: ResponseInfo {

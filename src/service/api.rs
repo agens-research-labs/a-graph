@@ -174,8 +174,33 @@ fn schemas() -> Value {
                 "message": { "description": "The text of the node, a JSON value when the node has an output `schema`, or `null` when the node gave no text." },
                 "media": { "type": "array", "items": { "$ref": "#/components/schemas/Media" }, "description": "The media the node sent to the final output." },
                 "reasoning": { "type": "array", "description": "The reasoning of the model, when the node asks to show it." },
+                "logprobs": { "type": "array", "items": { "type": "array", "items": { "$ref": "#/components/schemas/Token" } }, "description": "When the node asks them: the tokens of the answer with their log probabilities, one list for each call to the model, in order; the last is the final answer." },
             },
-            "required": ["node", "message", "media", "reasoning"],
+            "required": ["node", "message", "media", "reasoning", "logprobs"],
+            "additionalProperties": false,
+        },
+        "Token": {
+            "type": "object",
+            "properties": {
+                "token": { "type": "string" },
+                "logprob": { "type": "number", "description": "The natural logarithm of the probability of the token." },
+                "bytes": { "type": ["array", "null"], "items": { "type": "integer" }, "description": "The bytes of the token, when the provider gives them." },
+                "top_logprobs": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "token": { "type": "string" },
+                            "logprob": { "type": "number" },
+                            "bytes": { "type": ["array", "null"], "items": { "type": "integer" } },
+                        },
+                        "required": ["token", "logprob", "bytes"],
+                        "additionalProperties": false,
+                    },
+                    "description": "The most likely tokens at the same place, as many as the node asks.",
+                },
+            },
+            "required": ["token", "logprob", "bytes", "top_logprobs"],
             "additionalProperties": false,
         },
         "Media": {

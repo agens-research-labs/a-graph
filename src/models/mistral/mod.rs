@@ -145,6 +145,9 @@ impl Llm for Mistral {
         if let Err(mut p) = self.speech_format(&req.output_media) {
             problems.append(&mut p);
         }
+        if req.logprobs.is_some() && !req.output_media.is_empty() {
+            problems.push("a produced speech gives no logprobs".to_string());
+        }
         if problems.is_empty() {
             Ok(())
         } else {

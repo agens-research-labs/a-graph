@@ -3,7 +3,7 @@
 use serde_json::Value;
 
 use super::{Mistral, PROVIDER};
-use crate::models::{ModelError, ModelResponse, ResponseInfo, StopReason, ToolCall, Usage};
+use crate::models::{ModelError, ModelResponse, ResponseInfo, StopReason, ToolCall, Usage, token_logprobs};
 
 impl Mistral {
     pub(crate) fn parse_completion(
@@ -43,6 +43,9 @@ impl Mistral {
             }
             _ => {}
         }
+
+        let list = choice.pointer("/logprobs/content").and_then(Value::as_array);
+        let tokens = token_logprobs(list.map(Vec::as_slice).unwrap_or_default()).map_err(|e| self.who.invalid(e))?;
 
         let mut tools_call = Vec::new();
         for c in msg.get("tool_calls").and_then(Value::as_array).into_iter().flatten() {
@@ -111,6 +114,7 @@ impl Mistral {
             media: Vec::new(),
             tools_call,
             reasoning,
+            logprobs: vec![tokens],
             stop_reason,
             stop_detail: Some(finish.to_string()),
             info: ResponseInfo {

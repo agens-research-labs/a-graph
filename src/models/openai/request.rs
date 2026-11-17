@@ -55,9 +55,19 @@ impl OpenAi {
             }
             body.insert("reasoning".into(), r);
         }
+        let mut include = Vec::new();
         // a stateless tool loop needs the reasoning items back, encrypted
         if call.reasoning.is_some() || !call.tools.is_empty() {
-            body.insert("include".into(), json!(["reasoning.encrypted_content"]));
+            include.push("reasoning.encrypted_content");
+        }
+        if let Some(n) = call.logprobs {
+            include.push("message.output_text.logprobs");
+            if n > 0 {
+                body.insert("top_logprobs".into(), json!(n));
+            }
+        }
+        if !include.is_empty() {
+            body.insert("include".into(), json!(include));
         }
         if let Some(n) = call.max_tokens {
             body.insert("max_output_tokens".into(), json!(n));

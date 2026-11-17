@@ -49,6 +49,16 @@
       "Item": {
         "additionalProperties": false,
         "properties": {
+          "logprobs": {
+            "description": "When the node asks them: the tokens of the answer with their log probabilities, one list for each call to the model, in order; the last is the final answer.",
+            "items": {
+              "items": {
+                "$ref": "#/components/schemas/Token"
+              },
+              "type": "array"
+            },
+            "type": "array"
+          },
           "media": {
             "description": "The media the node sent to the final output.",
             "items": {
@@ -72,7 +82,8 @@
           "node",
           "message",
           "media",
-          "reasoning"
+          "reasoning",
+          "logprobs"
         ],
         "type": "object"
       },
@@ -191,6 +202,65 @@
             "type": "object"
           }
         ]
+      },
+      "Token": {
+        "additionalProperties": false,
+        "properties": {
+          "bytes": {
+            "description": "The bytes of the token, when the provider gives them.",
+            "items": {
+              "type": "integer"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "logprob": {
+            "description": "The natural logarithm of the probability of the token.",
+            "type": "number"
+          },
+          "token": {
+            "type": "string"
+          },
+          "top_logprobs": {
+            "description": "The most likely tokens at the same place, as many as the node asks.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "bytes": {
+                  "items": {
+                    "type": "integer"
+                  },
+                  "type": [
+                    "array",
+                    "null"
+                  ]
+                },
+                "logprob": {
+                  "type": "number"
+                },
+                "token": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "token",
+                "logprob",
+                "bytes"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "token",
+          "logprob",
+          "bytes",
+          "top_logprobs"
+        ],
+        "type": "object"
       }
     }
   },

@@ -50,7 +50,7 @@ result can therefore read the standard output alone.
 By default the result is one JSON document:
 
 ```json
-{"items":[{"node":"assistant","message":"A mutex is a lock ...","media":[],"reasoning":[]}]}
+{"items":[{"node":"assistant","message":"A mutex is a lock ...","media":[],"reasoning":[],"logprobs":[]}]}
 ```
 
 `items` holds, in the order they were produced, the results that nodes send to the final output (see
@@ -61,10 +61,15 @@ By default the result is one JSON document:
   no text;
 - `media`: the media the node sent to the final output, each as `{ "id", "mime_type", "data" }`, with `data` in
   base64;
-- `reasoning`: the reasoning of the model, when the node asks to show it.
+- `reasoning`: the reasoning of the model, when the node asks to show it;
+- `logprobs`: when the node asks them, the tokens of the answer with their log probabilities, one list for each call
+  to the model, in order, the last being the final answer; each token is
+  `{ "token", "logprob", "bytes", "top_logprobs": [ { "token", "logprob", "bytes" } ] }` (see
+  [nodes](nodes.md#where-the-answer-goes)).
 
 With `--chat_mode` the result is written for a person instead: one `node: text` for each item that has a message, in
-order. A text on several lines is written as it is, a JSON value on one line. Media and reasoning are not written.
+order. A text on several lines is written as it is, a JSON value on one line. Media, reasoning and logprobs are not
+written.
 
 ## Errors
 

@@ -38,3 +38,24 @@ mod to_output_reasoning;
 
 #[path = "provider_text_kept_out/provider_text_kept_out.rs"]
 mod provider_text_kept_out;
+
+#[path = "logprobs_over_20/logprobs_over_20.rs"]
+mod logprobs_over_20;
+
+#[path = "logprobs_refused/logprobs_refused.rs"]
+mod logprobs_refused;
+
+#[path = "logprobs_to_output/logprobs_to_output.rs"]
+mod logprobs_to_output;
+
+#[path = "logprobs_missing/logprobs_missing.rs"]
+mod logprobs_missing;
+
+#[path = "logprobs_refusal_ok/logprobs_refusal_ok.rs"]
+mod logprobs_refusal_ok;
+
+#[path = "logprobs_before_util/logprobs_before_util.rs"]
+mod logprobs_before_util;
+
+#[path = "logprobs_in_json/logprobs_in_json.rs"]
+mod logprobs_in_json;

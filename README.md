@@ -47,7 +47,7 @@ a-graph graph.yml "What is a mutex?"
 The progress of the run is written on the standard error; the result is a JSON document on the standard output:
 
 ```json
-{"items":[{"node":"assistant","message":"A mutex is a lock that lets only one thread use a shared resource at a time.","media":[],"reasoning":[]}]}
+{"items":[{"node":"assistant","message":"A mutex is a lock that lets only one thread use a shared resource at a time.","media":[],"reasoning":[],"logprobs":[]}]}
 ```
 
 `examples/02-sequence` connects two nodes: the first translates the message, the second shortens the translation. Run

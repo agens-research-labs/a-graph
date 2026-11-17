@@ -74,3 +74,6 @@ mod unknown_tool;
 
 #[path = "cut_call_not_run/cut_call_not_run.rs"]
 mod cut_call_not_run;
+
+#[path = "logprobs_every_call/logprobs_every_call.rs"]
+mod logprobs_every_call;

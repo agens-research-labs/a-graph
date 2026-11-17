@@ -9,6 +9,9 @@ use crate::error::Rule;
 use crate::models::Reasoning;
 use crate::schema::key;
 
+/// The most alternatives of a token a node may ask: the limit of OpenAI, the only one written down.
+const MAX_LOGPROBS: u32 = 20;
+
 pub(super) fn model(mut o: Obj, errs: &mut Errs) -> Option<Model> {
     let id = o.req::<String>(key::ID, errs);
     Some(Model {
@@ -210,11 +213,16 @@ pub(super) fn message(mut o: Obj, errs: &mut Errs) -> Message {
     let output = o.sub(key::OUTPUT, errs).map(|mut p| {
         let at = p.at().key(key::SCHEMA);
         let utility = utility_ids(&mut p, errs);
+        let logprobs = p.opt::<u32>(key::LOGPROBS, errs);
+        if logprobs.is_some_and(|n| n > MAX_LOGPROBS) {
+            errs.add(&p.at().key(key::LOGPROBS), Rule::BadValue, "logprobs is 0-20");
+        }
         MessageOutput {
             utility,
             assistant_message: p.opt(key::ASSISTANT_MESSAGE, errs).unwrap_or(false),
             node: p.opt(key::NODE, errs).unwrap_or(false),
             reasoning: p.opt(key::REASONING, errs).unwrap_or(false),
+            logprobs,
             schema: p.value(key::SCHEMA).and_then(|v| schema(v, &at, errs)),
         }
     });

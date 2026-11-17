@@ -14,6 +14,7 @@ impl Fake {
             media: vec![],
             tools_call: vec![],
             reasoning: vec![],
+            logprobs: vec![],
             stop_reason: StopReason::End,
             stop_detail: Some("stop".into()),
             info: ResponseInfo {
@@ -98,6 +99,7 @@ fn invocation(system: &str, user: &str) -> ModelInvocation {
         top_p: None,
         max_tokens: None,
         reasoning: None,
+        logprobs: None,
         tool_rounds: vec![],
     }
 }

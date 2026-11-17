@@ -19,7 +19,7 @@ async fn run_json() {
     let out: Value = serde_json::from_str(&r.stdout).unwrap_or_else(|e| panic!("not JSON ({e}): {}", r.stdout));
     assert_eq!(
         out,
-        json!({ "items": [{ "node": "b", "message": "the lease lasts 12 months", "media": [], "reasoning": [] }] })
+        json!({ "items": [{ "node": "b", "message": "the lease lasts 12 months", "media": [], "reasoning": [], "logprobs": [] }] })
     );
     let body: Value = serde_json::from_str(&seen.lock().unwrap()[0].body).unwrap();
     assert_eq!(body["messages"][1]["content"], "Q: how long?");

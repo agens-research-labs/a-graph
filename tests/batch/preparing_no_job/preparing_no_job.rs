@@ -30,6 +30,7 @@ impl Llm for Slow {
             media: vec![],
             tools_call: vec![],
             reasoning: vec![],
+            logprobs: vec![],
             stop_reason: StopReason::End,
             stop_detail: None,
             info: ResponseInfo {

@@ -1,0 +1,34 @@
+# Two nodes, `a` asks the logprobs with 1 alternative, `b` does not (model mock {{port:model}}).
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:{{port:model}}
+    input: [text]
+    output: [text]
+graph:
+  nodes:
+    - id: a
+      model: { id: m }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true, node: true, logprobs: 1 }
+    - id: b
+      model: { id: m }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true }
+  edges:
+    - start: a
+    - end: b

@@ -399,6 +399,7 @@ impl Bedrock {
             media: Vec::new(),
             tools_call,
             reasoning,
+            logprobs: Vec::new(),
             stop_reason,
             stop_detail: Some(stop.to_string()),
             info: ResponseInfo {

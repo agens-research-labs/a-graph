@@ -45,6 +45,7 @@ fn call(user: &str) -> ModelInvocation {
         top_p: None,
         max_tokens: None,
         reasoning: None,
+        logprobs: None,
         tool_rounds: vec![],
     }
 }
@@ -227,3 +228,15 @@ mod refused_tool_call;
 
 #[path = "status_not_fixed/status_not_fixed.rs"]
 mod status_not_fixed;
+
+#[path = "logprobs_asked/logprobs_asked.rs"]
+mod logprobs_asked;
+
+#[path = "logprobs_with_tools/logprobs_with_tools.rs"]
+mod logprobs_with_tools;
+
+#[path = "batch_logprobs/batch_logprobs.rs"]
+mod batch_logprobs;
+
+#[path = "logprobs_media_refused/logprobs_media_refused.rs"]
+mod logprobs_media_refused;

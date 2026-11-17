@@ -14,7 +14,9 @@ use crate::error::{Error, Path, Phase, Rule};
 use crate::graph::CHUNKS;
 use crate::graph::Entity;
 use crate::graph::nodes::component::{InFrom, MediaIn, OutFrom, Validation};
-use crate::models::{MediaInput, MediaOutput, ModelInvocation, ModelResponse, ProducedMedia, ResponseInfo, StopReason};
+use crate::models::{
+    MediaInput, MediaOutput, ModelInvocation, ModelResponse, ProducedMedia, ResponseInfo, StopReason, TokenLogprob,
+};
 use crate::resources::{MediaKind, Origin, PromptBody, Source};
 
 /// What a node receives.
@@ -51,6 +53,9 @@ pub struct Delivery {
     pub media: Vec<MediaOutput>,
     /// The reasoning of the model; only the final output has it, it never goes to a node.
     pub reasoning: Vec<Value>,
+    /// The tokens of the answer with their log probabilities, one list for each call to the model; only the
+    /// final output has them, they never go to a node.
+    pub logprobs: Vec<Vec<TokenLogprob>>,
 }
 
 #[derive(Debug, Clone)]
@@ -222,6 +227,12 @@ impl Program {
             top_p: model.top_p,
             max_tokens: model.max_tokens,
             reasoning: model.reasoning,
+            logprobs: self
+                .nodes
+                .message()
+                .get(node)
+                .and_then(|m| m.output.as_ref())
+                .and_then(|o| o.logprobs),
             tool_rounds: Vec::new(),
         };
         self.node_started(node);
@@ -261,6 +272,10 @@ impl Program {
             }
             if o.reasoning {
                 assistant.reasoning = response.reasoning.clone();
+            }
+            // those of the answer the model gave, before `message.output.utility`
+            if o.logprobs.is_some() {
+                assistant.logprobs = response.logprobs.clone();
             }
         }
         // the media: the ones the model made (in the order asked) and the ones a utility makes from the text
@@ -481,6 +496,18 @@ fn image_of(m: &MediaOutput) -> Result<MediaInput, String> {
             m.mime_type
         )),
     }
+}
+
+/// The call asked the log probabilities and the answer has a text without them: the node fails, so
+/// that an output never lacks them unnoticed. A refusal is not the answer the model wrote, and
+/// has none; an answer without text has nothing to give them for.
+pub(super) fn logprobs_missing(call: &ModelInvocation, response: &ModelResponse) -> Option<String> {
+    let has_text = response.message.is_some() || response.structured.is_some();
+    let missing = call.logprobs.is_some()
+        && has_text
+        && response.stop_reason != StopReason::Refused
+        && response.logprobs.iter().all(Vec::is_empty);
+    missing.then(|| "logprobs were asked and the model gave none with its answer".to_string())
 }
 
 /// Replaces every `{{name}}` with its value.

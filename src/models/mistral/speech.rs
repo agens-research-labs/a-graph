@@ -84,6 +84,7 @@ impl Mistral {
             }],
             tools_call: Vec::new(),
             reasoning: Vec::new(),
+            logprobs: Vec::new(),
             stop_reason: StopReason::End,
             stop_detail: None,
             info: ResponseInfo {

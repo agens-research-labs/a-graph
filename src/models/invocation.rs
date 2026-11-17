@@ -23,6 +23,9 @@ pub struct ModelInvocation {
     pub top_p: Option<f64>,
     pub max_tokens: Option<u32>,
     pub reasoning: Option<Reasoning>,
+    /// Absent = not asked. Asked: the log probability of every token of the answer, with this many most
+    /// likely alternatives for each token.
+    pub logprobs: Option<u32>,
     /// Empty on the first call; the node adds one round per pass of the tool loop.
     pub tool_rounds: Vec<ToolRound>,
 }

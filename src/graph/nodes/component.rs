@@ -159,6 +159,8 @@ pub struct MessageOutput {
     pub assistant_message: bool,
     pub node: bool,
     pub reasoning: bool,
+    /// How many alternatives of each token come with the log probabilities, 0 to 20; absent = none asked.
+    pub logprobs: Option<u32>,
     /// A JSON Schema as a JSON object; absent = raw text.
     pub schema: Option<Json>,
     /// Ids of `utilities` the text produced goes through, once, before every destination.

@@ -147,6 +147,7 @@ keys! {
     TOP_P = "top_p",
     MAX_TOKENS = "max_tokens",
     REASONING = "reasoning",
+    LOGPROBS = "logprobs",
     QUERY = "query",
     READ = "read",
     WRITE = "write",

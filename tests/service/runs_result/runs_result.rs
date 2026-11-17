@@ -35,6 +35,6 @@ async fn runs_result() {
     assert_eq!(done["state"], "done");
     assert_eq!(
         done["result"],
-        json!({ "items": [{ "node": "b", "message": "the lease lasts 12 months", "media": [], "reasoning": [] }] })
+        json!({ "items": [{ "node": "b", "message": "the lease lasts 12 months", "media": [], "reasoning": [], "logprobs": [] }] })
     );
 }

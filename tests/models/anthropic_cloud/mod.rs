@@ -49,6 +49,7 @@ fn call(user: &str) -> ModelInvocation {
         top_p: None,
         max_tokens: Some(100),
         reasoning: None,
+        logprobs: None,
         tool_rounds: vec![],
     }
 }

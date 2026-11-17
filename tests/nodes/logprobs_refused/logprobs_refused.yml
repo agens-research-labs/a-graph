@@ -1,0 +1,29 @@
+# One node `n` that asks the logprobs of an anthropic model, which gives none.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [api.anthropic.com] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: anthropic
+    model: claude-haiku-4-5
+    api_key: { env: ANTHROPIC_API_KEY }
+    input: [text]
+    output: [text]
+graph:
+  nodes:
+    - id: n
+      model: { id: m, max_tokens: 100 }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true, logprobs: 0 }
+  edges:
+    - start: n
+    - end: n

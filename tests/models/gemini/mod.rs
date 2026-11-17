@@ -40,6 +40,7 @@ fn call(user: &str) -> ModelInvocation {
         top_p: None,
         max_tokens: None,
         reasoning: None,
+        logprobs: None,
         tool_rounds: vec![],
     }
 }
@@ -166,3 +167,6 @@ mod cut_tool_call;
 
 #[path = "status_not_fixed/status_not_fixed.rs"]
 mod status_not_fixed;
+
+#[path = "no_logprobs/no_logprobs.rs"]
+mod no_logprobs;

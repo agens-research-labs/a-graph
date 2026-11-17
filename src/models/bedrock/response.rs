@@ -106,6 +106,7 @@ impl Bedrock {
             media: Vec::new(),
             tools_call,
             reasoning,
+            logprobs: Vec::new(),
             stop_reason,
             stop_detail: Some(stop.as_str().to_string()),
             info: ResponseInfo {

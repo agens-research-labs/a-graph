@@ -60,18 +60,18 @@ input of a batch is a call too: a file of some hundred MB on a slow link may not
 What a node asks of its model is checked when the file is checked, before anything runs: a model asked for something
 it cannot do is an error (`not_supported`).
 
-| `provider` | Media in | Media out | Batch |
-|---|---|---|---|
-| `anthropic` | text, images (jpeg, png, gif, webp) | none | yes |
-| `openai` | text, images | one image or one audio per call | yes |
-| `gemini` | text, images | one image or one audio per call | no |
-| `mistral` | text, images | one audio per call (speech) | yes |
-| `bedrock` | text, images (png, jpeg, gif, webp) | none | yes, without an output `schema` |
-| `vertex_ai`, publisher `anthropic` | as `anthropic` | none | no |
-| `vertex_ai`, publisher `google` | as `gemini` | as `gemini` | no |
-| `azure_foundry`, publisher `anthropic` | as `anthropic` | none | no |
-| `azure_foundry`, publisher `openai` | as `openai` | as `openai` | yes |
-| `ollama`, `custom` | text, images | none | no |
+| `provider` | Media in | Media out | Batch | Logprobs |
+|---|---|---|---|---|
+| `anthropic` | text, images (jpeg, png, gif, webp) | none | yes | no |
+| `openai` | text, images | one image or one audio per call | yes | yes, for text |
+| `gemini` | text, images | one image or one audio per call | no | no |
+| `mistral` | text, images | one audio per call (speech) | yes | yes, for text |
+| `bedrock` | text, images (png, jpeg, gif, webp) | none | yes, without an output `schema` | no |
+| `vertex_ai`, publisher `anthropic` | as `anthropic` | none | no | no |
+| `vertex_ai`, publisher `google` | as `gemini` | as `gemini` | no | no |
+| `azure_foundry`, publisher `anthropic` | as `anthropic` | none | no | no |
+| `azure_foundry`, publisher `openai` | as `openai` | as `openai` | yes | as `openai` |
+| `ollama`, `custom` | text, images | none | no | yes |
 
 - Audio and video in are not supported yet by any provider.
 - A media of type `file` cannot go to a model: a [utility](utilities.md) has to change it into text first.
@@ -126,6 +126,33 @@ as it wants.
 
 Apart from `off` on Gemini, the program does not know in advance which models can reason: a model that does not accept
 the level asked answers with an error of its provider, during the run.
+
+## Logprobs
+
+The `logprobs` of a node (see [nodes](nodes.md#where-the-answer-goes)) are asked in the form each provider uses:
+
+- `openai` (and `azure_foundry` with publisher `openai`): `include` gets `message.output_text.logprobs`, and
+  `top_logprobs` the number of alternatives;
+- `mistral`, `ollama` and `custom`: `logprobs: true`, and `top_logprobs` the number of alternatives.
+
+On `ollama` and `custom`, a model that reasons gives the tokens of its reasoning too, in the same list, before those of
+the answer: with qwen, for example, the reasoning, then `</think>`, then the answer. The program does not separate
+them, since the mark between the two changes from model to model: for the tokens of the answer alone the node sets
+`reasoning: off`. A model that reasons by default, as qwen does, reasons also when the node says nothing.
+
+With 0 alternatives `top_logprobs` is not sent. In the final output each token is
+`{ "token", "logprob", "bytes", "top_logprobs": [ { "token", "logprob", "bytes" } ] }`, the same for every provider;
+`bytes` is `null` when the provider does not give them.
+
+- `anthropic`, `bedrock`, `gemini`, `vertex_ai` with publisher `anthropic` or `google`, and `azure_foundry` with
+  publisher `anthropic` give no logprobs: a node that asks them is an error (`not_supported`). Gemini has them only
+  outside the Interactions API, which is the one the program uses.
+- A produced media or speech gives no logprobs: a node that produces one and asks them is an error (`not_supported`).
+- In a batch the logprobs are asked as in a single call; a request the provider refuses for them stops the run like
+  any refused request of the batch.
+- The program does not know in advance which models give them, nor the most alternatives a provider allows beyond
+  the 20 of OpenAI: a model that does not accept the request answers with an error of its provider; one that ignores
+  it gives an answer without logprobs, which stops the run (`model_failed`).
 
 ## Ollama and your own models
 
