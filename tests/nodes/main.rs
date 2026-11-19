@@ -30,6 +30,9 @@ mod schema_not_object;
 #[path = "schema_yml_to_json/schema_yml_to_json.rs"]
 mod schema_yml_to_json;
 
+#[path = "schema_key_order/schema_key_order.rs"]
+mod schema_key_order;
+
 #[path = "to_node_no_reasoning/to_node_no_reasoning.rs"]
 mod to_node_no_reasoning;
 

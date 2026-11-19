@@ -63,7 +63,10 @@ may differ. A refusal has none. An answer with a text and no logprobs, as from a
 the run (`model_failed`).
 
 With an output `schema` (a JSON Schema written on the node), the model answers in that shape and the answer is a JSON
-value instead of a text. When the model refuses, the answer is the text of the refusal instead. A node that has a
+value instead of a text. The schema reaches the model with its keys in the order they are written, and the JSON
+answer keeps the order the model wrote. `ollama` and `openai` make the model write the fields in the order of the
+schema: a field of reasoning written before the answer is written first. When the model refuses, the answer is the
+text of the refusal instead. A node that has a
 `schema` and goes through output utilities gives them the JSON as a text, and what they give back is a text. An answer
 that stopped before its end, at `max_tokens` or at the end of the context window, has its JSON cut: the run stops
 (`model_failed`).

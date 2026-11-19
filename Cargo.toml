@@ -14,7 +14,8 @@ serde_norway = "0.9"
 # the parser under serde_norway: the service reads its events to refuse aliases before they are copied
 unsafe-libyaml-norway = "0.2"
 serde_path_to_error = "0.1"
-serde_json = "1"
+# preserve_order: a schema reaches the model with its keys in the order they are written
+serde_json = { version = "1", features = ["preserve_order"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 reqwest = { version = "0.13", default-features = false, features = ["rustls", "json", "multipart"] }
 tokio = { version = "1.53.2", features = ["rt", "rt-multi-thread", "macros", "sync", "time", "process", "io-util", "net", "signal"] }
