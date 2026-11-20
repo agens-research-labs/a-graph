@@ -135,6 +135,10 @@ The `logprobs` of a node (see [nodes](nodes.md#where-the-answer-goes)) are asked
   `top_logprobs` the number of alternatives;
 - `mistral`, `ollama` and `custom`: `logprobs: true`, and `top_logprobs` the number of alternatives.
 
+Only `ollama` was tried with a real model. `openai` and `mistral` were tried only against a test server, and
+`azure_foundry` with publisher `openai`, which sends the same request as `openai`, was not tried at all: a provider
+may still refuse the request with an error during the run.
+
 On `ollama` and `custom`, a model that reasons gives the tokens of its reasoning too, in the same list, before those of
 the answer: with qwen, for example, the reasoning, then `</think>`, then the answer. The program does not separate
 them, since the mark between the two changes from model to model: for the tokens of the answer alone the node sets

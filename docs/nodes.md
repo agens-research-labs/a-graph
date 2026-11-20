@@ -52,15 +52,17 @@ goes to every destination:
 `reasoning: true` adds the reasoning of the model to the final output. The reasoning never goes to another node.
 
 `logprobs: <n>`, from 0 to 20, adds to the final output the log probability of every token of the answer, with the
-`n` most likely alternatives of each token (0: only the token written). They never go to another node. Only some
-providers give them (see [models](models.md#logprobs)); on the others the node is an error when the file is checked
-(`not_supported`). They are kept for every call to the model, one list for each call, in order: a node with tools
-has one list for each round of the tool loop and one for its final answer, which is the last list; the controller of
-a `react` has one for each turn, and its tokens are those of the whole routing output, not only of its `answer`. On
-`ollama` and `custom` a model that reasons gives the tokens of its reasoning too, before those of the answer (see
-[models](models.md#logprobs)). They are the tokens the model wrote: the utilities of `message.output.utility` change the text, not the tokens, so the two
-may differ. A refusal has none. An answer with a text and no logprobs, as from a server that ignores the request, stops
-the run (`model_failed`).
+`n` most likely alternatives of each token (0: only the token written). They never go to another node. They do not
+depend on `assistant_message`: a node with `assistant_message: false` still puts an item in the final output, with no
+message and with the tokens of its whole answer, as `reasoning` does. On `ollama` and `custom` a model that reasons
+gives the tokens of its reasoning too, before those of the answer, even when the node has `reasoning: false`. Only
+some providers give them (see [models](models.md#logprobs)); on the others the node is an error when the file is
+checked (`not_supported`). They are kept for every call to the model, one list for each call, in order: a node with
+tools has one list for each round of the tool loop and one for its final answer, which is the last list; the
+controller of a `react` has one for each turn, and its tokens are those of the whole routing output, not only of its
+`answer`. They are the tokens the model wrote: the utilities of `message.output.utility` change the text, not the
+tokens, so the two may differ. A refusal has none. An answer with a text and no logprobs, as from a server that
+ignores the request, stops the run (`model_failed`).
 
 With an output `schema` (a JSON Schema written on the node), the model answers in that shape and the answer is a JSON
 value instead of a text. The schema reaches the model with its keys in the order they are written, and the JSON

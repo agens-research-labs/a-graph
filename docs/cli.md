@@ -58,7 +58,7 @@ By default the result is one JSON document:
 
 - `node`: the id of the node;
 - `message`: the text of the node, a JSON value when the node has an output `schema`, or `null` when the node gave
-  no text;
+  no text or does not send it (`assistant_message: false`);
 - `media`: the media the node sent to the final output, each as `{ "id", "mime_type", "data" }`, with `data` in
   base64;
 - `reasoning`: the reasoning of the model, when the node asks to show it;

@@ -78,7 +78,8 @@ The cap is on the number of events, not on their size. When the `verbose` of the
 allows the contents, an event can carry a long text, a prompt or an answer. The events and the outcome of a run stay
 in memory until it is forgotten, `retention_seconds` after its end, and a run that ended no longer counts towards
 `max_runs`. So the memory held is that of every run of the last `retention_seconds`, not only of the `max_runs`
-going on.
+going on. The logprobs of a node weigh on that memory too: with `logprobs: 20` every token of the answer carries 21
+entries, each with its bytes, so an answer of 4000 tokens takes some MB in the result.
 
 The graph is checked and built again for each request: requests share nothing but the folders of their sessions. A
 request weighs at most 64 MiB, and its body must arrive within `read_timeout_seconds` (60 seconds when the file does
