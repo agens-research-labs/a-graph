@@ -120,8 +120,10 @@ impl Program {
     ) -> Result<RunOutput, Error> {
         self.run_started();
         let started = std::time::Instant::now();
-        // the MCP servers are connected before the first node and closed after the last, or after the error
+        // the urls are downloaded and the MCP servers connected before the first node; both are let go of after the
+        // last, or after the error
         let nodes = async {
+            self.download_sources().await?;
             self.connect_mcp().await?;
             self.run_nodes(user_message).await
         };
@@ -131,6 +133,7 @@ impl Program {
             e = stop => Err(e),
         };
         self.close_mcp().await;
+        self.close_sources();
         self.run_finished(started, output.as_ref().err());
         // the timeline of the run goes to the collector, whatever the outcome
         if let Some(t) = &self.tracer {

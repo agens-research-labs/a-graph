@@ -1,4 +1,4 @@
-# A media from a file with a `mime_type`, which goes with `base64` only.
+# A media from a file with a `mime_type`, which goes with `url` or `base64` only.
 graph_spec: "1.0"
 passport:
   adl:

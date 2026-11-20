@@ -47,3 +47,15 @@ mod transparency_rules;
 
 #[path = "two_families/two_families.rs"]
 mod two_families;
+
+#[path = "url_md_read/url_md_read.rs"]
+mod url_md_read;
+
+#[path = "url_refused/url_refused.rs"]
+mod url_refused;
+
+#[path = "url_too_slow/url_too_slow.rs"]
+mod url_too_slow;
+
+#[path = "url_unused_skipped/url_unused_skipped.rs"]
+mod url_unused_skipped;

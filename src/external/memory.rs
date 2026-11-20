@@ -1,12 +1,14 @@
 //! `external.memory`: the chat memory a node reads and writes, kept outside the process.
 
+use std::collections::HashMap;
+
 use serde::Deserialize;
 use serde_norway::Value;
 
 use super::{MemoryFailure, Record, update_record};
 use crate::build::{Errs, Obj};
 use crate::error::{Error, Errors, Path, Phase, Rule};
-use crate::resources::{PromptBody, PromptsManager};
+use crate::resources::{PromptBody, PromptContent, PromptsManager};
 use crate::schema::key;
 
 /// The tokens a summary may use when the yml does not say `max_tokens`: a model that reasons
@@ -149,8 +151,22 @@ impl MemoryManager {
         errs.finish(MemoryManager { memories })
     }
 
-    /// A prompt used for the summary must contain `{{synt}}` and `{{chat}}`.
+    /// A prompt used for the summary must contain `{{synt}}` and `{{chat}}`. A prompt from a url is checked when the
+    /// run has downloaded it (`check_downloaded_prompts`).
     pub fn check_prompts(&self, prompts: &PromptsManager) -> Vec<Error> {
+        self.check_prompt_texts(&|pid| match prompts.get(pid).map(|p| &p.body) {
+            Some(PromptBody::Content(c)) => Some(c),
+            _ => None,
+        })
+    }
+
+    /// `check_prompts` for the prompts downloaded from their url when the run starts, by id.
+    pub fn check_downloaded_prompts(&self, downloaded: &HashMap<String, PromptContent>) -> Vec<Error> {
+        self.check_prompt_texts(&|pid| downloaded.get(pid))
+    }
+
+    /// The rule of `check_prompts`; `text_of` gives the texts of a prompt by its id, `None` when they are not known.
+    fn check_prompt_texts<'a>(&self, text_of: &dyn Fn(&str) -> Option<&'a PromptContent>) -> Vec<Error> {
         let mut errors = Vec::new();
         for (i, m) in self.memories.iter().enumerate() {
             let Some(pid) = m.synt.as_ref().and_then(|s| s.prompt.as_deref()) else {
@@ -162,8 +178,7 @@ impl MemoryManager {
                 .idx(i)
                 .key(key::SYNT)
                 .key(key::PROMPT);
-            // a prompt not read yet (url) is checked when it is
-            let Some(PromptBody::Content(c)) = prompts.get(pid).map(|p| &p.body) else {
+            let Some(c) = text_of(pid) else {
                 continue;
             };
             let used: Vec<String> = [&c.system, &c.user]

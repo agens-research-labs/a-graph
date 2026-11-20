@@ -27,6 +27,9 @@ mod model_lacks_feature;
 #[path = "node_needs_model/node_needs_model.rs"]
 mod node_needs_model;
 
+#[path = "url_header_env/url_header_env.rs"]
+mod url_header_env;
+
 #[path = "valid_builds/valid_builds.rs"]
 mod valid_builds;
 

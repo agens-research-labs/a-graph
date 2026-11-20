@@ -15,6 +15,9 @@ mod chat_unknown_embedding;
 #[path = "concurrent_writes/concurrent_writes.rs"]
 mod concurrent_writes;
 
+#[path = "embedding_error/embedding_error.rs"]
+mod embedding_error;
+
 #[path = "embedding_similar/embedding_similar.rs"]
 mod embedding_similar;
 
@@ -41,6 +44,9 @@ mod live_summary_loop;
 
 #[path = "makes_summary/makes_summary.rs"]
 mod makes_summary;
+
+#[path = "memory_file_kept_out/memory_file_kept_out.rs"]
+mod memory_file_kept_out;
 
 #[path = "memory_file_rules/memory_file_rules.rs"]
 mod memory_file_rules;
@@ -84,8 +90,14 @@ mod similar_by_node_message;
 #[path = "summaries_overlap/summaries_overlap.rs"]
 mod summaries_overlap;
 
+#[path = "summary_error/summary_error.rs"]
+mod summary_error;
+
 #[path = "summary_own_prompt/summary_own_prompt.rs"]
 mod summary_own_prompt;
+
+#[path = "summary_url_prompt/summary_url_prompt.rs"]
+mod summary_url_prompt;
 
 #[path = "synt_in_prompt/synt_in_prompt.rs"]
 mod synt_in_prompt;
@@ -107,12 +119,3 @@ mod write_roles;
 
 #[path = "writes_exchange/writes_exchange.rs"]
 mod writes_exchange;
-
-#[path = "summary_error/summary_error.rs"]
-mod summary_error;
-
-#[path = "embedding_error/embedding_error.rs"]
-mod embedding_error;
-
-#[path = "memory_file_kept_out/memory_file_kept_out.rs"]
-mod memory_file_kept_out;

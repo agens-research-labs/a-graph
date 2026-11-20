@@ -17,8 +17,23 @@ resources:
 
 A prompt has exactly one of `content` (the texts written in the file) and `source` (`exactly_one`). A `source` with a
 `path` is a `.yml` file with the same `content: { system, user }`; it is not Markdown, because one Markdown text could
-not be split into a system text and a user text. A prompt from a `url` is not read yet: a node that uses one fails when
-it runs.
+not be split into a system text and a user text. It is read when the file is checked.
+
+A `source` with a `url` answers the same text as such a file. It is not read when the file is checked: it is
+downloaded when the run starts, before the first node, with the media read from a url (see
+[media](media.md#a-media-from-a-url)), and its placeholders are checked then, with the rules below; the run stops at
+the first one that is broken, while the check of the file reports all of them for a prompt it reads. A text that is not
+`content: { system, user }` is `bad_value`; a text with a YAML alias or a tag, or with more than 100000 YAML events, is
+`not_supported`, since it comes from outside the graph. Any of them stops the run before the first node, with the
+error on the `url`.
+
+```yaml
+- id: reviewer
+  source:
+    url: https://prompts.example.com/reviewer.yml
+    headers:
+      Authorization: { env: PROMPTS_TOKEN }
+```
 
 ## Placeholders
 

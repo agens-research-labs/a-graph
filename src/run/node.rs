@@ -18,7 +18,7 @@ use crate::graph::nodes::component::{InFrom, MediaIn, OutFrom, StructuredOutput,
 use crate::models::{
     MediaInput, MediaOutput, ModelInvocation, ModelResponse, ProducedMedia, ResponseInfo, StopReason, TokenLogprob,
 };
-use crate::resources::{MediaKind, Origin, PromptBody, Source};
+use crate::resources::{MediaKind, Origin, Source};
 
 /// What a node receives.
 #[derive(Debug, Clone, Default)]
@@ -158,18 +158,13 @@ impl Program {
 
         // the prompt; without one, the user text is the messages the node takes
         let (system, user) = match self.nodes.resources().get(node).and_then(|r| r.prompt.as_deref()) {
-            Some(pid) => match self.resources.prompts.get(pid).map(|p| &p.body) {
-                Some(PromptBody::Content(c)) => (
+            Some(pid) => {
+                let c = self.prompt_texts(pid).map_err(|e| fail(Rule::Io, e))?;
+                (
                     fill(&c.system, &values).map_err(|e| fail(Rule::PlaceholderUnbound, e))?,
                     fill(&c.user, &values).map_err(|e| fail(Rule::PlaceholderUnbound, e))?,
-                ),
-                _ => {
-                    return Err(fail(
-                        Rule::NotSupported,
-                        format!("prompt `{pid}` has no text yet (a prompt from a url is not read)"),
-                    ));
-                }
-            },
+                )
+            }
             None => (String::new(), texts.join("\n\n")),
         };
 
@@ -388,13 +383,11 @@ impl Program {
                         mime_type: mime_type.clone(),
                         data: data.clone(),
                     },
-                    // a url is not read yet: the node fails as it does without utilities
-                    Some(Origin::Source(Source::Url { .. })) => {
-                        return Err(fail(
-                            Rule::Io,
-                            format!("media `{}` is a url, which is not read yet", entry.id),
-                        ));
-                    }
+                    // the bytes the url answered when the run started, as a media in base64
+                    Some(Origin::Source(Source::Url { url, mime_type, .. })) => Item::Base64 {
+                        mime_type: mime_type.clone().or_else(|| mime_of_url(url)),
+                        data: STANDARD.encode(self.url_media(&entry.id).map_err(|e| fail(Rule::Io, e))?.as_slice()),
+                    },
                     None => {
                         return Err(fail(Rule::Io, format!("media `{}` is not declared", entry.id)));
                     }
@@ -448,7 +441,13 @@ impl Program {
         }
     }
 
-    /// A media resource the node reads: a file or a base64 text. A url is not read yet.
+    /// The bytes the url of media `id` answered when the run started.
+    fn url_media(&self, id: &str) -> Result<std::sync::Arc<Vec<u8>>, String> {
+        self.downloaded_media(id)
+            .ok_or_else(|| format!("media `{id}`: its url was not downloaded, the run has not started"))
+    }
+
+    /// A media resource the node reads: a file, a base64 text, or what its url answered when the run started.
     fn load_media(&self, id: &str) -> Result<MediaInput, String> {
         let media = self
             .resources
@@ -480,7 +479,13 @@ impl Program {
                     .map(MediaInput::Markdown)
                     .map_err(|e| format!("media `{id}` is not text: {e}"))
             }
-            (_, Source::Url { .. }) => Err(format!("media `{id}` is a url, which is not read yet")),
+            (MediaKind::Md, Source::Url { .. }) => String::from_utf8(self.url_media(id)?.as_ref().clone())
+                .map(MediaInput::Markdown)
+                .map_err(|e| format!("media `{id}` is not text: {e}")),
+            (MediaKind::Img(f), Source::Url { .. }) => Ok(MediaInput::Image {
+                format: f.clone(),
+                data: STANDARD.encode(self.url_media(id)?.as_slice()),
+            }),
             (MediaKind::Audio(_) | MediaKind::Video(_), _) => {
                 Err(format!("media `{id}`: audio and video input are not supported yet"))
             }
@@ -489,6 +494,12 @@ impl Program {
             )),
         }
     }
+}
+
+/// The type of a media at a url without `mime_type`: the one the extension of the path of the url gives, the query
+/// left out.
+fn mime_of_url(url: &str) -> Option<String> {
+    crate::utilities::mime_of(url::Url::parse(url).ok()?.path())
 }
 
 /// A media of the connected node as an input: only images for now.

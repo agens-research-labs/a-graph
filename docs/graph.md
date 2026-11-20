@@ -280,7 +280,7 @@ An Ollama server, called with `POST <host>/api/embed`.
 |---|---|---|---|
 | `id` | yes | the id of this prompt | The id of the prompt, cited by the nodes. |
 | `content` | no | map (below) | The texts of the prompt, written in the file. A prompt has exactly one of `content` and `source`. |
-| `source` | no | map (below) | Where the prompt is read from: exactly one of `path`, a `.yml` file with the same `content: { system, user }` (not Markdown, which could not be split into the two texts), and `url`. |
+| `source` | no | map (below) | Where the prompt is read from: exactly one of `path`, a `.yml` file with the same `content: { system, user }` (not Markdown, which could not be split into the two texts), read when the file is checked, and `url`, which answers the same text and is read when the run starts. The text of a `url` may have no YAML alias, no tag and at most 100000 YAML events. |
 
 ## `resources.prompts[].content`
 
@@ -294,10 +294,10 @@ An Ollama server, called with `POST <host>/api/embed`.
 | Key | Required | Value | Description |
 |---|---|---|---|
 | `path` | no | text | A file, relative to the folder the command is run from. |
-| `url` | no | text | A URL. It is not read yet: a node that uses it fails when it runs. |
-| `access` | no | any value | How to get in at the `url`, with `url` only. Its content is not defined yet. |
+| `url` | no | text | A URL, `http` or `https`, downloaded when the run starts, before the first node, if a node uses it. All the urls of a run together may weigh 64 MiB and take 60 seconds. |
+| `headers` | no | map of names to: secret | The headers of the request to `url`, with `url` only, each read from an environment variable when the file is checked. |
 | `base64` | no | text | The content itself, in base64, checked when the graph loads. Only for a media. |
-| `mime_type` | no | text | The type of the content in `base64`, such as `application/pdf`, given to the utilities the media goes through. Only for a media, with `base64`. |
+| `mime_type` | no | text | The type of the content, such as `application/pdf`, given to the utilities the media goes through. Only for a media, with `url` or `base64`; with `url`, without it the extension of the path of the url gives the type. |
 
 ## `resources.tools[]`
 
@@ -353,10 +353,10 @@ A map with exactly one of these keys.
 | Key | Required | Value | Description |
 |---|---|---|---|
 | `path` | no | text | A file, relative to the folder the command is run from. |
-| `url` | no | text | A URL. It is not read yet: a node that uses it fails when it runs. |
-| `access` | no | any value | How to get in at the `url`, with `url` only. Its content is not defined yet. |
+| `url` | no | text | A URL, `http` or `https`, downloaded when the run starts, before the first node, if a node uses it. All the urls of a run together may weigh 64 MiB and take 60 seconds. |
+| `headers` | no | map of names to: secret | The headers of the request to `url`, with `url` only, each read from an environment variable when the file is checked. |
 | `base64` | no | text | The content itself, in base64, checked when the graph loads. Only for a media. |
-| `mime_type` | no | text | The type of the content in `base64`, such as `application/pdf`, given to the utilities the media goes through. Only for a media, with `base64`. |
+| `mime_type` | no | text | The type of the content, such as `application/pdf`, given to the utilities the media goes through. Only for a media, with `url` or `base64`; with `url`, without it the extension of the path of the url gives the type. |
 
 ## `resources.media[].generate`
 
@@ -475,7 +475,7 @@ A map with exactly one of these keys.
 | Key | Required | Value | Description |
 |---|---|---|---|
 | `id` | yes | the id of this blackboard | The id of the blackboard, cited by the nodes and used as the placeholder of its text. |
-| `source` | yes | `memory`, or map (below) | Where the blackboard is kept: `memory`, in the program, empty at the start and lost at the end of the run; a file; or a URL. |
+| `source` | yes | `memory`, or map (below) | Where the blackboard is kept: `memory`, in the program, empty at the start and lost at the end of the run; or a file. A URL is refused. |
 
 ## `blackboards[].source`
 
@@ -489,7 +489,7 @@ The form with `url` and `access`:
 
 | Key | Required | Value | Description |
 |---|---|---|---|
-| `url` | yes | text | A URL. It is not supported yet: a node that uses it fails when it runs. |
+| `url` | yes | text | A URL. It is not supported: the file is refused when it is checked (`not_supported`), since a board is written as well as read. |
 | `access` | no | any value | How to get in. Its content is not defined yet. |
 
 ## `graph`

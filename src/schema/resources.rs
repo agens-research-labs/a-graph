@@ -3,14 +3,14 @@
 use super::key::*;
 use super::{Field, Kind, SECRET, Shape};
 
-/// `{ path }` | `{ url, access }` | `{ base64 }`: which one is used, and which are allowed,
+/// `{ path }` | `{ url, headers, mime_type }` | `{ base64, mime_type }`: which one is used, and which are allowed,
 /// is decided by the manager of the owner.
 const SOURCE_BODY: Shape = Shape::Map(&[
     Field::opt(PATH, Shape::Text).doc("A file, relative to the folder the command is run from."),
-    Field::opt(URL, Shape::Text).doc("A URL. It is not read yet: a node that uses it fails when it runs."),
-    Field::opt(ACCESS, Shape::Any).doc("How to get in at the `url`, with `url` only. Its content is not defined yet."),
+    Field::opt(URL, Shape::Text).doc("A URL, `http` or `https`, downloaded when the run starts, before the first node, if a node uses it. All the urls of a run together may weigh 64 MiB and take 60 seconds."),
+    Field::opt(HEADERS, Shape::MapOf(&SECRET)).doc("The headers of the request to `url`, with `url` only, each read from an environment variable when the file is checked."),
     Field::opt(BASE64, Shape::Text).doc("The content itself, in base64, checked when the graph loads. Only for a media."),
-    Field::opt(MIME_TYPE, Shape::Text).doc("The type of the content in `base64`, such as `application/pdf`, given to the utilities the media goes through. Only for a media, with `base64`."),
+    Field::opt(MIME_TYPE, Shape::Text).doc("The type of the content, such as `application/pdf`, given to the utilities the media goes through. Only for a media, with `url` or `base64`; with `url`, without it the extension of the path of the url gives the type."),
 ]);
 
 const PROMPT: Shape = Shape::Map(&[
@@ -24,7 +24,7 @@ const PROMPT: Shape = Shape::Map(&[
     )
     .doc("The texts of the prompt, written in the file. A prompt has exactly one of `content` and `source`."),
     Field::opt(SOURCE, SOURCE_BODY).doc(
-        "Where the prompt is read from: exactly one of `path`, a `.yml` file with the same `content: { system, user }` (not Markdown, which could not be split into the two texts), and `url`.",
+        "Where the prompt is read from: exactly one of `path`, a `.yml` file with the same `content: { system, user }` (not Markdown, which could not be split into the two texts), read when the file is checked, and `url`, which answers the same text and is read when the run starts. The text of a `url` may have no YAML alias, no tag and at most 100000 YAML events.",
     ),
 ]);
 

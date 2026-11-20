@@ -27,11 +27,11 @@ mod config_limits;
 #[path = "config_retention/config_retention.rs"]
 mod config_retention;
 
-#[path = "config_storage/config_storage.rs"]
-mod config_storage;
-
 #[path = "config_rules/config_rules.rs"]
 mod config_rules;
+
+#[path = "config_storage/config_storage.rs"]
+mod config_storage;
 
 #[path = "env_allowed/env_allowed.rs"]
 mod env_allowed;
@@ -47,6 +47,9 @@ mod env_not_listed;
 
 #[path = "env_wrong_host/env_wrong_host.rs"]
 mod env_wrong_host;
+
+#[path = "error_kept_out/error_kept_out.rs"]
+mod error_kept_out;
 
 #[path = "health/health.rs"]
 mod health;
@@ -66,23 +69,23 @@ mod log_host_refused;
 #[path = "no_aliases/no_aliases.rs"]
 mod no_aliases;
 
-#[path = "no_tags/no_tags.rs"]
-mod no_tags;
-
 #[path = "no_programs/no_programs.rs"]
 mod no_programs;
 
+#[path = "no_tags/no_tags.rs"]
+mod no_tags;
+
 #[path = "paths_confined/paths_confined.rs"]
 mod paths_confined;
+
+#[path = "read_timeout/read_timeout.rs"]
+mod read_timeout;
 
 #[path = "run_fails/run_fails.rs"]
 mod run_fails;
 
 #[path = "run_ok/run_ok.rs"]
 mod run_ok;
-
-#[path = "read_timeout/read_timeout.rs"]
-mod read_timeout;
 
 #[path = "run_timeout/run_timeout.rs"]
 mod run_timeout;
@@ -165,5 +168,5 @@ mod together;
 #[path = "too_many_events/too_many_events.rs"]
 mod too_many_events;
 
-#[path = "error_kept_out/error_kept_out.rs"]
-mod error_kept_out;
+#[path = "url_env_wrong_host/url_env_wrong_host.rs"]
+mod url_env_wrong_host;

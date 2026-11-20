@@ -1,4 +1,4 @@
-# Variant of valid.yml: The source of the prompt `chat` has `access` but no `url`.
+# Variant of valid.yml: The source of the prompt `chat` has `headers` but no `url`.
 graph_spec: "1.0"
 passport:
   adl:
@@ -89,7 +89,7 @@ resources:
         system: "You are an analyst. Context: {{chunks}} Notes: {{findings}}"
         user: "Task: {{input_message}}"
     - id: chat
-      source: { path: ./a, access: {} }
+      source: { path: ./a, headers: { Authorization: { env: A_TOKEN } } }
     - id: check
       content:
         system: "You are a judge. Notes: {{findings}}"
@@ -129,7 +129,7 @@ resources:
         openai: { moderation: low }
   skills:
     - id: pdf
-      path: ./tests/resources/access_needs_url/files/skills/pdf
+      path: ./tests/resources/headers_need_url/files/skills/pdf
 external:
   vectordb:
     - id: kb
@@ -152,7 +152,7 @@ blackboards:
   - id: findings
     source: memory
   - id: notes
-    source: { file: ./tests/resources/access_needs_url/files/notes.md }
+    source: { file: ./tests/resources/headers_need_url/files/notes.md }
 graph:
   nodes:
     - id: a

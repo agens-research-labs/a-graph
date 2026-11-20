@@ -4,13 +4,13 @@ fn here() -> &'static std::path::Path {
     std::path::Path::new(file!()).parent().unwrap()
 }
 
-/// Access goes with url only.
+/// `headers` goes with `url` only.
 #[test]
-fn access_needs_url() {
+fn headers_need_url() {
     assert!(has(
         here(),
-        "access_needs_url",
+        "headers_need_url",
         "unexpected_field",
-        "resources.prompts[1].source.access"
+        "resources.prompts[1].source.headers"
     ));
 }

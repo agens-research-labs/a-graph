@@ -123,6 +123,9 @@ mod skips_agent_text;
 #[path = "skips_user_text/skips_user_text.rs"]
 mod skips_user_text;
 
+#[path = "stderr_kept_out/stderr_kept_out.rs"]
+mod stderr_kept_out;
+
 #[path = "stdio_rules/stdio_rules.rs"]
 mod stdio_rules;
 
@@ -141,14 +144,11 @@ mod unknown_in_message;
 #[path = "unknown_in_places/unknown_in_places.rs"]
 mod unknown_in_places;
 
-#[path = "url_not_read/url_not_read.rs"]
-mod url_not_read;
+#[path = "url_to_utility/url_to_utility.rs"]
+mod url_to_utility;
 
 #[path = "vectordb_utility/vectordb_utility.rs"]
 mod vectordb_utility;
 
 #[path = "wrong_shape/wrong_shape.rs"]
 mod wrong_shape;
-
-#[path = "stderr_kept_out/stderr_kept_out.rs"]
-mod stderr_kept_out;

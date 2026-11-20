@@ -40,6 +40,12 @@ the contents are hidden. Even for public data, traces require the separate opt-i
 | `utility.call` | debug | `id`, `place`, `duration` | |
 | `read.vectordb` | debug | `id`, `chunks`, `duration` | |
 | `read.memory` | debug | `id`, `messages`, `summary`, `duration` | |
+| `read.media` | debug | `id`, `bytes`, `duration` | |
+| `read.prompt` | debug | `id`, `bytes`, `duration` | |
+
+`read.media` and `read.prompt` are the downloads of the media and of the prompts read from a `url`, when the run
+starts (see [media](media.md#a-media-from-a-url)): `id` is the media or the prompt, `bytes` what its url answered. The
+url is not written, since its query may hold a secret.
 
 The tokens and the `duration` of `node.end` are the sum of all the model calls of the node: every round of its
 tools, or every turn of a react controller. Each call is a `model.call` of its own.
@@ -116,7 +122,8 @@ program sends **one** POST with the whole timeline, in OTLP over HTTP with JSON,
 
 - One trace for each run, with one span for the run, one for every group and every node, and inside a node one for
   every model call, tool call, MCP call, skill call, checked answer (`structured <outcome>`) and reading of a vector
-  database or memory. The spans have their real start and duration, so the branches of a `parallel` group overlap.
+  database or memory; the download of a media or a prompt from a `url` is a span inside the run, `read media <id>` or
+  `read prompt <id>`. The spans have their real start and duration, so the branches of a `parallel` group overlap.
 - The attributes of a span are the fields of its events, with unique keys (end values replace start values).
   Application attributes use `a_graph.*`; `gen_ai.*`, `server.*`, HTTP method/status, `url.scheme` and `error.type`
   retain their standard names.

@@ -21,12 +21,10 @@ pub fn errors_of(src: &str) -> Vec<(String, String)> {
     let models = ModelManager::build(doc.take(key::MODELS)).unwrap_or_else(|e| panic!("{e}"));
     let resources = Resources::build(doc.take(key::RESOURCES)).unwrap_or_else(|e| panic!("{e}"));
     let external = External::build(doc.take(key::EXTERNAL)).unwrap_or_else(|e| panic!("{e}"));
-    let boards = BlackboardManager::build(doc.take(key::BLACKBOARDS)).unwrap_or_else(|e| panic!("{e}"));
     let mut destinations = logging_destinations(doc.take(key::OBSERVABILITY), doc.take(key::TRACE)).unwrap();
     destinations.extend(models.destinations());
     destinations.extend(resources.destinations());
     destinations.extend(external.destinations());
-    destinations.extend(boards.destinations());
     check(&allowed, destinations)
         .iter()
         .map(|e| (e.rule.code().to_string(), e.path.to_string()))

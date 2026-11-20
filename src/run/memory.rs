@@ -10,7 +10,6 @@ use crate::external::{CHAT_PLACEHOLDER, Entry, Memory, MemoryBackend, Record, SY
 use crate::graph::Entity;
 use crate::logging::{Event, LogLevel};
 use crate::models::{ChatEntry, ModelInvocation, Role};
-use crate::resources::PromptBody;
 
 /// What the memories of a node give to a call.
 pub(super) struct MemoryRead {
@@ -213,15 +212,10 @@ impl Program {
             (CHAT_PLACEHOLDER.to_string(), lines.join("\n")),
         ]);
         let (system, user) = match synt.prompt.as_deref() {
-            Some(pid) => match self.resources.prompts.get(pid).map(|p| &p.body) {
-                Some(PromptBody::Content(c)) => (c.system.clone(), c.user.clone()),
-                _ => {
-                    return Err(fail(
-                        Rule::NotSupported,
-                        format!("prompt `{pid}` has no text yet (a prompt from a url is not read)"),
-                    ));
-                }
-            },
+            Some(pid) => {
+                let c = self.prompt_texts(pid).map_err(|e| fail(Rule::Io, e))?;
+                (c.system, c.user)
+            }
             None => (DEFAULT_SYNT_SYSTEM.to_string(), DEFAULT_SYNT_USER.to_string()),
         };
         let call = ModelInvocation {

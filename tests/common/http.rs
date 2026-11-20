@@ -21,6 +21,8 @@ pub struct Resp {
     pub location: Option<String>,
     /// Sends the body one byte at a time, this long apart: a server that answers and then drips.
     pub drip: Option<std::time::Duration>,
+    /// Bytes sent instead of `body`, which need not be text.
+    pub raw: Option<Vec<u8>>,
 }
 
 impl Resp {
@@ -30,6 +32,7 @@ impl Resp {
             body: body.into(),
             location: None,
             drip: None,
+            raw: None,
         }
     }
     pub fn status(status: u16, body: impl Into<String>) -> Self {
@@ -38,6 +41,7 @@ impl Resp {
             body: body.into(),
             location: None,
             drip: None,
+            raw: None,
         }
     }
     pub fn redirect(status: u16, to: impl Into<String>) -> Self {
@@ -46,6 +50,14 @@ impl Resp {
             body: String::new(),
             location: Some(to.into()),
             drip: None,
+            raw: None,
+        }
+    }
+    /// A 200 whose body is `bytes`, which need not be text.
+    pub fn bytes(bytes: Vec<u8>) -> Self {
+        Resp {
+            raw: Some(bytes),
+            ..Resp::ok("")
         }
     }
     /// The same answer, its body sent one byte every `every`.
@@ -163,11 +175,18 @@ async fn start(
                         let head = format!(
                             "HTTP/1.1 {} X\r\ncontent-type: application/json\r\n{location}content-length: {}\r\n\r\n",
                             resp.status,
-                            resp.body.len(),
+                            resp.raw.as_ref().map_or(resp.body.len(), Vec::len),
                         );
-                        match resp.drip {
-                            None => sock.write_all(format!("{head}{}", resp.body).as_bytes()).await.unwrap(),
-                            Some(every) => {
+                        match (resp.drip, &resp.raw) {
+                            // the client may stop reading a body it refuses: then the connection is closed
+                            (None, Some(raw)) => {
+                                if sock.write_all(head.as_bytes()).await.is_err() || sock.write_all(raw).await.is_err()
+                                {
+                                    return;
+                                }
+                            }
+                            (None, None) => sock.write_all(format!("{head}{}", resp.body).as_bytes()).await.unwrap(),
+                            (Some(every), _) => {
                                 // the client may give up halfway: then the connection is closed
                                 if sock.write_all(head.as_bytes()).await.is_err() {
                                     return;

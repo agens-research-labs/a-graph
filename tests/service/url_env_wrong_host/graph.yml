@@ -1,0 +1,36 @@
+# The header of the url of a media sends a listed variable to a host the variable may not reach.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1, localhost] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:{{port:model}}
+    input: [text]
+    output: [text]
+resources:
+  media:
+    - id: doc
+      type: md
+      source:
+        url: http://localhost:1/doc.md
+        headers: { X-Key: { env: A_GRAPH_URL_ENV_WRONG_HOST } }
+graph:
+  nodes:
+    - id: a
+      model: { id: m, max_tokens: 50 }
+      media: { input: [ { id: doc, from: resources } ] }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true }
+  edges:
+    - start: a

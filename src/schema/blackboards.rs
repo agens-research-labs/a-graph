@@ -13,12 +13,12 @@ const BLACKBOARD_ITEM: Shape = Shape::Map(&[
                 "A Markdown file, which must exist when the file is checked and start with its header: a `<description>` and a `<purpose>`, each followed by a text, between two `---` lines (`blackboard_header`).",
             )]),
             Shape::Map(&[
-                Field::req(URL, Shape::Text).doc("A URL. It is not supported yet: a node that uses it fails when it runs."),
+                Field::req(URL, Shape::Text).doc("A URL. It is not supported: the file is refused when it is checked (`not_supported`), since a board is written as well as read."),
                 Field::opt(ACCESS, Shape::Any).doc("How to get in. Its content is not defined yet."),
             ]),
         ]),
     )
-    .doc("Where the blackboard is kept: `memory`, in the program, empty at the start and lost at the end of the run; a file; or a URL."),
+    .doc("Where the blackboard is kept: `memory`, in the program, empty at the start and lost at the end of the run; or a file. A URL is refused."),
 ]);
 
 pub(super) const BLACKBOARDS: Shape = Shape::List(&BLACKBOARD_ITEM);

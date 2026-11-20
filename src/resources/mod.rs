@@ -48,12 +48,23 @@ impl Resources {
 
     /// The environment variables of the resources and where their values go, for `allowed_env`.
     pub fn secrets(&self) -> Vec<Secret> {
-        [self.tools.secrets(), self.mcp.secrets()].concat()
+        [
+            self.prompts.secrets(),
+            self.tools.secrets(),
+            self.mcp.secrets(),
+            self.media.secrets(),
+        ]
+        .concat()
     }
 
     /// Every environment variable the resources need now and that is not set.
     pub fn missing_env(&self) -> Vec<Error> {
-        self.tools.missing_env()
+        [
+            self.prompts.missing_env(),
+            self.tools.missing_env(),
+            self.media.missing_env(),
+        ]
+        .concat()
     }
 
     /// What the managers found worth saying while they built.

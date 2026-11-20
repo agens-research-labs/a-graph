@@ -10,7 +10,6 @@ use serde_norway::Value;
 
 use crate::build::{Errs, Obj};
 use crate::error::{Error, Errors, Path, Phase, Rule};
-use crate::network::Destination;
 use crate::schema::key;
 
 /// Where the text is added to the board, below the header.
@@ -29,8 +28,6 @@ enum Store {
     /// A file, opened as written in the yml. The lock of `<file>.lock` serializes read, change and
     /// write, inside the program and between programs and processes (`change_file`).
     File { path: String },
-    /// Not read yet.
-    Url { url: String },
 }
 
 #[derive(Debug)]
@@ -64,18 +61,6 @@ impl BlackboardManager {
         errs.finish(BlackboardManager { boards })
     }
 
-    /// The urls of the boards that live at an address, for the network permission.
-    pub fn destinations(&self) -> Vec<Destination> {
-        let base = Path::root().key(key::BLACKBOARDS);
-        self.boards
-            .iter()
-            .filter_map(|b| match &b.store {
-                Store::Url { url } => Some(Destination::url(base.idx(b.index).key(key::SOURCE).key(key::URL), url)),
-                _ => None,
-            })
-            .collect()
-    }
-
     pub fn ids(&self) -> impl Iterator<Item = &str> {
         self.boards.iter().map(|b| b.id.as_str())
     }
@@ -87,7 +72,6 @@ impl BlackboardManager {
             Store::Memory(m) => Ok(m.lock().unwrap().clone()),
             // the file is replaced in one step, so it is read whole without the lock
             Store::File { path } => std::fs::read_to_string(path).map_err(|e| io(b, path, e)),
-            Store::Url { url } => Err(not_read(b, url)),
         }
     }
 
@@ -104,7 +88,6 @@ impl BlackboardManager {
                 let text = text.to_string();
                 change_file(b, path, move |content| header::write(content, &text, place)).await
             }
-            Store::Url { url } => Err(not_read(b, url)),
         }
     }
 
@@ -118,7 +101,6 @@ impl BlackboardManager {
                 Ok(())
             }
             Store::File { path } => change_file(b, path, header::cleared).await,
-            Store::Url { url } => Err(not_read(b, url)),
         }
     }
 
@@ -205,18 +187,6 @@ fn lock_file(path: &str) -> Result<std::fs::File, Failure> {
     Ok(file)
 }
 
-fn not_read(b: &Board, url: &str) -> Error {
-    Error::new(
-        Phase::Execution,
-        at(b),
-        Rule::NotSupported,
-        format!(
-            "blackboard `{}`: the board at `{url}` cannot be used, a url source is not supported yet",
-            b.id
-        ),
-    )
-}
-
 /// The file exists and starts with the header.
 fn check_file(at: &Path, file: &str, errs: &mut Errs) -> bool {
     let text = match std::fs::read_to_string(file) {
@@ -235,7 +205,8 @@ fn check_file(at: &Path, file: &str, errs: &mut Errs) -> bool {
     }
 }
 
-/// `memory`, `{ file }` or `{ url, access }`.
+/// `memory` or `{ file }`. `{ url, access }` is refused: a board is written as well as read, and writing at a url is
+/// not defined.
 fn store(v: Value, at: &Path, errs: &mut Errs) -> Option<Store> {
     if v.as_str() == Some("memory") {
         return Some(Store::Memory(Mutex::new(String::new())));
@@ -243,8 +214,14 @@ fn store(v: Value, at: &Path, errs: &mut Errs) -> Option<Store> {
     let mut o = Obj::new(v, at.clone(), errs)?;
     match (o.opt::<String>(key::FILE, errs), o.opt::<String>(key::URL, errs)) {
         (Some(path), None) => check_file(&at.key(key::FILE), &path, errs).then_some(Store::File { path }),
-        // `access` is accepted; its content is not defined yet, so it is not kept.
-        (None, Some(url)) => Some(Store::Url { url }),
+        (None, Some(_)) => {
+            errs.add(
+                &at.key(key::URL),
+                Rule::NotSupported,
+                "a blackboard at a url is not supported: it is written as well as read, use `memory` or `file`",
+            );
+            None
+        }
         _ => {
             errs.add(at, Rule::ExactlyOne, "a source is `memory`, or `file`, or `url`");
             None

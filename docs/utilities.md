@@ -41,12 +41,13 @@ It receives a text, or a file: by its path, or by its bytes in base64.
 
 A program (`stdio`) gets the path of a file on disk: a media from the resources with a `source: { path }`. Every other
 file comes as its bytes: a file for a service (`http`), which may not see the disk of a-graph, and a file in memory, a
-media in `base64` or a file made by a model, by a node or by the utility before. a-graph writes no file of its own for
+media in `base64`, a media from a `url` or a file made by a model, by a node or by the utility before. a-graph writes no file of its own for
 a utility.
 
 `mime_type` is the type of the file. For a file on disk it comes from the extension (pdf, docx, xlsx, pptx, html, md,
 txt, csv, json, png, jpg, webp, gif, mp3, wav, mp4), and is left out when the extension does not say it; for a media in
-`base64` it is the `mime_type` the graph gives, and is left out when the graph gives none; for a file made by a model,
+`base64` it is the `mime_type` the graph gives, and is left out when the graph gives none; for a media from a `url` it
+is the `mime_type` the graph gives, or else the one of the extension of the path of the url; for a file made by a model,
 by a node or by a utility it is the type given by what made it.
 
 It answers a text, or a file in base64 with its type:

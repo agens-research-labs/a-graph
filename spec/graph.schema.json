@@ -1148,10 +1148,24 @@
                   },
                   "url": {
                     "type": "string",
-                    "description": "A URL. It is not read yet: a node that uses it fails when it runs."
+                    "description": "A URL, `http` or `https`, downloaded when the run starts, before the first node, if a node uses it. All the urls of a run together may weigh 64 MiB and take 60 seconds."
                   },
-                  "access": {
-                    "description": "How to get in at the `url`, with `url` only. Its content is not defined yet."
+                  "headers": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object",
+                      "properties": {
+                        "env": {
+                          "type": "string",
+                          "description": "The name of the environment variable that holds the value."
+                        }
+                      },
+                      "required": [
+                        "env"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "The headers of the request to `url`, with `url` only, each read from an environment variable when the file is checked."
                   },
                   "base64": {
                     "type": "string",
@@ -1159,12 +1173,12 @@
                   },
                   "mime_type": {
                     "type": "string",
-                    "description": "The type of the content in `base64`, such as `application/pdf`, given to the utilities the media goes through. Only for a media, with `base64`."
+                    "description": "The type of the content, such as `application/pdf`, given to the utilities the media goes through. Only for a media, with `url` or `base64`; with `url`, without it the extension of the path of the url gives the type."
                   }
                 },
                 "required": [],
                 "additionalProperties": false,
-                "description": "Where the prompt is read from: exactly one of `path`, a `.yml` file with the same `content: { system, user }` (not Markdown, which could not be split into the two texts), and `url`."
+                "description": "Where the prompt is read from: exactly one of `path`, a `.yml` file with the same `content: { system, user }` (not Markdown, which could not be split into the two texts), read when the file is checked, and `url`, which answers the same text and is read when the run starts. The text of a `url` may have no YAML alias, no tag and at most 100000 YAML events."
               }
             },
             "required": [
@@ -1402,10 +1416,24 @@
                   },
                   "url": {
                     "type": "string",
-                    "description": "A URL. It is not read yet: a node that uses it fails when it runs."
+                    "description": "A URL, `http` or `https`, downloaded when the run starts, before the first node, if a node uses it. All the urls of a run together may weigh 64 MiB and take 60 seconds."
                   },
-                  "access": {
-                    "description": "How to get in at the `url`, with `url` only. Its content is not defined yet."
+                  "headers": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object",
+                      "properties": {
+                        "env": {
+                          "type": "string",
+                          "description": "The name of the environment variable that holds the value."
+                        }
+                      },
+                      "required": [
+                        "env"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "The headers of the request to `url`, with `url` only, each read from an environment variable when the file is checked."
                   },
                   "base64": {
                     "type": "string",
@@ -1413,7 +1441,7 @@
                   },
                   "mime_type": {
                     "type": "string",
-                    "description": "The type of the content in `base64`, such as `application/pdf`, given to the utilities the media goes through. Only for a media, with `base64`."
+                    "description": "The type of the content, such as `application/pdf`, given to the utilities the media goes through. Only for a media, with `url` or `base64`; with `url`, without it the extension of the path of the url gives the type."
                   }
                 },
                 "required": [],
@@ -1801,7 +1829,7 @@
                 "properties": {
                   "url": {
                     "type": "string",
-                    "description": "A URL. It is not supported yet: a node that uses it fails when it runs."
+                    "description": "A URL. It is not supported: the file is refused when it is checked (`not_supported`), since a board is written as well as read."
                   },
                   "access": {
                     "description": "How to get in. Its content is not defined yet."
@@ -1813,7 +1841,7 @@
                 "additionalProperties": false
               }
             ],
-            "description": "Where the blackboard is kept: `memory`, in the program, empty at the start and lost at the end of the run; a file; or a URL."
+            "description": "Where the blackboard is kept: `memory`, in the program, empty at the start and lost at the end of the run; or a file. A URL is refused."
           }
         },
         "required": [

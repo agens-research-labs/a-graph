@@ -1,0 +1,47 @@
+# The media `doc` comes from a url with a `mime_type` and goes through the utility `conv`.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:{{port:model}}
+    input: [text]
+    output: [text]
+utilities:
+  - id: conv
+    transport: http
+    url: http://127.0.0.1:{{port:utility}}/conv
+    timeout: 5
+resources:
+  media:
+    - id: doc
+      type: md
+      source: { url: "http://127.0.0.1:{{port:files}}/download?id=3", mime_type: application/pdf }
+  prompts:
+    - id: pr
+      content:
+        system: "Be brief."
+        user: "Q: {{user_message}}"
+graph:
+  nodes:
+    - id: n
+      model: { id: m, max_tokens: 50 }
+      resources: { prompt: pr }
+      media:
+        input: [ { id: doc, from: resources, utility: [conv] } ]
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true }
+  edges:
+    - start: n
+    - end: n

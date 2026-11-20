@@ -52,8 +52,8 @@ and send each only to the hosts listed for it (`env_not_allowed`). The command l
 
 A variable that is not set is an error (`env_missing`). When it is reported depends on what uses it:
 
-- the keys of the models, and the headers of tools, utilities, the log and the trace: when the file is checked,
-  before anything runs;
+- the keys of the models, and the headers of tools, utilities, the log, the trace and the urls of media and prompts:
+  when the file is checked, before anything runs;
 - the key of a vector database, and the `env` and `headers` of an MCP server: when they are used, during the run.
 
 When the file is checked, the variables are read only after the [destinations](#network): a file that names a host
@@ -87,7 +87,7 @@ Every destination written in the file is checked, before anything runs:
 - the host of every model and embedding provider, and for a `bedrock` model with a `batch` block also the Bedrock
   control API and the S3 buckets of the batch (see [models](models.md#batch));
 - the `url` of utilities, tools and MCP servers with `transport: http`;
-- the `url` of prompts, media and blackboards read from the network;
+- the `url` of prompts and media read from the network;
 - the `url` of vector databases and search engines;
 - `observability.output.url` and `trace.endpoint`.
 

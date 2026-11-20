@@ -1,0 +1,37 @@
+# The media `doc` and the prompt `pr` come from urls; the log is written at level debug.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: debug, output: { file: ./target/test-output/url_read_logged.log } }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:{{port:model}}
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: pr
+      source: { url: "http://127.0.0.1:{{port:files}}/prompt.yml?sig=secret" }
+  media:
+    - id: doc
+      type: md
+      source: { url: "http://127.0.0.1:{{port:files}}/doc.md?sig=secret" }
+graph:
+  nodes:
+    - id: n
+      model: { id: m }
+      resources: { prompt: pr }
+      media: { input: [ { id: doc, from: resources } ] }
+      message: { input: { user_message: true }, output: { assistant_message: true } }
+  edges:
+    - start: n
+    - end: n

@@ -18,11 +18,14 @@ mod run_events_logged;
 #[path = "tool_call_logged/tool_call_logged.rs"]
 mod tool_call_logged;
 
-#[path = "vectordb_read_logged/vectordb_read_logged.rs"]
-mod vectordb_read_logged;
-
 #[path = "tool_schema_ignored/tool_schema_ignored.rs"]
 mod tool_schema_ignored;
 
 #[path = "schema_attempt_logged/schema_attempt_logged.rs"]
 mod schema_attempt_logged;
+
+#[path = "url_read_logged/url_read_logged.rs"]
+mod url_read_logged;
+
+#[path = "vectordb_read_logged/vectordb_read_logged.rs"]
+mod vectordb_read_logged;

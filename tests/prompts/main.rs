@@ -41,3 +41,9 @@ mod prompt_url_kept;
 
 #[path = "reserved_names/reserved_names.rs"]
 mod reserved_names;
+
+#[path = "url_prompt_read/url_prompt_read.rs"]
+mod url_prompt_read;
+
+#[path = "url_prompt_refused/url_prompt_refused.rs"]
+mod url_prompt_refused;

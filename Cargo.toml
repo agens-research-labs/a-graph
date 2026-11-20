@@ -11,7 +11,7 @@ readme = "README.md"
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_norway = "0.9"
-# the parser under serde_norway: the service reads its events to refuse aliases before they are copied
+# the parser under serde_norway: its events are read to refuse aliases before they are copied (`src/yaml.rs`)
 unsafe-libyaml-norway = "0.2"
 serde_path_to_error = "0.1"
 # preserve_order: a schema reaches the model with its keys in the order they are written
@@ -41,7 +41,8 @@ futures-util = "0.3"
 jsonschema = { version = "0.60.0", default-features = false }
 
 [dev-dependencies]
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "io-util", "time"] }
+# `test-util`: a test with a paused clock, for a limit of time that a real wait would make long
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "io-util", "time", "test-util"] }
 
 # no debug information for the dependencies in development and test builds: the test programs
 # go from about 540 MB to about 190 MB each; the code of the project keeps it whole

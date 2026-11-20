@@ -6,7 +6,7 @@ mod interpret;
 pub mod nodes;
 
 pub(crate) use interpret::scan;
-pub use interpret::{CHUNKS, interpret};
+pub use interpret::{CHUNKS, downloaded_placeholders, interpret};
 
 /// The name of the tool of the program that gives the model the instructions of a skill.
 pub const ACTIVATE_SKILL: &str = "activate_skill";

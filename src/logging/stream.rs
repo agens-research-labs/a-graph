@@ -10,7 +10,8 @@ use super::{Event, LogLevel, VerboseLevel};
 pub fn stream_event(ev: &Event, level: VerboseLevel, allow_content: bool) -> Option<(String, Value)> {
     let needed = match ev.code.as_str() {
         "run.start" | "run.end" | "node.start" | "node.end" | "group.start" | "group.end" => VerboseLevel::Steps,
-        "model.call" | "tool.call" | "utility.call" | "read.vectordb" | "read.memory" => VerboseLevel::Detail,
+        "model.call" | "tool.call" | "utility.call" | "read.vectordb" | "read.memory" | "read.media"
+        | "read.prompt" => VerboseLevel::Detail,
         _ if ev.level >= LogLevel::Warn => VerboseLevel::Steps,
         _ => return None,
     };

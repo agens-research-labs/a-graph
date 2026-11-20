@@ -4,9 +4,10 @@ use serde_norway::Value;
 
 use super::common::{Errs, Obj, list_path};
 use super::source::{self, Source};
-use crate::error::{Errors, Path, Rule};
+use crate::error::{Error, Errors, Path, Rule};
 use crate::network::Destination;
 use crate::schema::key;
+use crate::secrets::Secret;
 
 #[derive(Debug, Clone)]
 pub struct PromptContent {
@@ -18,7 +19,7 @@ pub struct PromptContent {
 pub enum PromptBody {
     /// Written in the yml, or read from the file of `source.path`.
     Content(PromptContent),
-    /// A source not read yet (`url`).
+    /// A source read when the run starts (`url`).
     Source(Source),
 }
 
@@ -82,6 +83,31 @@ impl PromptsManager {
             .collect()
     }
 
+    /// The headers of the prompts read from a url and the url each goes to, for `allowed_env`.
+    pub fn secrets(&self) -> Vec<Secret> {
+        let base = list_path(key::PROMPTS);
+        self.prompts
+            .iter()
+            .enumerate()
+            .flat_map(|(i, p)| match &p.body {
+                PromptBody::Source(s) => source::secrets(s, &base.idx(i).key(key::SOURCE)),
+                PromptBody::Content(_) => vec![],
+            })
+            .collect()
+    }
+
+    /// A header whose environment variable is not set, for every prompt read from a url.
+    pub fn missing_env(&self) -> Vec<Error> {
+        let base = list_path(key::PROMPTS);
+        let mut errs = Errs::default();
+        for (i, p) in self.prompts.iter().enumerate() {
+            if let PromptBody::Source(s) = &p.body {
+                source::missing_env(s, &base.idx(i).key(key::SOURCE), &mut errs);
+            }
+        }
+        errs.0
+    }
+
     pub fn get(&self, id: &str) -> Option<&Prompt> {
         self.prompts.iter().find(|p| p.id == id)
     }
@@ -110,33 +136,34 @@ fn read_file(at: &Path, path: &str, errs: &mut Errs) -> Option<PromptContent> {
             return None;
         }
     };
-    // Whatever is wrong inside the file is one error, placed on the `path` that points to it.
+    // whatever is wrong inside the file is one error, placed on the `path` that points to it
+    match parse_content(&text, "the file") {
+        Ok(c) => Some(c),
+        Err(why) => {
+            errs.add(
+                at,
+                Rule::BadValue,
+                format!("`{path}` must hold `content: {{ system, user }}`: {why}"),
+            );
+            None
+        }
+    }
+}
+
+/// The `content: { system, user }` of the text of a prompt file, or why the text is not one: a file of `path`, or
+/// the answer of a `url`. `what` names it in the reason: `the file`, `the text`.
+pub(crate) fn parse_content(text: &str, what: &str) -> Result<PromptContent, String> {
     let mut inner = Errs::default();
-    let parsed = serde_norway::from_str::<Value>(&text)
+    let parsed = serde_norway::from_str::<Value>(text)
         .map_err(|e| e.to_string())
-        .and_then(|v| Obj::new(v, at.clone(), &mut inner).ok_or_else(|| "the file must be a map".to_string()))
+        .and_then(|v| Obj::new(v, Path::root(), &mut inner).ok_or_else(|| format!("{what} must be a map")))
         .map(|mut file| {
             file.req_sub(key::CONTENT, &mut inner)
                 .and_then(|c| content(c, &mut inner))
         });
     match (parsed, inner.0.is_empty()) {
-        (Ok(Some(c)), true) => Some(c),
-        (Err(why), _) => {
-            errs.add(
-                at,
-                Rule::BadValue,
-                format!("`{path}` must hold `content: {{ system, user }}`: {why}"),
-            );
-            None
-        }
-        (_, _) => {
-            let why = inner.0.iter().map(|e| e.message.clone()).collect::<Vec<_>>().join("; ");
-            errs.add(
-                at,
-                Rule::BadValue,
-                format!("`{path}` must hold `content: {{ system, user }}`: {why}"),
-            );
-            None
-        }
+        (Ok(Some(c)), true) => Ok(c),
+        (Err(why), _) => Err(why),
+        (_, _) => Err(inner.0.iter().map(|e| e.message.clone()).collect::<Vec<_>>().join("; ")),
     }
 }

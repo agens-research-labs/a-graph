@@ -15,8 +15,9 @@ A media is everything that is not the text of a message: a document, an image, a
 
 ## Three kinds of media
 
-**A media that is read** has a `source`: exactly one of `path` (a file), `url` (with an optional `access`) and
-`base64` (the content itself, with an optional `mime_type`, its type, given to a utility).
+**A media that is read** has a `source`: exactly one of `path` (a file), `url` (see
+[below](#a-media-from-a-url), with optional `headers` and `mime_type`) and `base64` (the content itself, with an
+optional `mime_type`, its type, given to a utility).
 
 ```yaml
 - id: contract
@@ -61,7 +62,39 @@ What a model can read:
 - not a media of type `file`: it needs a utility;
 - not audio or video: they are not supported yet;
 - a media from a node, without utilities, only if it is an image;
-- a media from a `url` is not read yet: a node that reads one fails when it runs.
+- a media from a `url`, as a media from a `path`: a `md` must be text.
+
+### A media from a url
+
+A media or a prompt with `source: { url }` is downloaded when the run starts, before the first node, and kept until
+the run ends: each node that uses it reads the same bytes, downloaded once. Building the program, and `--check`, never
+call it. Only the urls a node uses are downloaded, and the prompt of the summary of a memory a node uses; a url is
+downloaded even when its node is never reached in that run. Each media and each prompt has its own download, even
+when two of them name the same url.
+
+```yaml
+- id: report
+  type: md
+  source:
+    url: https://files.example.com/report.md
+    headers:
+      Authorization: { env: FILES_TOKEN }
+```
+
+- `headers`: the headers of the request, each read from an environment variable when the file is checked, as the
+  headers of a tool (`env_missing`; on [the service](serve.md) also `allowed_env`).
+- `mime_type`: the type given to the utilities the media goes through. Without it, the type comes from the extension
+  of the path of the url, as for a file on disk, the query left out: `report.pdf?sig=abc` is `application/pdf`.
+- The host must be in `allowed_hosts`, checked with the file; the scheme must be `http` or `https`. Redirects are not
+  followed.
+- All the urls of a run together may weigh 64 MiB, as much as the body of a request to the service, and take 60
+  seconds. Neither can be changed. The bytes are counted as they arrive, after decompression: an answer compressed
+  with gzip or deflate counts for what it holds, not for what it weighs on the network.
+- A `md` that a node reads without utilities must be text (UTF-8).
+
+A download that fails stops the run before the first node, with `io` on the `url`: a host that cannot be reached, an
+answer that is not 2xx, a scheme other than `http` or `https`, the 60 seconds or the 64 MiB passed, a `md` that is
+not text. The message names the media or the prompt and never holds the url, whose query may hold a secret.
 
 ## Producing media
 

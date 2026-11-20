@@ -94,8 +94,10 @@ reaches this cap; every request then comes from the proxy's own address.
 
 While a request is checked and built, its graph is held in memory about three times over: a request of 64 MiB, such
 as a graph with a large media in `base64`, takes about 200 MB until it is built. Up to `max_runs` requests are checked
-at once, so with the default of 8 the service may need about 1.2 GB for them alone. Choose `max_runs` for the memory
-the service has.
+at once, so with the default of 8 the service may need about 1.2 GB for them alone. A run also keeps what the urls
+of its media and prompts answered, at most 64 MiB for all of them together (see
+[media](media.md#a-media-from-a-url)), until it ends: 512 MiB more for 8 runs. Choose `max_runs` for the memory the
+service has.
 
 ## Sessions
 
@@ -170,7 +172,8 @@ if it breaks one of these rules:
   of a blackboard or of the log) is moved into the folder of the session. It must be relative and without `..`
   (`not_supported`), and it cannot be `.a-graph-session`, the file the service keeps at the top of the folder, in
   any case (`not_supported`): the same name in a subfolder is allowed. A file the graph reads must therefore already be in the folder of the session; a media can come
-  inside the graph instead, as `source: { base64 }`.
+  inside the graph instead, as `source: { base64 }`, and a media or a prompt can come from a host of
+  `allowed_hosts`, as `source: { url }`.
 - **Hosts.** Every host in the `allowed_hosts` of the passport of the graph must be in the `allowed_hosts` of the
   service (`network_not_allowed`): a graph can only restrict the hosts of the service. An entry of the graph,
   `host` or `host:port`, is accepted when the service lists the same entry or the host alone. An entry `host` is
@@ -187,7 +190,8 @@ graph:
 
 - **Variables.** Every `{ env: VAR }` of the graph must name a variable of `allowed_env`, and the value must go only
   to hosts listed for that variable (`env_not_allowed`): the host of the model for a key of a model, the `url` of a
-  tool, a utility, an MCP server, a vector database or the log for their headers or key, the `endpoint` of the
+  tool, a utility, an MCP server, a vector database, the log, a media or a prompt for their headers or key, the
+  `endpoint` of the
   trace for its headers. A refused variable is not read, so the answer never tells whether it is set; a variable of
   the list that is not set is `env_missing`, as on the command line. The keys of a `bedrock` model go to every host
   of the model: with a `batch`, also the control API and the S3 buckets. The variables of the log are checked with

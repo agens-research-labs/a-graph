@@ -229,6 +229,13 @@ impl Tracer {
                 attributes,
                 number("duration"),
             ),
+            "read.media" | "read.prompt" => point(
+                &mut st,
+                ev,
+                format!("{} {}", ev.code.replace('.', " "), text("id")),
+                attributes,
+                number("duration"),
+            ),
             // an error of the run ends its interval, marked as failed, with its detail as the passport allows
             _ if ev.level == LogLevel::Error => {
                 if let Some(mut s) = st.open.remove(&ev.span) {

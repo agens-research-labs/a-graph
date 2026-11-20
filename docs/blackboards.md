@@ -25,7 +25,8 @@ does with tools.
 - `source: memory`: in the program. It starts empty and is lost when the run ends.
 - `source: { file: <path> }`: a file. The file must exist when the graph file is checked, and must start with the
   header (below).
-- `source: { url: ..., access: ... }`: not supported yet. A node that uses it fails when it runs.
+- `source: { url: ... }`: refused when the file is checked (`not_supported`). A board is written as well as read,
+  and writing at a url is not defined.
 
 ## The header
 

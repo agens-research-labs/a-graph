@@ -5,9 +5,10 @@ use serde_norway::Value;
 
 use super::common::{Errs, Obj, list_path};
 use super::source::{self, Source};
-use crate::error::{Errors, Path, Rule};
+use crate::error::{Error, Errors, Path, Rule};
 use crate::network::Destination;
 use crate::schema::key;
+use crate::secrets::Secret;
 
 /// `md`, or the format of an image, an audio, a video.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -168,6 +169,31 @@ impl MediaManager {
                 _ => None,
             })
             .collect()
+    }
+
+    /// The headers of the media read from a url and the url each goes to, for `allowed_env`.
+    pub fn secrets(&self) -> Vec<Secret> {
+        let base = list_path(key::MEDIA);
+        self.media
+            .iter()
+            .enumerate()
+            .flat_map(|(i, m)| match &m.origin {
+                Origin::Source(s) => source::secrets(s, &base.idx(i).key(key::SOURCE)),
+                _ => vec![],
+            })
+            .collect()
+    }
+
+    /// A header whose environment variable is not set, for every media read from a url.
+    pub fn missing_env(&self) -> Vec<Error> {
+        let base = list_path(key::MEDIA);
+        let mut errs = Errs::default();
+        for (i, m) in self.media.iter().enumerate() {
+            if let Origin::Source(s) = &m.origin {
+                source::missing_env(s, &base.idx(i).key(key::SOURCE), &mut errs);
+            }
+        }
+        errs.0
     }
 
     pub fn get(&self, id: &str) -> Option<&Media> {

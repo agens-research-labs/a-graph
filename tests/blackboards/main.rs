@@ -57,8 +57,8 @@ mod programs_share_file;
 #[path = "unknown_board/unknown_board.rs"]
 mod unknown_board;
 
-#[path = "url_board_unused/url_board_unused.rs"]
-mod url_board_unused;
+#[path = "url_board_refused/url_board_refused.rs"]
+mod url_board_refused;
 
 #[path = "write_no_header/write_no_header.rs"]
 mod write_no_header;

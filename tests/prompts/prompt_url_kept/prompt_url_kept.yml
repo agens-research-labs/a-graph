@@ -1,4 +1,4 @@
-# Variant of valid.yml: The prompt `chat` comes from a url, which is not read yet.
+# Variant of valid.yml: The prompt `chat` comes from a url, which is read only when the run starts.
 graph_spec: "1.0"
 passport:
   adl:

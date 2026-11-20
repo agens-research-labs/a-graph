@@ -1,4 +1,4 @@
-# A media from a url, given to a utility on http (service mock on {{port:utility}}, model mock {{port:model}}).
+# The media `doc` comes from a url without `mime_type` and goes through the utility `conv`.
 graph_spec: "1.0"
 passport:
   adl:
@@ -7,7 +7,7 @@ passport:
     description: t
     version: "1.0.0"
     data_classification: { sensitivity: public }
-    permissions: { network: { allowed_hosts: [127.0.0.1, example.com] } }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
 observability: { level: error }
 verbose: { level: off }
 models:
@@ -26,7 +26,7 @@ resources:
   media:
     - id: doc
       type: md
-      source: { url: https://example.com/doc.pdf }
+      source: { url: "http://127.0.0.1:{{port:files}}/doc.pdf?sig=secret" }
   prompts:
     - id: pr
       content:

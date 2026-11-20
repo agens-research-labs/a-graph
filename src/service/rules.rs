@@ -9,6 +9,7 @@ use serde_norway::Value;
 use super::ServiceConfig;
 use crate::error::{Error, Path, Phase, Rule};
 use crate::net::{allowed_entry, entry_text};
+use crate::yaml::{Found, MAX_YML_EVENTS, first_refused};
 
 /// The empty file that tells a folder of `data_dir` was made by the service for a session: the sweep deletes no other.
 pub(super) const SESSION_MARKER: &str = ".a-graph-session";
@@ -95,84 +96,6 @@ pub fn prepare(yml: &str, config: &ServiceConfig, session: &str) -> Result<Value
         return Err(errs);
     }
     Ok(root)
-}
-
-/// The most events of the parser a yml may have. The parse that follows keeps every event, then builds a tree from
-/// them, at about 200 bytes an element: a body of 64 MiB could hold tens of millions of them, and take gigabytes. The
-/// largest graph of the repository has under 800.
-const MAX_YML_EVENTS: usize = 100_000;
-
-/// What the yml may not have: an alias, a tag, or more than `MAX_YML_EVENTS` events.
-enum Found {
-    /// `*name`: serde_norway copies the value of the anchor at every alias, so a small yml can become a tree of
-    /// gigabytes.
-    Alias,
-    /// `!name` before a value: the rules below look for a text or a list and skip a tagged value, while the build
-    /// reads the value under the tag, so a tagged path or list of hosts would escape them.
-    Tag,
-    /// More events than `MAX_YML_EVENTS`: the reading stops there, so its time is bounded too.
-    TooManyEvents,
-}
-
-/// The first alias or tag of the yml, or the event past `MAX_YML_EVENTS`. Only the events of the parser are read, one
-/// at a time, and nothing is copied. A yml that does not parse before then answers `None`: serde_norway then reports
-/// the error.
-fn first_refused(yml: &str) -> Option<Found> {
-    use std::mem::MaybeUninit;
-    use unsafe_libyaml_norway::{
-        YAML_ALIAS_EVENT, YAML_MAPPING_START_EVENT, YAML_SCALAR_EVENT, YAML_SEQUENCE_START_EVENT,
-        YAML_STREAM_END_EVENT, YAML_UTF8_ENCODING, yaml_event_delete, yaml_event_t, yaml_parser_delete,
-        yaml_parser_initialize, yaml_parser_parse, yaml_parser_set_encoding, yaml_parser_set_input_string,
-        yaml_parser_t,
-    };
-
-    let mut parser = MaybeUninit::<yaml_parser_t>::uninit();
-    let parser = parser.as_mut_ptr();
-    // SAFETY: the parser is initialized before use and deleted once; it reads `yml`, which outlives it. Every event
-    // is deleted after it is read; of its data, only the tag of a scalar, a sequence or a mapping is read, the field
-    // of the union that belongs to that type, and only whether it is null.
-    unsafe {
-        if yaml_parser_initialize(parser).fail {
-            return None;
-        }
-        yaml_parser_set_encoding(parser, YAML_UTF8_ENCODING);
-        yaml_parser_set_input_string(parser, yml.as_ptr(), yml.len() as _);
-        let mut found = None;
-        let mut events = 0usize;
-        loop {
-            let mut event = MaybeUninit::<yaml_event_t>::uninit();
-            if yaml_parser_parse(parser, event.as_mut_ptr()).fail {
-                break;
-            }
-            let read = &*event.as_ptr();
-            let kind = read.type_;
-            let tagged = match kind {
-                YAML_SCALAR_EVENT => !read.data.scalar.tag.is_null(),
-                YAML_SEQUENCE_START_EVENT => !read.data.sequence_start.tag.is_null(),
-                YAML_MAPPING_START_EVENT => !read.data.mapping_start.tag.is_null(),
-                _ => false,
-            };
-            yaml_event_delete(event.as_mut_ptr());
-            if kind == YAML_ALIAS_EVENT {
-                found = Some(Found::Alias);
-                break;
-            }
-            if tagged {
-                found = Some(Found::Tag);
-                break;
-            }
-            events += 1;
-            if events > MAX_YML_EVENTS {
-                found = Some(Found::TooManyEvents);
-                break;
-            }
-            if kind == YAML_STREAM_END_EVENT {
-                break;
-            }
-        }
-        yaml_parser_delete(parser);
-        found
-    }
 }
 
 fn path_of(keys: &[&str]) -> Path {

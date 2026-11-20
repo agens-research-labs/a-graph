@@ -10,7 +10,7 @@ use super::nodes::{Entity, Nodes};
 use crate::error::{Error, Path, Phase, Rule};
 use crate::external::External;
 use crate::models::{Llm, ModelManager, ModelRequirements, ProducedMedia};
-use crate::resources::{MediaKind, Origin, PromptBody, Resources};
+use crate::resources::{MediaKind, Origin, PromptBody, PromptContent, Resources};
 use crate::schema::key;
 
 /// Every rule of the nodes that needs a manager. All the errors are returned, not only the first.
@@ -28,14 +28,9 @@ pub fn interpret(
     // media id -> the node that writes it: one media has one writer
     let mut writers: HashMap<String, String> = HashMap::new();
     for e in nodes.entities() {
-        let at = Path::root().key(key::GRAPH).key(key::NODES).idx(e.0 as usize);
+        let at = node_path(e);
         let id = nodes.id(e).unwrap_or_default();
-        // a validation node is read like a node, from inside `validation-node`
-        let base = if nodes.validation().get(e).is_some() {
-            at.key(key::VALIDATION_NODE)
-        } else {
-            at.clone()
-        };
+        let base = node_base(nodes, e);
         let Some(m) = nodes.model().get(e) else {
             errs.push(err(
                 base.key(key::MODEL),
@@ -68,11 +63,60 @@ pub fn interpret(
         };
         check_model(&base.key(key::MODEL), m, asked, models, &mut errs);
         skills_rules(nodes, e, id, &base, resources, &mut errs);
-        placeholders(nodes, e, id, &base, resources, external, &mut errs);
+        let written = |p: &str| match resources.prompts.get(p).map(|x| &x.body) {
+            Some(PromptBody::Content(c)) => Some(c),
+            _ => None,
+        };
+        placeholders(nodes, e, id, &base, external, &written, &mut errs);
         board_rules(nodes, e, id, &base, &mut errs);
         media_input_rules(nodes, e, &at, resources, &previous, &mut errs);
     }
     errs
+}
+
+/// The placeholders of the prompts downloaded from their url when the run starts (`downloaded`, by id), checked as
+/// `interpret` checks the prompts written in the graph or read from a file. Only the nodes that use one are checked.
+pub fn downloaded_placeholders(
+    nodes: &Nodes,
+    external: &External,
+    downloaded: &HashMap<String, PromptContent>,
+) -> Vec<Error> {
+    let mut errs = Vec::new();
+    for e in nodes.entities() {
+        let uses_one = nodes
+            .resources()
+            .get(e)
+            .and_then(|r| r.prompt.as_deref())
+            .is_some_and(|p| downloaded.contains_key(p));
+        if uses_one {
+            let id = nodes.id(e).unwrap_or_default();
+            placeholders(
+                nodes,
+                e,
+                id,
+                &node_base(nodes, e),
+                external,
+                &|p| downloaded.get(p),
+                &mut errs,
+            );
+        }
+    }
+    errs
+}
+
+/// Where node `e` is in the yml.
+fn node_path(e: Entity) -> Path {
+    Path::root().key(key::GRAPH).key(key::NODES).idx(e.0 as usize)
+}
+
+/// Where the fields of node `e` are: a validation node is read like a node, from inside `validation-node`.
+fn node_base(nodes: &Nodes, e: Entity) -> Path {
+    let at = node_path(e);
+    if nodes.validation().get(e).is_some() {
+        at.key(key::VALIDATION_NODE)
+    } else {
+        at
+    }
 }
 
 fn err(path: Path, rule: Rule, msg: impl Into<String>) -> Error {
@@ -354,14 +398,15 @@ pub const CHUNKS: &str = "chunks";
 /// The placeholders that take the messages of the node.
 const MESSAGES: [&str; 3] = [key::USER_MESSAGE, key::AGENT_MESSAGE, "input_message"];
 
-/// `{{name}}` placeholders of the prompt against what the node declares.
-fn placeholders(
+/// The rules of the placeholders of node `e`; `text_of` gives the texts of a prompt by its id, `None` for a prompt
+/// whose texts are not known yet (a url, before the run starts).
+fn placeholders<'a>(
     nodes: &Nodes,
     e: Entity,
     id: &str,
     at: &Path,
-    resources: &Resources,
     external: &External,
+    text_of: &dyn Fn(&str) -> Option<&'a PromptContent>,
     errs: &mut Vec<Error>,
 ) {
     // declared names: the ids of what the node reads from outside, in order of appearance
@@ -431,11 +476,8 @@ fn placeholders(
         }
         return;
     };
-    let Some(prompt) = resources.prompts.get(prompt_id) else {
-        return;
-    };
-    // a prompt not read yet (url) is checked when it is
-    let PromptBody::Content(content) = &prompt.body else {
+    // a prompt from a url is checked when the run has downloaded it (`downloaded_placeholders`)
+    let Some(content) = text_of(prompt_id) else {
         return;
     };
     let input = nodes.message().get(e).and_then(|m| m.input).unwrap_or_default();

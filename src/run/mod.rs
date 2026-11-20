@@ -9,6 +9,7 @@ mod mcp;
 mod memory;
 mod node;
 mod output;
+mod sources;
 mod structured;
 mod tools;
 mod utility;
@@ -54,6 +55,9 @@ pub struct Program {
     pub warnings: Vec<Warning>,
     /// The MCP servers of the run in progress: connected when `run` starts, closed when it ends.
     mcp: std::sync::Mutex<Option<std::sync::Arc<crate::gate::McpPool>>>,
+    /// What the urls of the media and of the prompts answered in the run in progress: downloaded when `run` starts,
+    /// dropped when it ends.
+    sources: std::sync::Mutex<Option<std::sync::Arc<sources::Downloaded>>>,
     /// The cancels of the batch jobs the run let go of before they ended, waited for by `close`.
     cancels: batch::Cancels,
 }
@@ -148,7 +152,6 @@ fn build_with(mut doc: Document, allowed_env: Option<&AllowedEnv>) -> Result<Pro
     destinations.extend(utilities.destinations());
     destinations.extend(resources.destinations());
     destinations.extend(external.destinations());
-    destinations.extend(blackboards.destinations());
     let mut refused = network::check(&allowed, destinations);
     if let Some(env) = allowed_env {
         let mut used = secrets::trace_secrets(trace.clone())?;
@@ -200,6 +203,7 @@ fn build_with(mut doc: Document, allowed_env: Option<&AllowedEnv>) -> Result<Pro
         edges,
         warnings,
         mcp: Default::default(),
+        sources: Default::default(),
         cancels: Default::default(),
     })
 }

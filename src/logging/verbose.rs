@@ -194,6 +194,19 @@ impl Verbose {
                     &format!("read vectordb {} · {} chunks", text("id"), number("chunks"))
                 )
             )),
+            "read.media" | "read.prompt" if detail => Some(format!(
+                "{inner}{}",
+                self.paint(
+                    "90",
+                    &format!(
+                        "read {} {} · {} bytes · {}",
+                        if ev.code == "read.media" { "media" } else { "prompt" },
+                        text("id"),
+                        number("bytes"),
+                        seconds("duration")
+                    )
+                )
+            )),
             "read.memory" if detail => Some(format!(
                 "{inner}{}",
                 self.paint(

@@ -19,5 +19,6 @@ pub mod schema;
 pub mod secrets;
 pub mod service;
 pub mod utilities;
+mod yaml;
 
 pub use error::{Error, Errors, Path, Phase, Rule, Warning};

@@ -1,0 +1,32 @@
+# The prompt `pr` comes from a url, which answers the same text as a prompt file.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:{{port:model}}
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: pr
+      source: { url: "http://127.0.0.1:{{port:files}}/prompt.yml?sig=secret" }
+graph:
+  nodes:
+    - id: n
+      model: { id: m }
+      resources: { prompt: pr }
+      message: { input: { user_message: true }, output: { assistant_message: true } }
+  edges:
+    - start: n
+    - end: n
