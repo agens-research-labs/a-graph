@@ -60,18 +60,18 @@ input of a batch is a call too: a file of some hundred MB on a slow link may not
 What a node asks of its model is checked when the file is checked, before anything runs: a model asked for something
 it cannot do is an error (`not_supported`).
 
-| `provider` | Media in | Media out | Batch | Logprobs |
-|---|---|---|---|---|
-| `anthropic` | text, images (jpeg, png, gif, webp) | none | yes | no |
-| `openai` | text, images | one image or one audio per call | yes | yes, for text |
-| `gemini` | text, images | one image or one audio per call | no | no |
-| `mistral` | text, images | one audio per call (speech) | yes | yes, for text |
-| `bedrock` | text, images (png, jpeg, gif, webp) | none | yes, without an output `schema` | no |
-| `vertex_ai`, publisher `anthropic` | as `anthropic` | none | no | no |
-| `vertex_ai`, publisher `google` | as `gemini` | as `gemini` | no | no |
-| `azure_foundry`, publisher `anthropic` | as `anthropic` | none | no | no |
-| `azure_foundry`, publisher `openai` | as `openai` | as `openai` | yes | as `openai` |
-| `ollama`, `custom` | text, images | none | no | yes |
+| `provider` | Media in | Media out | Batch | Logprobs | Tools | Schema | Refusal |
+|---|---|---|---|---|---|---|---|
+| `anthropic` | text, images (jpeg, png, gif, webp) | none | yes | no | yes | yes | yes |
+| `openai` | text, images | one image or one audio per call | yes | yes, for text | yes | yes | yes |
+| `gemini` | text, images | one image or one audio per call | no | no | yes | yes, not with a produced media | no |
+| `mistral` | text, images | one audio per call (speech) | yes | yes, for text | yes | yes | no |
+| `bedrock` | text, images (png, jpeg, gif, webp) | none | yes, without an output `schema` | no | yes | yes, not in a batch | yes |
+| `vertex_ai`, publisher `anthropic` | as `anthropic` | none | no | no | yes | yes | yes |
+| `vertex_ai`, publisher `google` | as `gemini` | as `gemini` | no | no | yes | as `gemini` | no |
+| `azure_foundry`, publisher `anthropic` | as `anthropic` | none | no | no | yes | yes | yes |
+| `azure_foundry`, publisher `openai` | as `openai` | as `openai` | yes | as `openai` | yes | yes | yes |
+| `ollama`, `custom` | text, images | none | no | yes | yes | yes, see below | no |
 
 - Audio and video in are not supported yet by any provider.
 - A media of type `file` cannot go to a model: a [utility](utilities.md) has to change it into text first.
@@ -81,6 +81,11 @@ it cannot do is an error (`not_supported`).
   `max_tokens`.
 - `gemini`, and `vertex_ai` with publisher `google`, cannot switch reasoning off: `reasoning: off` is an error.
 - With `gemini` (and publisher `google`) an output `schema` and a produced media cannot be asked together.
+- Schema: an output `schema`, and the verdict of a judge or the routing output of a `react` with
+  `structured_output: api`, enforced by the API (see [nodes](nodes.md)). On `ollama` the cloud models ignore it: use
+  `schema_prompt`, or `structured_output: prompt`. On `custom` whether it is enforced depends on the server.
+- Refusal: the provider says that the model refused, and an answer to a schema then stops the run (`model_refused`).
+  A provider with no refusal gives a refusal as an ordinary text, which is read as one.
 
 How a produced media is described is explained in [media](media.md).
 

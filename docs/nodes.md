@@ -77,8 +77,9 @@ provider, and checks it against the schema. The answer is the whole text, or the
 
 - the answer is not one JSON value (a text, a text around the JSON, two values, a JSON left open by a model that ended
   by itself), or a JSON that does not match the schema: `schema_mismatch`;
-- the model refuses: `model_refused`. Only `anthropic`, `openai` and `bedrock` tell a refusal; with `gemini`,
-  `mistral`, `ollama` and `custom` a refusal is a text like any other, and is read as one;
+- the model refuses: `model_refused`. Only some providers tell a refusal (see
+  [models](models.md#what-each-provider-can-do)); with the others a refusal is a text like any other, and is read as
+  one;
 - the answer stopped before its end, at `max_tokens` or at the end of the context window, so its JSON is cut:
   `model_failed`, and the message says which of the two: at `max_tokens` it asks to increase `max_tokens`, at the end
   of the context window it says that the request exceeded it.
