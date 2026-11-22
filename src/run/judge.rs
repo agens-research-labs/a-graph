@@ -1,6 +1,7 @@
 //! Running a validation node: the judge reads what its blocks say, with its prompt, and answers
 //! the fixed verdict `{ validation, reasons, log }`.
 
+use super::structured::SchemaOf;
 use super::{NodeInput, Program};
 use crate::error::{Error, Path, Phase, Rule};
 use crate::graph::Entity;
@@ -29,7 +30,7 @@ impl Program {
             .map_err(|e| fail(Rule::ModelFailed, e.to_string()).with_detail_if(e.said()))?;
         // the verdict matches its schema, or the run stops here: `validation` is a boolean
         let schema = Validation::judge_schema();
-        let response = self.structured(&id, &prepared.model, &schema, response)?;
+        let response = self.structured(&id, &prepared.model, &schema, SchemaOf::Program, response)?;
         let verdict = response.structured.clone().unwrap_or_default();
         let approved = verdict["validation"] == serde_json::Value::Bool(true);
         self.node_finished(node, &response, Some(if approved { "approved" } else { "refused" }));

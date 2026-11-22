@@ -5,7 +5,7 @@ use serde_json::{Map, Value, json};
 use super::Gemini;
 use super::media::image_mime;
 use crate::models::Reasoning;
-use crate::models::{MediaInput, ModelError, ModelInvocation, Role, ToolRound};
+use crate::models::{ChatEntry, MediaInput, ModelError, ModelInvocation, Role, ToolRound};
 
 fn text_item(text: &str) -> Value {
     json!({ "type": "text", "text": text })
@@ -81,17 +81,14 @@ impl Gemini {
 
     /// The whole conversation as steps: history, the question, then the tool rounds.
     fn steps(&self, call: &ModelInvocation) -> Result<Vec<Value>, ModelError> {
-        let mut steps: Vec<Value> = call
-            .history
-            .iter()
-            .map(|e| {
-                let kind = match e.role {
-                    Role::User => "user_input",
-                    Role::Assistant => "model_output",
-                };
-                json!({ "type": kind, "content": [text_item(&e.content)] })
-            })
-            .collect();
+        let entry = |e: &ChatEntry| {
+            let kind = match e.role {
+                Role::User => "user_input",
+                Role::Assistant => "model_output",
+            };
+            json!({ "type": kind, "content": [text_item(&e.content)] })
+        };
+        let mut steps: Vec<Value> = call.history.iter().map(entry).collect();
 
         let mut content = Vec::new();
         for m in &call.media {
@@ -110,6 +107,8 @@ impl Gemini {
         for round in &call.tool_rounds {
             steps.extend(tool_round(round));
         }
+        // the corrections of `schema_prompt` come last, after the tool rounds
+        steps.extend(call.corrections.iter().map(entry));
         Ok(steps)
     }
 }

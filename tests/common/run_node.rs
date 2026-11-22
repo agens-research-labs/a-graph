@@ -40,6 +40,24 @@ pub async fn program_with(
     (build(&yml).unwrap_or_else(|e| panic!("{e}")), seen)
 }
 
+/// Like `program`, with a mock that answers the n-th request with the n-th of `answers` (the last one from
+/// then on): enough to follow a node that calls its model more than once.
+pub async fn program_seq(dir: &std::path::Path, name: &str, answers: Vec<String>) -> (Program, Arc<Mutex<Vec<Req>>>) {
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let (port, seen) = listen(move |_| {
+        let n = next.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        Resp::ok(answers[n.min(answers.len() - 1)].clone())
+    })
+    .await;
+    let yml = yml_with(dir, name, &[("model", port)]);
+    (build(&yml).unwrap_or_else(|e| panic!("{e}")), seen)
+}
+
+/// The body of the n-th request the mock received.
+pub fn sent_at(seen: &Arc<Mutex<Vec<Req>>>, n: usize) -> Value {
+    serde_json::from_str(&seen.lock().unwrap()[n].body).unwrap()
+}
+
 pub fn sent(seen: &Arc<Mutex<Vec<Req>>>) -> Value {
     serde_json::from_str(&seen.lock().unwrap()[0].body).unwrap()
 }

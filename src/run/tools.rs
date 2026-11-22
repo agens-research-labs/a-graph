@@ -8,6 +8,7 @@ use futures_util::future::join_all;
 
 use super::Program;
 use super::node::logprobs_missing;
+use super::structured::{Mechanism, Next, SchemaOf};
 use crate::error::{Error, Path, Phase, Rule};
 use crate::gate::{self, ToolOutcome};
 use crate::graph::nodes::component::DEFAULT_MAX_ROUNDS;
@@ -171,6 +172,8 @@ impl Program {
             .and_then(|r| r.max_rounds)
             .unwrap_or(DEFAULT_MAX_ROUNDS);
         let mut rounds = 0u32;
+        // `schema_prompt`: the attempts at an answer that is one JSON value, the first one included
+        let (prompt, max_attempts, mut attempts) = (self.schema_prompt_of(node), self.max_attempts_of(node), 0u32);
 
         loop {
             let mut response = self
@@ -190,19 +193,31 @@ impl Program {
             // the tokens of every call, in order: the last list is the final answer
             logprobs.append(&mut response.logprobs);
             if response.tools_call.is_empty() {
-                response.info.usage = usage;
-                response.info.execution_time = time;
-                response.logprobs = logprobs;
                 // the final answer is the one that gives the JSON of the schema
-                if let Some(schema) = &call.schema {
-                    response = self.structured(
-                        &id,
-                        self.nodes.model().get(node).map(|m| m.id.as_str()).unwrap_or_default(),
-                        schema,
-                        response,
-                    )?;
-                }
-                return Ok(response);
+                let model = self.nodes.model().get(node).map(|m| m.id.as_str()).unwrap_or_default();
+                let mut done = match (&call.schema, &prompt) {
+                    (Some(schema), _) => self.structured(&id, model, schema, SchemaOf::Node, response)?,
+                    (None, Some(schema)) => {
+                        attempts += 1;
+                        let mechanism = Mechanism::Prompt {
+                            attempt: attempts,
+                            max: max_attempts,
+                        };
+                        match self.answer(&id, model, schema, mechanism, response)? {
+                            Next::Done(r) => *r,
+                            // the corrections stay in the call: a tool asked after one keeps them in its rounds
+                            Next::Correct(messages) => {
+                                call.corrections.extend(messages);
+                                continue;
+                            }
+                        }
+                    }
+                    (None, None) => response,
+                };
+                done.info.usage = usage;
+                done.info.execution_time = time;
+                done.logprobs = logprobs;
+                return Ok(done);
             }
 
             // every round counts, whatever the model asks for: a skill, a tool the node does not have, a wrong name

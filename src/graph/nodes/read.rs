@@ -211,19 +211,38 @@ pub(super) fn message(mut o: Obj, errs: &mut Errs) -> Message {
         None => (None, Vec::new()),
     };
     let output = o.sub(key::OUTPUT, errs).map(|mut p| {
-        let at = p.at().key(key::SCHEMA);
+        let at = p.at().clone();
         let utility = utility_ids(&mut p, errs);
         let logprobs = p.opt::<u32>(key::LOGPROBS, errs);
         if logprobs.is_some_and(|n| n > MAX_LOGPROBS) {
-            errs.add(&p.at().key(key::LOGPROBS), Rule::BadValue, "logprobs is 0-20");
+            errs.add(&at.key(key::LOGPROBS), Rule::BadValue, "logprobs is 0-20");
         }
+        let api = p.value(key::SCHEMA);
+        let prompt = p.value(key::SCHEMA_PROMPT);
+        // the two mechanisms exclude each other: a node says which one enforces its schema
+        errs.forbid(
+            &at,
+            key::SCHEMA_PROMPT,
+            api.is_some() && prompt.is_some(),
+            "`schema_prompt` and `schema` are two ways to enforce the same schema: write one of them",
+        );
+        let max_attempts = p.opt::<u32>(key::MAX_ATTEMPTS, errs);
+        errs.forbid(
+            &at,
+            key::MAX_ATTEMPTS,
+            max_attempts.is_some() && prompt.is_none(),
+            "`max_attempts` goes with `schema_prompt`: the API of `schema` is asked once",
+        );
+        errs.at_least_one(&at.key(key::MAX_ATTEMPTS), max_attempts);
         MessageOutput {
             utility,
             assistant_message: p.opt(key::ASSISTANT_MESSAGE, errs).unwrap_or(false),
             node: p.opt(key::NODE, errs).unwrap_or(false),
             reasoning: p.opt(key::REASONING, errs).unwrap_or(false),
             logprobs,
-            schema: p.value(key::SCHEMA).and_then(|v| schema(v, &at, errs)),
+            schema: api.and_then(|v| schema(v, &at.key(key::SCHEMA), errs)),
+            schema_prompt: prompt.and_then(|v| schema(v, &at.key(key::SCHEMA_PROMPT), errs)),
+            max_attempts,
         }
     });
     Message {

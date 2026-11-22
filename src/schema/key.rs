@@ -171,6 +171,8 @@ keys! {
     AGENT_MESSAGE = "agent_message",
     ASSISTANT_MESSAGE = "assistant_message",
     SCHEMA = "schema",
+    SCHEMA_PROMPT = "schema_prompt",
+    MAX_ATTEMPTS = "max_attempts",
     VALIDATION_NODE = "validation-node",
     RESPONSE = "response",
     ON_ERROR = "on_error",

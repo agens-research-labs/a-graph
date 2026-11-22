@@ -16,7 +16,7 @@ use serde_json::{Value, json};
 use super::Bedrock;
 use super::convert::{image_format, to_document};
 use crate::models::Reasoning;
-use crate::models::{MediaInput, ModelError, ModelInvocation, Role, ToolRound};
+use crate::models::{ChatEntry, MediaInput, ModelError, ModelInvocation, Role, ToolRound};
 
 impl Bedrock {
     pub(super) async fn converse(&self, client: &Client, call: &ModelInvocation) -> Result<ConverseOutput, ModelError> {
@@ -106,12 +106,15 @@ impl Bedrock {
         };
         let fail = |e: aws_smithy_types::error::operation::BuildError| self.who.unsupported(vec![e.to_string()]);
 
-        for e in &call.history {
+        let entry = |e: &ChatEntry| {
             let role = match e.role {
                 Role::User => ConversationRole::User,
                 Role::Assistant => ConversationRole::Assistant,
             };
-            messages.push(build(role, vec![ContentBlock::Text(e.content.clone())]).map_err(fail)?);
+            build(role, vec![ContentBlock::Text(e.content.clone())]).map_err(fail)
+        };
+        for e in &call.history {
+            messages.push(entry(e)?);
         }
 
         let mut content = Vec::new();
@@ -144,6 +147,10 @@ impl Bedrock {
 
         for round in &call.tool_rounds {
             messages.extend(self.tool_round(round)?);
+        }
+        // the corrections of `schema_prompt` come last, after the tool rounds
+        for e in &call.corrections {
+            messages.push(entry(e)?);
         }
         Ok(messages)
     }

@@ -76,6 +76,9 @@ pub struct Resources {
 /// The default of `resources.max_rounds`.
 pub const DEFAULT_MAX_ROUNDS: u32 = 20;
 
+/// The default of `max_attempts`: the first call and two corrections.
+pub const DEFAULT_MAX_ATTEMPTS: u32 = 3;
+
 #[derive(Debug, Clone)]
 pub struct BlackboardWrite {
     pub enabled: bool,
@@ -161,8 +164,13 @@ pub struct MessageOutput {
     pub reasoning: bool,
     /// How many alternatives of each token come with the log probabilities, 0 to 20; absent = none asked.
     pub logprobs: Option<u32>,
-    /// A JSON Schema as a JSON object; absent = raw text.
+    /// A JSON Schema as a JSON object, enforced by the API of the provider; absent = raw text.
     pub schema: Option<Json>,
+    /// A JSON Schema as a JSON object, enforced by a-graph through the prompt (`schema_prompt`); never together
+    /// with `schema`.
+    pub schema_prompt: Option<Json>,
+    /// The most calls for one answer of `schema_prompt`, the first included; `None` is `DEFAULT_MAX_ATTEMPTS`.
+    pub max_attempts: Option<u32>,
     /// Ids of `utilities` the text produced goes through, once, before every destination.
     pub utility: Vec<String>,
 }

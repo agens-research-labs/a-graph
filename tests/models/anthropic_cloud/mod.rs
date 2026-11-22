@@ -51,6 +51,7 @@ fn call(user: &str) -> ModelInvocation {
         reasoning: None,
         logprobs: None,
         tool_rounds: vec![],
+        corrections: vec![],
     }
 }
 

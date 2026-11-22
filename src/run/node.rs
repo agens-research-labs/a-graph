@@ -14,6 +14,7 @@ use crate::error::{Error, Path, Phase, Rule};
 use crate::graph::CHUNKS;
 use crate::graph::Entity;
 use crate::graph::nodes::component::{InFrom, MediaIn, OutFrom, Validation};
+use crate::models::structured::instructions;
 use crate::models::{
     MediaInput, MediaOutput, ModelInvocation, ModelResponse, ProducedMedia, ResponseInfo, StopReason, TokenLogprob,
 };
@@ -178,6 +179,12 @@ impl Program {
             Some(catalog) => format!("{system}\n\n{catalog}"),
             None => system,
         };
+        // `schema_prompt`: the schema is written at the end of the system prompt, and the provider gets none
+        let system = match self.schema_prompt_of(node) {
+            Some(schema) if system.is_empty() => instructions(&schema),
+            Some(schema) => format!("{system}\n\n{}", instructions(&schema)),
+            None => system,
+        };
 
         // the media the node reads, and the ones it asks to produce
         let mut media = Vec::new();
@@ -234,6 +241,7 @@ impl Program {
                 .and_then(|m| m.output.as_ref())
                 .and_then(|o| o.logprobs),
             tool_rounds: Vec::new(),
+            corrections: Vec::new(),
         };
         self.node_started(node);
         Ok(Prepared {

@@ -8,5 +8,9 @@ async fn live_structured() {
     c.max_tokens = Some(200);
     c.schema = Some(json!({ "type": "object", "properties": { "city": { "type": "string" } }, "required": ["city"] }));
     let r = live("gemini-3.5-flash-lite").invoke(&c).await.unwrap();
-    assert_eq!(r.structured.unwrap()["city"], "Rome");
+    // the provider gives the text; a-graph reads the JSON of it
+    match a_graph::models::structured::check(c.schema.as_ref().unwrap(), &r) {
+        a_graph::models::structured::Checked::Valid(v) => assert_eq!(v["city"], "Rome"),
+        other => panic!("{other:?}"),
+    }
 }

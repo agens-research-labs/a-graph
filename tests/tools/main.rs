@@ -77,3 +77,6 @@ mod cut_call_not_run;
 
 #[path = "logprobs_every_call/logprobs_every_call.rs"]
 mod logprobs_every_call;
+
+#[path = "prompt_after_tool/prompt_after_tool.rs"]
+mod prompt_after_tool;

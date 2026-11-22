@@ -48,6 +48,21 @@ mod schema_wrong_shape;
 #[path = "schema_refused/schema_refused.rs"]
 mod schema_refused;
 
+#[path = "schema_prompt_rules/schema_prompt_rules.rs"]
+mod schema_prompt_rules;
+
+#[path = "prompt_sends_no_schema/prompt_sends_no_schema.rs"]
+mod prompt_sends_no_schema;
+
+#[path = "prompt_corrects/prompt_corrects.rs"]
+mod prompt_corrects;
+
+#[path = "prompt_attempt_limit/prompt_attempt_limit.rs"]
+mod prompt_attempt_limit;
+
+#[path = "prompt_no_correction/prompt_no_correction.rs"]
+mod prompt_no_correction;
+
 #[path = "schema_yml_to_json/schema_yml_to_json.rs"]
 mod schema_yml_to_json;
 

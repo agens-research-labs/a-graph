@@ -10,4 +10,5 @@ async fn schema_broken_answer() {
     let (p, _) = program(here(), "schema_broken_answer", Resp::ok(chat("{\"a\": 1", None))).await;
     let e = p.run_node(entity(&p), user("q")).await.unwrap_err();
     assert_eq!(e.rule.code(), "schema_mismatch");
+    assert!(e.message.contains("schema_prompt"), "{}", e.message);
 }

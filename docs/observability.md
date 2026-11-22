@@ -36,7 +36,7 @@ the contents are hidden. Even for public data, traces require the separate opt-i
 | `model.error` | error | `model`, `gen_ai.provider.name`, `error.type`, `http.response.status_code` when available, `duration`, `message` | `system_prompt`, `prompt`, `detail` |
 | `model.call` | debug | `model`, `input_tokens`, `output_tokens`, `duration`, `gen_ai.*` (see below) | `system_prompt`, `prompt`, `answer`, `reasoning` |
 | `tool.call` | debug | `kind` (`tool`, `mcp`, `skill`), `name`, `duration`, `is_error` | `result` |
-| `structured.attempt` | debug when `valid`, warn otherwise | `model`, `mechanism` (`api`), `attempt`, `max_attempts`, `outcome` (`valid`, `not_json`, `incomplete`, `refused`, `schema_mismatch`), `message` | `reasons` |
+| `structured.attempt` | debug when `valid`, warn otherwise | `model`, `mechanism` (`api`, `prompt`), `attempt`, `max_attempts`, `outcome` (`valid`, `not_json`, `incomplete`, `refused`, `schema_mismatch`), `message` | `reasons`, and `correction` when the answer is sent back |
 | `utility.call` | debug | `id`, `place`, `duration` | |
 | `read.vectordb` | debug | `id`, `chunks`, `duration` | |
 | `read.memory` | debug | `id`, `messages`, `summary`, `duration` | |
@@ -48,7 +48,9 @@ Every answer that a-graph checks against a schema, of a node, a judge, a react c
 `structured.attempt`: its `outcome` and a `message` that holds no content, and as `reasons` what the reader or the
 validator found, which may quote the answer. An answer that is not `valid` is a warning, never an error: when it stops
 the run, the error of the run follows it. `corrections` in `node.end` is how many corrections the node needed; with
-the provider's API (`mechanism: api`) the answer is asked once, so it is `0`.
+the provider's API (`mechanism: api`) the answer is asked once, so it is `0`; with `schema_prompt`
+(`mechanism: prompt`) every attempt is a `model.call` and a `structured.attempt` of its own, the text sent back is the
+content `correction` of the attempt that needed it, and the tokens of all the attempts are in `node.end`.
 
 An error is an event too, of level `error`, with the code of its rule and the fields `phase`, `path` and `message`. A
 run that fails ends with its error instead of `run.end`. A warning is an event of level `warn`.

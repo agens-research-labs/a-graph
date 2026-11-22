@@ -4,7 +4,7 @@ use serde_json::{Map, Value, json};
 
 use super::Ollama;
 use crate::models::Reasoning;
-use crate::models::{MediaInput, ModelError, ModelInvocation, Role, ToolRound};
+use crate::models::{ChatEntry, MediaInput, ModelError, ModelInvocation, Role, ToolRound};
 
 impl Ollama {
     pub(crate) fn request_body(&self, call: &ModelInvocation) -> Result<Value, ModelError> {
@@ -66,13 +66,14 @@ impl Ollama {
         if !call.system.is_empty() {
             messages.push(json!({ "role": "system", "content": call.system }));
         }
-        for e in &call.history {
+        let entry = |e: &ChatEntry| {
             let role = match e.role {
                 Role::User => "user",
                 Role::Assistant => "assistant",
             };
-            messages.push(json!({ "role": role, "content": e.content }));
-        }
+            json!({ "role": role, "content": e.content })
+        };
+        messages.extend(call.history.iter().map(entry));
 
         // markdown media go before the question, as text; images go in `images`
         let mut parts: Vec<&str> = Vec::new();
@@ -93,6 +94,8 @@ impl Ollama {
         for round in &call.tool_rounds {
             messages.extend(tool_round(round));
         }
+        // the corrections of `schema_prompt` come last, after the tool rounds
+        messages.extend(call.corrections.iter().map(entry));
         messages
     }
 }

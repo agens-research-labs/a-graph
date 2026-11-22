@@ -651,7 +651,9 @@ The form with `url` and `access`:
 | `node` | no | `true` or `false` | `true`: the answer goes to the node connected after, as its `agent_message`. The default is `false`. |
 | `reasoning` | no | `true` or `false` | `true`: the reasoning of the model goes to the final output, even when `assistant_message` is false. It never goes to another node. The default is `false`. |
 | `logprobs` | no | whole number | From 0 to 20: the log probability of every token of the answer goes to the final output, even when `assistant_message` is false, with that many most likely alternatives for each token; on `ollama` and `custom` a model that reasons gives those of its reasoning too, before them. It never goes to another node. Only on `openai`, `mistral`, `ollama`, `custom` and `azure_foundry` with publisher `openai`. Without it nothing is asked. |
-| `schema` | no | any value | A JSON Schema, written as JSON in a text or as YAML: the model answers in that shape, and the answer is a JSON value. It must be a valid JSON Schema (`bad_value`). |
+| `schema` | no | any value | A JSON Schema, written as JSON in a text or as YAML: the model answers in that shape, and the answer is a JSON value. The API of the provider enforces it. It must be a valid JSON Schema (`bad_value`). |
+| `schema_prompt` | no | any value | A JSON Schema, as `schema`, enforced by a-graph instead of the API, for a model whose API does not: the schema is written in the prompt, and an answer that is not one JSON value is sent back to the model to be corrected. Never together with `schema` (`unexpected_field`), nor on the nodes of a `batch` (`batch_schema_prompt`). It must be a valid JSON Schema (`bad_value`). |
+| `max_attempts` | no | whole number | With `schema_prompt` only: the most calls for one answer, the first one included, so that 1 corrects nothing. The default is 3, at least 1. When the last one is not one JSON value the run stops (`attempt_limit`). |
 | `utility` | no | the id of an utility, or list of: the id of an utility | Utilities that change the answer once, before every destination. |
 
 ## `graph.nodes[].validation-node`

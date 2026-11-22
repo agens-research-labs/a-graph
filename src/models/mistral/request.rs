@@ -4,7 +4,7 @@ use serde_json::{Map, Value, json};
 
 use super::Mistral;
 use crate::models::Reasoning;
-use crate::models::{MediaInput, ModelError, ModelInvocation, Role, ToolRound};
+use crate::models::{ChatEntry, MediaInput, ModelError, ModelInvocation, Role, ToolRound};
 
 fn image_mime(format: &str) -> String {
     match format.to_lowercase().as_str() {
@@ -60,13 +60,14 @@ impl Mistral {
         if !call.system.is_empty() {
             messages.push(json!({ "role": "system", "content": call.system }));
         }
-        for e in &call.history {
+        let entry = |e: &ChatEntry| {
             let role = match e.role {
                 Role::User => "user",
                 Role::Assistant => "assistant",
             };
-            messages.push(json!({ "role": role, "content": e.content }));
-        }
+            json!({ "role": role, "content": e.content })
+        };
+        messages.extend(call.history.iter().map(entry));
 
         let mut chunks = Vec::new();
         for m in &call.media {
@@ -83,6 +84,8 @@ impl Mistral {
         for round in &call.tool_rounds {
             messages.extend(tool_round(round));
         }
+        // the corrections of `schema_prompt` come last, after the tool rounds
+        messages.extend(call.corrections.iter().map(entry));
         messages
     }
 }

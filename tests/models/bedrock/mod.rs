@@ -55,6 +55,7 @@ fn call(user: &str) -> ModelInvocation {
         reasoning: None,
         logprobs: None,
         tool_rounds: vec![],
+        corrections: vec![],
     }
 }
 
@@ -219,3 +220,22 @@ mod batch_slow_file;
 
 #[path = "no_logprobs/no_logprobs.rs"]
 mod no_logprobs;
+
+#[path = "correction_last/correction_last.rs"]
+mod correction_last;
+
+#[path = "live_correction/live_correction.rs"]
+mod live_correction;
+
+/// The real Bedrock, with the keys of the environment.
+fn live_bedrock() -> Bedrock {
+    let mut m = model(BedrockCredentials::Keys {
+        access_key: "AWS_ACCESS_KEY_ID".into(),
+        secret_key: "AWS_SECRET_ACCESS_KEY".into(),
+        session_token: None,
+    });
+    if let Ok(id) = std::env::var("A_GRAPH_LIVE_BEDROCK_MODEL") {
+        m.common.model = id;
+    }
+    Bedrock::new(&m, &Path::root()).unwrap()
+}

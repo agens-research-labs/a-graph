@@ -605,6 +605,26 @@ fn batch_nodes(nodes: &Nodes, edges: &Edges, errs: &mut Vec<Error>) -> HashSet<E
                     format!("node `{}` is in a batch and has tools, MCP servers or skills: the answer of a batch is the last one, so its tool calls would never run", nodes.id(e).unwrap_or_default()),
                 ));
             }
+            // a batch answer is the last one too: a correction of `schema_prompt` could never be sent
+            let prompt = nodes
+                .message()
+                .get(e)
+                .and_then(|m| m.output.as_ref())
+                .is_some_and(|o| o.schema_prompt.is_some());
+            if prompt {
+                let at = Path::root()
+                    .key(key::GRAPH)
+                    .key(key::NODES)
+                    .idx(e.0 as usize)
+                    .key(key::MESSAGE)
+                    .key(key::OUTPUT)
+                    .key(key::SCHEMA_PROMPT);
+                errs.push(err(
+                    at,
+                    Rule::BatchSchemaPrompt,
+                    format!("node `{}` is in a batch and has a `schema_prompt`: the answer of a batch is the last one, so a correction could never be sent; use `schema`, or take the node out of the batch", nodes.id(e).unwrap_or_default()),
+                ));
+            }
         }
         all.extend(members);
     }

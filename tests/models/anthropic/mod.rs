@@ -45,6 +45,7 @@ fn call(user: &str) -> ModelInvocation {
         reasoning: None,
         logprobs: None,
         tool_rounds: vec![],
+        corrections: vec![],
     }
 }
 
@@ -202,3 +203,9 @@ mod batch_type_not_fixed;
 
 #[path = "no_logprobs/no_logprobs.rs"]
 mod no_logprobs;
+
+#[path = "correction_last/correction_last.rs"]
+mod correction_last;
+
+#[path = "live_correction/live_correction.rs"]
+mod live_correction;

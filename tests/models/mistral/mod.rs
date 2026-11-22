@@ -44,6 +44,7 @@ fn call(user: &str) -> ModelInvocation {
         reasoning: None,
         logprobs: None,
         tool_rounds: vec![],
+        corrections: vec![],
     }
 }
 
@@ -171,3 +172,9 @@ mod logprobs_asked;
 
 #[path = "logprobs_speech_refused/logprobs_speech_refused.rs"]
 mod logprobs_speech_refused;
+
+#[path = "correction_last/correction_last.rs"]
+mod correction_last;
+
+#[path = "live_correction/live_correction.rs"]
+mod live_correction;

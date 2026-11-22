@@ -24,6 +24,19 @@ pub enum Checked {
     SchemaMismatch { reasons: Vec<String> },
 }
 
+/// What `schema_prompt` adds at the end of the system prompt: a fixed text and the schema as it is written, with
+/// its keys in their order.
+pub fn instructions(schema: &Value) -> String {
+    let written = serde_json::to_string_pretty(schema).unwrap_or_else(|_| schema.to_string());
+    format!(
+        "Answer with one JSON value only, with no text before or after it and no code fence.\nThe value must match this JSON Schema:\n{written}"
+    )
+}
+
+/// What a-graph asks when an answer of `schema_prompt` is not one JSON value: always the same text, for every
+/// model and every attempt.
+pub const CORRECTION: &str = "Your answer is not one JSON value. Answer again with one JSON value only, with no text before or after it and no code fence, matching the JSON Schema.";
+
 /// Reads `response`, the answer to a call that asked for `schema`. The stop reason comes first: a refusal and
 /// a cut answer are what they are, whatever the text.
 pub fn check(schema: &Value, response: &ModelResponse) -> Checked {

@@ -3,7 +3,7 @@
 use serde_json::{Map, Value, json};
 
 use super::{Anthropic, Flavor};
-use crate::models::{MediaInput, ModelError, ModelInvocation, Reasoning, Role, ToolRound};
+use crate::models::{ChatEntry, MediaInput, ModelError, ModelInvocation, Reasoning, Role, ToolRound};
 
 /// The media type of an image format, if Anthropic accepts it.
 pub(super) fn image_mime(format: &str) -> Option<&'static str> {
@@ -94,11 +94,8 @@ impl Anthropic {
     }
 
     fn messages(&self, call: &ModelInvocation) -> Result<Vec<Value>, ModelError> {
-        let mut messages: Vec<Value> = call
-            .history
-            .iter()
-            .map(|e| json!({ "role": role(e.role), "content": e.content }))
-            .collect();
+        let entry = |e: &ChatEntry| json!({ "role": role(e.role), "content": e.content });
+        let mut messages: Vec<Value> = call.history.iter().map(entry).collect();
 
         // media first, then the question
         let mut content = Vec::new();
@@ -127,6 +124,8 @@ impl Anthropic {
         for round in &call.tool_rounds {
             messages.extend(tool_round(round));
         }
+        // the corrections of `schema_prompt` come last, after the tool rounds
+        messages.extend(call.corrections.iter().map(entry));
         Ok(messages)
     }
 }

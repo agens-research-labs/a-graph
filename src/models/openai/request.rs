@@ -4,7 +4,7 @@ use serde_json::{Map, Value, json};
 
 use super::OpenAi;
 use crate::models::Reasoning;
-use crate::models::{MediaInput, ModelError, ModelInvocation, Role, ToolRound};
+use crate::models::{ChatEntry, MediaInput, ModelError, ModelInvocation, Role, ToolRound};
 
 /// The media type of an image format, as it goes in a data URL.
 fn image_mime(format: &str) -> String {
@@ -82,17 +82,14 @@ impl OpenAi {
     }
 
     fn input(&self, call: &ModelInvocation) -> Vec<Value> {
-        let mut items: Vec<Value> = call
-            .history
-            .iter()
-            .map(|e| {
-                let role = match e.role {
-                    Role::User => "user",
-                    Role::Assistant => "assistant",
-                };
-                json!({ "role": role, "content": e.content })
-            })
-            .collect();
+        let entry = |e: &ChatEntry| {
+            let role = match e.role {
+                Role::User => "user",
+                Role::Assistant => "assistant",
+            };
+            json!({ "role": role, "content": e.content })
+        };
+        let mut items: Vec<Value> = call.history.iter().map(entry).collect();
 
         let mut parts = Vec::new();
         for m in &call.media {
@@ -111,6 +108,8 @@ impl OpenAi {
         for round in &call.tool_rounds {
             items.extend(tool_round(round));
         }
+        // the corrections of `schema_prompt` come last, after the tool rounds
+        items.extend(call.corrections.iter().map(entry));
         items
     }
 }

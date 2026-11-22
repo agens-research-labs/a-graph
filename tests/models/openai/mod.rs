@@ -47,6 +47,7 @@ fn call(user: &str) -> ModelInvocation {
         reasoning: None,
         logprobs: None,
         tool_rounds: vec![],
+        corrections: vec![],
     }
 }
 
@@ -240,3 +241,9 @@ mod batch_logprobs;
 
 #[path = "logprobs_media_refused/logprobs_media_refused.rs"]
 mod logprobs_media_refused;
+
+#[path = "correction_last/correction_last.rs"]
+mod correction_last;
+
+#[path = "live_correction/live_correction.rs"]
+mod live_correction;

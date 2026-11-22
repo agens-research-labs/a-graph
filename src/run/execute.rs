@@ -20,6 +20,7 @@ use tokio::task::JoinSet;
 use super::events::{CTX, Where, here};
 use super::judge::Verdict;
 use super::node::logprobs_missing;
+use super::structured::SchemaOf;
 use super::{Content, Delivery, NodeInput, NodeOutput, Program};
 use crate::error::{Error, Path, Phase, Rule};
 use crate::graph::Entity;
@@ -428,6 +429,7 @@ impl Program {
                         self.nodes.id(nodes[i]).unwrap_or_default(),
                         &prepared[i].model,
                         schema,
+                        SchemaOf::Node,
                         response,
                     )?,
                     None => response,
@@ -557,7 +559,7 @@ impl Program {
                 logprobs.extend(response.logprobs.iter().cloned());
                 // the routing output matches its schema, or the run stops here: `done` is a boolean and
                 // `next_worker` one of the workers, or empty
-                let response = self.structured(&cid, &prepared.model, &schema, response)?;
+                let response = self.structured(&cid, &prepared.model, &schema, SchemaOf::Program, response)?;
                 let routing = response.structured.clone().unwrap_or_default();
                 let done = routing["done"] == Value::Bool(true);
 

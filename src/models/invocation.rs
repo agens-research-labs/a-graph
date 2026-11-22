@@ -28,6 +28,9 @@ pub struct ModelInvocation {
     pub logprobs: Option<u32>,
     /// Empty on the first call; the node adds one round per pass of the tool loop.
     pub tool_rounds: Vec<ToolRound>,
+    /// After the tool rounds, the corrections of `schema_prompt`: each answer that was not usable JSON, as an
+    /// `assistant` message, then what a-graph asked instead, as a `user` message. Empty on the first call.
+    pub corrections: Vec<ChatEntry>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

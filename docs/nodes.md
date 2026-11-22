@@ -84,7 +84,31 @@ provider, and checks it against the schema. The answer is the whole text, or the
   of the context window it says that the request exceeded it.
 
 What the model wrote is the `detail` of the error, never its message. The verdict of a judge and the routing output of
-a react controller are checked against their schema in the same way.
+a react controller are checked against their schema in the same way. With `schema`, the message of an answer that is
+not one JSON value suggests `schema_prompt`.
+
+### `schema_prompt`
+
+Some models have no structured output in their API, or ignore it: Ollama's cloud models, for one. For them the node
+writes its schema as `schema_prompt` instead of `schema`; never both (`unexpected_field`). The provider then gets no
+schema: a-graph adds, at the end of the system prompt, a fixed text and the schema as it is written:
+
+```
+Answer with one JSON value only, with no text before or after it and no code fence.
+The value must match this JSON Schema:
+<the schema>
+```
+
+The answer is read and checked as with `schema`, with one difference: an answer that is not one JSON value (a text, a
+text around the JSON, two values, a JSON left open by a model that ended by itself) is sent back to the model, after
+everything else in the conversation, tool rounds included, with a fixed request to answer again with one JSON value
+only. `max_attempts` (default 3, at least 1, only with `schema_prompt`) is the most calls for one answer, the first one
+included; when the last one is not one JSON value either, the run stops (`attempt_limit`), with that answer as the
+`detail`. Everything else is never corrected and stops the run as with `schema`: a JSON that does not match the
+schema, a refusal, a cut answer. The wrong answers and the corrections are not the answer of the node: what goes on,
+to the final output, to the next node and to the memories, is only the JSON. A node that calls tools may also have a
+`schema_prompt`: the tools are called through the API as always, and only the final answer is checked. Every attempt
+is a `structured.attempt` of the log (see [observability](observability.md)), and `node.end` counts the corrections.
 
 Each produced media decides its own destinations with its `assistant` and `node`.
 

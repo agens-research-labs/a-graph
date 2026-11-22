@@ -238,6 +238,7 @@ impl Program {
             reasoning: None,
             logprobs: None,
             tool_rounds: Vec::new(),
+            corrections: Vec::new(),
         };
         let llm = self
             .models

@@ -50,3 +50,6 @@ mod tools_refused;
 
 #[path = "logprobs_missing/logprobs_missing.rs"]
 mod logprobs_missing;
+
+#[path = "schema_prompt_refused/schema_prompt_refused.rs"]
+mod schema_prompt_refused;

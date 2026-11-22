@@ -14,7 +14,12 @@ async fn live_call() {
     let mut c = call("The capital of Italy.");
     c.max_tokens = Some(100);
     c.schema = Some(json!({ "type": "object", "properties": { "city": { "type": "string" } }, "required": ["city"] }));
-    assert_eq!(model.invoke(&c).await.unwrap().structured.unwrap()["city"], "Rome");
+    // the provider gives the text; a-graph reads the JSON of it
+    let r = model.invoke(&c).await.unwrap();
+    match a_graph::models::structured::check(c.schema.as_ref().unwrap(), &r) {
+        a_graph::models::structured::Checked::Valid(v) => assert_eq!(v["city"], "Rome"),
+        other => panic!("{other:?}"),
+    }
 
     let mut c = call("What is the weather in Rome? Use the tool.");
     c.tools = vec![ToolDefinition {
