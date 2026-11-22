@@ -51,7 +51,7 @@ impl Bedrock {
                 ContentBlock::ToolUse(t) => {
                     // a cut answer may hold a tool call cut in the middle
                     if stop_reason.is_cut() {
-                        return Err(self.who.truncated());
+                        return Err(self.who.truncated(stop_reason));
                     }
                     let arguments = from_document(t.input());
                     if !arguments.is_object() {
@@ -76,7 +76,7 @@ impl Bedrock {
         // a refusal is a text, schema or not: the message of the guardrail
         if schema && stop_reason != StopReason::Refused {
             if stop_reason.is_cut() {
-                return Err(self.who.truncated());
+                return Err(self.who.truncated(stop_reason));
             }
             if tools_call.is_empty() {
                 structured = Some(

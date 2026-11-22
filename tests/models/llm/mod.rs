@@ -119,5 +119,8 @@ mod batch_status;
 #[path = "error_names_model/error_names_model.rs"]
 mod error_names_model;
 
+#[path = "cut_says_why/cut_says_why.rs"]
+mod cut_says_why;
+
 #[path = "manager_serves/manager_serves.rs"]
 mod manager_serves;

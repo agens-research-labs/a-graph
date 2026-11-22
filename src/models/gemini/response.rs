@@ -95,7 +95,7 @@ impl Gemini {
                     }
                 }
                 // a cut answer may hold a tool call cut in the middle
-                Some("function_call") if stop_reason.is_cut() => return Err(self.who.truncated()),
+                Some("function_call") if stop_reason.is_cut() => return Err(self.who.truncated(stop_reason)),
                 Some("function_call") => tools_call.push(ToolCall {
                     call_id: step
                         .get("id")
@@ -125,7 +125,7 @@ impl Gemini {
         let (mut message, mut structured) = (None, None);
         if call.schema.is_some() {
             if stop_reason.is_cut() {
-                return Err(self.who.truncated());
+                return Err(self.who.truncated(stop_reason));
             }
             if tools_call.is_empty() {
                 structured = Some(

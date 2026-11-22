@@ -1,6 +1,7 @@
 //! Which model and provider an error is about: every provider builds its `ModelError`s here.
 
-use super::error::{ModelError, answered, fixed_code};
+use super::error::{Cut, ModelError, answered, fixed_code};
+use super::response::StopReason;
 
 #[derive(Debug, Clone)]
 pub(crate) struct Identity {
@@ -130,9 +131,15 @@ impl Identity {
         }
     }
 
-    pub(crate) fn truncated(&self) -> ModelError {
+    /// A cut output, from the stop reason that cut it.
+    pub(crate) fn truncated(&self, stop: StopReason) -> ModelError {
         let (model, provider) = self.parts();
-        ModelError::Truncated { model, provider }
+        let cut = if stop == StopReason::ContextExceeded {
+            Cut::ContextWindow
+        } else {
+            Cut::MaxTokens
+        };
+        ModelError::Truncated { model, provider, cut }
     }
 
     pub(crate) fn mime_mismatch(&self, expected: &str, produced: &str) -> ModelError {

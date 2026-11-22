@@ -32,7 +32,14 @@ fn error_names_model() {
         "model `m` (p): the provider answered with an error: batch expired"
     );
     let (model, provider) = m();
-    assert!(e(ModelError::Truncated { model, provider }).contains("`m` (p)"));
+    assert!(
+        e(ModelError::Truncated {
+            model,
+            provider,
+            cut: Cut::MaxTokens
+        })
+        .contains("`m` (p)")
+    );
     let (model, provider) = m();
     assert!(
         e(ModelError::MimeMismatch {

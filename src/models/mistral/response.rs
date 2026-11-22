@@ -51,7 +51,7 @@ impl Mistral {
         for c in msg.get("tool_calls").and_then(Value::as_array).into_iter().flatten() {
             // a cut answer may hold a tool call cut in the middle
             if stop_reason.is_cut() {
-                return Err(self.who.truncated());
+                return Err(self.who.truncated(stop_reason));
             }
             let f = c
                 .get("function")
@@ -88,7 +88,7 @@ impl Mistral {
         let (mut message, mut structured) = (None, None);
         if schema {
             if stop_reason.is_cut() {
-                return Err(self.who.truncated());
+                return Err(self.who.truncated(stop_reason));
             }
             if tools_call.is_empty() {
                 structured = Some(

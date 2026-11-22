@@ -83,7 +83,7 @@ impl OpenAi {
                 // a refusal asks for nothing: its tool calls are never run
                 Some("function_call") if stop_reason == StopReason::Refused => {}
                 // a cut answer may hold a tool call cut in the middle
-                Some("function_call") if stop_reason.is_cut() => return Err(self.who.truncated()),
+                Some("function_call") if stop_reason.is_cut() => return Err(self.who.truncated(stop_reason)),
                 Some("function_call") => {
                     // the arguments are a JSON string
                     let raw = item
@@ -123,7 +123,7 @@ impl OpenAi {
             message = Some(refusal);
         } else if schema {
             if stop_reason.is_cut() {
-                return Err(self.who.truncated());
+                return Err(self.who.truncated(stop_reason));
             }
             if tools_call.is_empty() && stop_reason != StopReason::Refused {
                 structured = Some(

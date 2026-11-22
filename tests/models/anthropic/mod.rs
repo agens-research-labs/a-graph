@@ -134,6 +134,9 @@ mod tool_rounds;
 #[path = "structured/structured.rs"]
 mod structured;
 
+#[path = "cut_reason/cut_reason.rs"]
+mod cut_reason;
+
 #[path = "stop_reasons/stop_reasons.rs"]
 mod stop_reasons;
 

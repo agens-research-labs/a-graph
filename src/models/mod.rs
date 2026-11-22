@@ -26,7 +26,7 @@ pub use anthropic::Anthropic;
 pub use auth::{AzureAmbient, GoogleAdc, StaticToken, TokenSource};
 pub use batch::*;
 pub use bedrock::Bedrock;
-pub use error::ModelError;
+pub use error::{Cut, ModelError};
 pub use gemini::Gemini;
 pub(crate) use http::{client as http_client, send as http_send};
 pub(crate) use identity::Identity;

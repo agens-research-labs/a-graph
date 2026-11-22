@@ -47,7 +47,7 @@ impl Anthropic {
                 Some("tool_use") => {
                     // a cut answer may hold a `tool_use` block cut in the middle
                     if stop_reason.is_cut() {
-                        return Err(self.who.truncated());
+                        return Err(self.who.truncated(stop_reason));
                     }
                     let arguments = b
                         .get("input")
@@ -81,7 +81,7 @@ impl Anthropic {
         // a refusal is a text, schema or not
         if schema && stop_reason != StopReason::Refused {
             if stop_reason.is_cut() {
-                return Err(self.who.truncated());
+                return Err(self.who.truncated(stop_reason));
             }
             // a model that asks for a tool first has no JSON yet
             if tools_call.is_empty() {

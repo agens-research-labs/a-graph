@@ -55,9 +55,9 @@ pub enum ModelError {
     },
 
     /// The output stopped before its end (`StopReason::is_cut`) while a schema was required, so the JSON is cut;
-    /// or while it asked for a tool, so the call may be cut and is not run.
-    #[error("model `{model}` ({provider}): the output was cut before its end")]
-    Truncated { model: String, provider: String },
+    /// or while it asked for a tool, so the call may be cut and is not run. `cut` says where it stopped.
+    #[error("model `{model}` ({provider}): the output was cut before its end{}", cut_text(*cut))]
+    Truncated { model: String, provider: String, cut: Cut },
 
     #[error("model `{model}` ({provider}): expected media `{expected}`, produced `{produced}`")]
     MimeMismatch {
@@ -66,6 +66,23 @@ pub enum ModelError {
         expected: String,
         produced: String,
     },
+}
+
+/// Where a cut output stopped.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Cut {
+    /// At `max_tokens`.
+    MaxTokens,
+    /// At the end of the context window of the model.
+    ContextWindow,
+}
+
+/// What a cut output adds to its message: where it stopped, and what to do about it.
+fn cut_text(cut: Cut) -> &'static str {
+    match cut {
+        Cut::MaxTokens => ", at `max_tokens`: increase `max_tokens`",
+        Cut::ContextWindow => ": the request exceeded the context window of the model",
+    }
 }
 
 impl ModelError {

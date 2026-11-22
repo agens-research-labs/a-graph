@@ -72,7 +72,8 @@ schema: a field of reasoning written before the answer is written first. When th
 text of the refusal instead. A node that has a
 `schema` and goes through output utilities gives them the JSON as a text, and what they give back is a text. An answer
 that stopped before its end, at `max_tokens` or at the end of the context window, has its JSON cut: the run stops
-(`model_failed`).
+(`model_failed`), and the message says which of the two: at `max_tokens` it asks to increase `max_tokens`, at the end
+of the context window it says that the request exceeded it.
 
 Each produced media decides its own destinations with its `assistant` and `node`.
 
