@@ -26,6 +26,7 @@ impl Fake {
                     output_tokens: 5,
                     ..Usage::default()
                 },
+                corrections: None,
             },
         }
     }

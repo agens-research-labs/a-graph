@@ -1,0 +1,28 @@
+# One node `n` without a schema, on a mock ({{port:model}}); the log at `debug` in a file.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: debug, output: { file: ./target/test-output/schema_attempt_none.log } }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:{{port:model}}
+    input: [text]
+    output: [text]
+graph:
+  nodes:
+    - id: n
+      model: { id: m }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true }
+  edges:
+    - start: n

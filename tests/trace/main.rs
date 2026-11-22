@@ -53,3 +53,6 @@ mod error_detail_hidden;
 
 #[path = "error_detail_shown/error_detail_shown.rs"]
 mod error_detail_shown;
+
+#[path = "schema_attempt_traced/schema_attempt_traced.rs"]
+mod schema_attempt_traced;

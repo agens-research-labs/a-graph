@@ -92,6 +92,7 @@ impl Mistral {
                 model: self.model.clone(),
                 execution_time: secs,
                 usage: Usage::default(),
+                corrections: None,
             },
         })
     }

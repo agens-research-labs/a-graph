@@ -29,6 +29,7 @@ impl Llm for Refuses {
                 model: "m".into(),
                 execution_time: 0.0,
                 usage: Usage::default(),
+                corrections: None,
             },
         })
     }

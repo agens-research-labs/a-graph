@@ -195,7 +195,12 @@ impl Program {
                 response.logprobs = logprobs;
                 // the final answer is the one that gives the JSON of the schema
                 if let Some(schema) = &call.schema {
-                    response = self.structured(&id, schema, response)?;
+                    response = self.structured(
+                        &id,
+                        self.nodes.model().get(node).map(|m| m.id.as_str()).unwrap_or_default(),
+                        schema,
+                        response,
+                    )?;
                 }
                 return Ok(response);
             }

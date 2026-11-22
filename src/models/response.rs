@@ -130,6 +130,9 @@ pub struct ResponseInfo {
     /// Seconds, from the request sent to the full response received, network included.
     pub execution_time: f64,
     pub usage: Usage,
+    /// How many corrections a-graph asked for before the answer matched its schema: `None` when no schema was
+    /// checked. A provider always leaves it `None`.
+    pub corrections: Option<u32>,
 }
 
 /// The common numeric counts; each trait converts its own. The tool loop sums them field by field.

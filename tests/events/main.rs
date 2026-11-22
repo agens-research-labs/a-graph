@@ -23,3 +23,6 @@ mod vectordb_read_logged;
 
 #[path = "tool_schema_ignored/tool_schema_ignored.rs"]
 mod tool_schema_ignored;
+
+#[path = "schema_attempt_logged/schema_attempt_logged.rs"]
+mod schema_attempt_logged;

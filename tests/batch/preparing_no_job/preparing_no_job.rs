@@ -38,6 +38,7 @@ impl Llm for Slow {
                 model: "slow".into(),
                 execution_time: 0.0,
                 usage: Usage::default(),
+                corrections: None,
             },
         })
     }

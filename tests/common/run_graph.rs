@@ -171,6 +171,7 @@ impl Llm for Blocking {
                 model: "m".into(),
                 execution_time: 0.2,
                 usage: Usage::default(),
+                corrections: None,
             },
         })
     }

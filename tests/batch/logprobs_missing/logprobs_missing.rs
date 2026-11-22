@@ -23,6 +23,7 @@ fn answer(text: &str) -> ModelResponse {
             model: "m".into(),
             execution_time: 0.0,
             usage: Usage::default(),
+            corrections: None,
         },
     }
 }

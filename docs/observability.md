@@ -29,19 +29,26 @@ the contents are hidden. Even for public data, traces require the separate opt-i
 | `run.start` | info | | |
 | `run.end` | info | `duration` | |
 | `node.start` | info | `model` | |
-| `node.end` | info | `model`, `input_tokens`, `output_tokens`, `duration`, `stop`, and `verdict` for a validation node | |
+| `node.end` | info | `model`, `input_tokens`, `output_tokens`, `duration`, `stop`, `verdict` for a validation node, and `corrections` for a node whose answer was checked against a schema | |
 | `group.start` | info | `pattern` (`linear`, `parallel`, `concurrent`, `batch`, `react`), `branches` | |
 | `group.end` | info | `pattern`, `duration` | |
 | `model.start` | debug | `model`, `gen_ai.request.model`, `gen_ai.provider.name`, `gen_ai.operation.name` | |
 | `model.error` | error | `model`, `gen_ai.provider.name`, `error.type`, `http.response.status_code` when available, `duration`, `message` | `system_prompt`, `prompt`, `detail` |
 | `model.call` | debug | `model`, `input_tokens`, `output_tokens`, `duration`, `gen_ai.*` (see below) | `system_prompt`, `prompt`, `answer`, `reasoning` |
 | `tool.call` | debug | `kind` (`tool`, `mcp`, `skill`), `name`, `duration`, `is_error` | `result` |
+| `structured.attempt` | debug when `valid`, warn otherwise | `model`, `mechanism` (`api`), `attempt`, `max_attempts`, `outcome` (`valid`, `not_json`, `incomplete`, `refused`, `schema_mismatch`), `message` | `reasons` |
 | `utility.call` | debug | `id`, `place`, `duration` | |
 | `read.vectordb` | debug | `id`, `chunks`, `duration` | |
 | `read.memory` | debug | `id`, `messages`, `summary`, `duration` | |
 
 The tokens and the `duration` of `node.end` are the sum of all the model calls of the node: every round of its
 tools, or every turn of a react controller. Each call is a `model.call` of its own.
+
+Every answer that a-graph checks against a schema, of a node, a judge, a react controller or a batch, is a
+`structured.attempt`: its `outcome` and a `message` that holds no content, and as `reasons` what the reader or the
+validator found, which may quote the answer. An answer that is not `valid` is a warning, never an error: when it stops
+the run, the error of the run follows it. `corrections` in `node.end` is how many corrections the node needed; with
+the provider's API (`mechanism: api`) the answer is asked once, so it is `0`.
 
 An error is an event too, of level `error`, with the code of its rule and the fields `phase`, `path` and `message`. A
 run that fails ends with its error instead of `run.end`. A warning is an event of level `warn`.
@@ -106,8 +113,8 @@ program sends **one** POST with the whole timeline, in OTLP over HTTP with JSON,
 (for example `http://host:4318/v1/traces`).
 
 - One trace for each run, with one span for the run, one for every group and every node, and inside a node one for
-  every model call, tool call, MCP call, skill call and reading of a vector database or memory. The spans have their
-  real start and duration, so the branches of a `parallel` group overlap.
+  every model call, tool call, MCP call, skill call, checked answer (`structured <outcome>`) and reading of a vector
+  database or memory. The spans have their real start and duration, so the branches of a `parallel` group overlap.
 - The attributes of a span are the fields of its events, with unique keys (end values replace start values).
   Application attributes use `a_graph.*`; `gen_ai.*`, `server.*`, HTTP method/status, `url.scheme` and `error.type`
   retain their standard names.
@@ -157,8 +164,9 @@ Remote error-message text is not printed. These OTLP rules do not change deliver
 - `off`: nothing;
 - `steps`: the run, the nodes and the groups as they start and end, with durations and tokens, and the errors and
   warnings;
-- `detail`: also the model calls, the tool calls, the utilities, the readings of vector databases and memories, and
-  the contents, as the passport allows.
+- `detail`: also the model calls, the tool calls, the answers checked against a schema
+  (`structured <outcome> · <mechanism> · attempt <n>/<max>`), the utilities, the readings of vector databases and
+  memories, and the contents, as the passport allows.
 
 Colors are used only when the standard error is a terminal and the variable `NO_COLOR` is not set: nodes in bold cyan,
 groups in bold orange with their branches drawn under them, tools in blue, errors in red, warnings in yellow,

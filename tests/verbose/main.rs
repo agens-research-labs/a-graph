@@ -32,3 +32,6 @@ mod tool_call_shown;
 
 #[path = "error_detail/error_detail.rs"]
 mod error_detail;
+
+#[path = "schema_attempt_shown/schema_attempt_shown.rs"]
+mod schema_attempt_shown;

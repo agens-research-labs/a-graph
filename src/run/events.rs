@@ -146,6 +146,10 @@ impl Program {
         if let Some(v) = verdict {
             ev = ev.field("verdict", v);
         }
+        // a node whose answer was checked against a schema says how many corrections it needed
+        if let Some(c) = response.info.corrections {
+            ev = ev.field("corrections", c);
+        }
         self.emit(ev);
     }
 

@@ -109,6 +109,7 @@ impl Mistral {
                     .to_string(),
                 execution_time,
                 usage,
+                corrections: None,
             },
         })
     }

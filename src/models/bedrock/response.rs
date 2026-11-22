@@ -96,6 +96,7 @@ impl Bedrock {
                 model: self.model.clone(),
                 execution_time,
                 usage,
+                corrections: None,
             },
         })
     }

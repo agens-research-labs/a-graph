@@ -103,6 +103,7 @@ impl Anthropic {
                     .to_string(),
                 execution_time,
                 usage,
+                corrections: None,
             },
         })
     }

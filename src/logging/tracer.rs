@@ -214,6 +214,7 @@ impl Tracer {
                     last.error = Some(e);
                 }
             }
+            "structured.attempt" => point(&mut st, ev, format!("structured {}", text("outcome")), attributes, None),
             "read.vectordb" => point(
                 &mut st,
                 ev,

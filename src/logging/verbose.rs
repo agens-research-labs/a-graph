@@ -167,6 +167,19 @@ impl Verbose {
                 lines.extend(self.contents(ev, &inner));
                 Some(lines.join("\n"))
             }
+            "structured.attempt" if detail => {
+                let valid = text("outcome") == "valid";
+                let head = format!(
+                    "structured {} · {} · attempt {}/{}",
+                    text("outcome"),
+                    text("mechanism"),
+                    number("attempt"),
+                    number("max_attempts")
+                );
+                let mut lines = vec![format!("{inner}{}", self.paint(if valid { "90" } else { "33" }, &head))];
+                lines.extend(self.contents(ev, &inner));
+                Some(lines.join("\n"))
+            }
             "utility.call" if detail => Some(format!(
                 "{inner}{}",
                 self.paint(

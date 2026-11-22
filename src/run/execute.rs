@@ -424,7 +424,12 @@ impl Program {
                 }
                 // an answer of the job is checked against the schema of its node, as a single call is
                 let response = match &prepared[i].call.schema {
-                    Some(schema) => self.structured(self.nodes.id(nodes[i]).unwrap_or_default(), schema, response)?,
+                    Some(schema) => self.structured(
+                        self.nodes.id(nodes[i]).unwrap_or_default(),
+                        &prepared[i].model,
+                        schema,
+                        response,
+                    )?,
                     None => response,
                 };
                 answers[i] = Some(response);
@@ -552,7 +557,7 @@ impl Program {
                 logprobs.extend(response.logprobs.iter().cloned());
                 // the routing output matches its schema, or the run stops here: `done` is a boolean and
                 // `next_worker` one of the workers, or empty
-                let response = self.structured(&cid, &schema, response)?;
+                let response = self.structured(&cid, &prepared.model, &schema, response)?;
                 let routing = response.structured.clone().unwrap_or_default();
                 let done = routing["done"] == Value::Bool(true);
 
