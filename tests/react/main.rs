@@ -50,3 +50,12 @@ mod controller_error;
 
 #[path = "logprobs_every_turn/logprobs_every_turn.rs"]
 mod logprobs_every_turn;
+
+#[path = "react_mechanism/react_mechanism.rs"]
+mod react_mechanism;
+
+#[path = "controller_corrects/controller_corrects.rs"]
+mod controller_corrects;
+
+#[path = "controller_attempts/controller_attempts.rs"]
+mod controller_attempts;

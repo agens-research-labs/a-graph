@@ -155,7 +155,7 @@ graph:
   nodes:
     - id: a
       model: { id: fast, max_tokens: 1000, reasoning: low }
-      validation-node: { model: { id: fast }, resources: { prompt: analyst }, on_error: stop }
+      validation-node: { model: { id: fast }, resources: { prompt: analyst }, structured_output: api, on_error: stop }
       external:
         vectordb:
           - { id: kb, query: user_message }
@@ -190,6 +190,7 @@ graph:
           input: { user_message: true }
         blackboard:
           id: findings
+        structured_output: api
         on_error: stop
     - id: d
       model: { id: local }

@@ -288,5 +288,34 @@ pub(super) fn validation(mut o: Obj, errs: &mut Errs) -> Option<Validation> {
     let on_error = o
         .req::<String>(key::ON_ERROR, errs)
         .map(|t| if t == "stop" { OnError::Stop } else { OnError::Node });
-    Some(Validation { on_error: on_error? })
+    let structured_output = structured_output(&mut o, errs);
+    Some(Validation {
+        on_error: on_error?,
+        structured_output: structured_output?,
+    })
+}
+
+/// `structured_output` and `max_attempts`, of a validation node or a `react`: the mechanism is mandatory, and
+/// `max_attempts` goes with `prompt` only. The words are checked by the Loader.
+pub(crate) fn structured_output(o: &mut Obj, errs: &mut Errs) -> Option<StructuredOutput> {
+    let at = o.at().clone();
+    let word = o.req::<String>(key::STRUCTURED_OUTPUT, errs);
+    let max_attempts = o.opt::<u32>(key::MAX_ATTEMPTS, errs);
+    let prompt = word.as_deref() == Some("prompt");
+    errs.forbid(
+        &at,
+        key::MAX_ATTEMPTS,
+        max_attempts.is_some() && word.is_some() && !prompt,
+        "`max_attempts` goes with `structured_output: prompt`: the API is asked once",
+    );
+    errs.at_least_one(&at.key(key::MAX_ATTEMPTS), max_attempts);
+    word.map(|_| {
+        if prompt {
+            StructuredOutput::Prompt {
+                max_attempts: max_attempts.unwrap_or(DEFAULT_MAX_ATTEMPTS),
+            }
+        } else {
+            StructuredOutput::Api
+        }
+    })
 }

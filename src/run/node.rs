@@ -9,12 +9,12 @@ use base64::engine::general_purpose::STANDARD;
 use serde_json::Value;
 
 use super::Program;
+use super::structured::with_instructions;
 use super::utility::Item;
 use crate::error::{Error, Path, Phase, Rule};
 use crate::graph::CHUNKS;
 use crate::graph::Entity;
-use crate::graph::nodes::component::{InFrom, MediaIn, OutFrom, Validation};
-use crate::models::structured::instructions;
+use crate::graph::nodes::component::{InFrom, MediaIn, OutFrom, StructuredOutput, Validation};
 use crate::models::{
     MediaInput, MediaOutput, ModelInvocation, ModelResponse, ProducedMedia, ResponseInfo, StopReason, TokenLogprob,
 };
@@ -181,8 +181,7 @@ impl Program {
         };
         // `schema_prompt`: the schema is written at the end of the system prompt, and the provider gets none
         let system = match self.schema_prompt_of(node) {
-            Some(schema) if system.is_empty() => instructions(&schema),
-            Some(schema) => format!("{system}\n\n{}", instructions(&schema)),
+            Some(schema) => with_instructions(system, &schema),
             None => system,
         };
 
@@ -220,9 +219,9 @@ impl Program {
             media,
             tools: self.tool_definitions(node),
             output_media,
-            // the answer of a judge is fixed
+            // the answer of a judge is fixed, and asked of the API with `structured_output: api` only
             schema: match self.nodes.validation().get(node) {
-                Some(_) => Some(Validation::judge_schema()),
+                Some(v) => (v.structured_output == StructuredOutput::Api).then(Validation::judge_schema),
                 None => self
                     .nodes
                     .message()

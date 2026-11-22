@@ -48,8 +48,8 @@ Every answer that a-graph checks against a schema, of a node, a judge, a react c
 `structured.attempt`: its `outcome` and a `message` that holds no content, and as `reasons` what the reader or the
 validator found, which may quote the answer. An answer that is not `valid` is a warning, never an error: when it stops
 the run, the error of the run follows it. `corrections` in `node.end` is how many corrections the node needed; with
-the provider's API (`mechanism: api`) the answer is asked once, so it is `0`; with `schema_prompt`
-(`mechanism: prompt`) every attempt is a `model.call` and a `structured.attempt` of its own, the text sent back is the
+the provider's API (`mechanism: api`) the answer is asked once, so it is `0`; with `schema_prompt` or
+`structured_output: prompt` (`mechanism: prompt`) every attempt is a `model.call` and a `structured.attempt` of its own, the text sent back is the
 content `correction` of the attempt that needed it, and the tokens of all the attempts are in `node.end`.
 
 An error is an event too, of level `error`, with the code of its rule and the fields `phase`, `path` and `message`. A

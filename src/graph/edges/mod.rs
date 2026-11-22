@@ -6,6 +6,7 @@ mod read;
 
 use serde_norway::Value;
 
+use super::nodes::component::StructuredOutput;
 use super::nodes::{Entity, Nodes};
 use crate::error::Errors;
 
@@ -47,6 +48,8 @@ pub struct Group {
 pub struct React {
     pub controller: Entity,
     pub max_iterations: u32,
+    /// How the routing output is enforced.
+    pub structured_output: StructuredOutput,
     pub workers: Vec<Step>,
 }
 

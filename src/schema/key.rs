@@ -173,6 +173,7 @@ keys! {
     SCHEMA = "schema",
     SCHEMA_PROMPT = "schema_prompt",
     MAX_ATTEMPTS = "max_attempts",
+    STRUCTURED_OUTPUT = "structured_output",
     VALIDATION_NODE = "validation-node",
     RESPONSE = "response",
     ON_ERROR = "on_error",

@@ -191,6 +191,7 @@ graph:
           input: { user_message: true }
         blackboard:
           id: findings
+        structured_output: api
         on_error: stop
     - id: d
       model: { id: local }
@@ -205,6 +206,7 @@ graph:
     - react:
         controller: b
         max_iterations: 3
+        structured_output: api
         components:
           - linear:
               - fan:

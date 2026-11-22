@@ -667,6 +667,8 @@ The form with `url` and `access`:
 | `media` | no | map (below) | The media the node reads. |
 | `message` | no | map (below) | Where the text the node judges comes from. |
 | `response` | no | any value | Accepted and not used: the answer of a validation node always has the shape `{ validation, reasons, log }`. |
+| `structured_output` | yes | `api` or `prompt` | How the answer of the model is made to match the schema a-graph writes for it. `api`: the API of the provider enforces it, as `schema` does for a node. `prompt`: a-graph does, as `schema_prompt` does for a node, for a model whose API does not; the provider gets no schema. Mandatory. |
+| `max_attempts` | no | whole number | With `structured_output: prompt` only: the most calls for one answer, the first one included, so that 1 corrects nothing. The default is 3, at least 1. When the last one is not one JSON value the run stops (`attempt_limit`). |
 | `on_error` | yes | `stop` or `node` | What a refusal does. `stop`: the run ends, and the final output gets the reasons and the log. `node`: the run goes on, and the next node receives the problem as its `agent_message`; it needs a node after it. |
 
 ## `graph.nodes[].validation-node.model`
@@ -791,8 +793,10 @@ A controller and the workers it calls.
 
 | Key | Required | Value | Description |
 |---|---|---|---|
-| `controller` | yes | the id of a node | The node that decides at every turn which worker to call, or gives the final answer, which is the output of the `react`. It has no tools, MCP servers, skills, blackboard or output `schema` of its own. |
+| `controller` | yes | the id of a node | The node that decides at every turn which worker to call, or gives the final answer, which is the output of the `react`. It has no tools, MCP servers, skills, blackboard, output `schema` or `schema_prompt` of its own. |
 | `max_iterations` | yes | whole number | The most calls to workers. One more fails the run (`react_limit`). |
+| `structured_output` | yes | `api` or `prompt` | How the answer of the model is made to match the schema a-graph writes for it. `api`: the API of the provider enforces it, as `schema` does for a node. `prompt`: a-graph does, as `schema_prompt` does for a node, for a model whose API does not; the provider gets no schema. Mandatory. |
+| `max_attempts` | no | whole number | With `structured_output: prompt` only: the most calls for one answer, the first one included, so that 1 corrects nothing. The default is 3, at least 1. When the last one is not one JSON value the run stops (`attempt_limit`). |
 | `components` | yes | list of: a `worker` (below) | The workers the controller may call. Two workers with the same id are an error (`duplicate_id`). |
 
 ## `branch`

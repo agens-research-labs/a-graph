@@ -184,11 +184,23 @@ pub enum OnError {
     Node,
 }
 
+/// `structured_output`: how a schema written by the program (the verdict of a judge, the routing output of a
+/// `react`) is enforced.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StructuredOutput {
+    /// `api`: the API of the provider, asked once.
+    Api,
+    /// `prompt`: a-graph, through the prompt, with at most `max_attempts` calls for one answer, the first included.
+    Prompt { max_attempts: u32 },
+}
+
 /// Marks a node as a validator: a node that reads and judges. The rest of the node (model, prompt,
 /// what it reads) is in the ordinary components; the answer of the judge is fixed.
 #[derive(Debug, Clone)]
 pub struct Validation {
     pub on_error: OnError,
+    /// How the verdict is enforced.
+    pub structured_output: StructuredOutput,
 }
 
 impl Validation {

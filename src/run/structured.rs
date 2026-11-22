@@ -6,12 +6,22 @@
 use serde_json::Value;
 
 use super::Program;
+use super::node::logprobs_missing;
 use crate::error::{Error, Path, Phase, Rule};
 use crate::graph::Entity;
-use crate::graph::nodes::component::DEFAULT_MAX_ATTEMPTS;
+use crate::graph::nodes::component::{DEFAULT_MAX_ATTEMPTS, StructuredOutput, Validation};
 use crate::logging::{Event, LogLevel};
-use crate::models::structured::{CORRECTION, Checked, check};
-use crate::models::{ChatEntry, ModelError, ModelResponse, Role};
+use crate::models::structured::{CORRECTION, Checked, check, instructions};
+use crate::models::{ChatEntry, Llm, ModelError, ModelInvocation, ModelResponse, Role, Usage};
+
+/// `system` with the instructions of `schema_prompt` (or `structured_output: prompt`) at its end.
+pub(super) fn with_instructions(system: String, schema: &Value) -> String {
+    if system.is_empty() {
+        instructions(schema)
+    } else {
+        format!("{system}\n\n{}", instructions(schema))
+    }
+}
 
 /// Who wrote the schema, which decides what the error of an answer that is not JSON suggests.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -41,13 +51,63 @@ pub(super) enum Next {
 }
 
 impl Program {
-    /// The schema of the `schema_prompt` of `node`, if it has one.
+    /// The schema that a-graph enforces through the prompt of `node`, if any: its `schema_prompt`, or the verdict
+    /// of a judge with `structured_output: prompt`. The routing output of a controller is added by its `react`.
     pub(super) fn schema_prompt_of(&self, node: Entity) -> Option<Value> {
-        self.nodes
-            .message()
-            .get(node)
-            .and_then(|m| m.output.as_ref())
-            .and_then(|o| o.schema_prompt.clone())
+        match self.nodes.validation().get(node) {
+            Some(v) => matches!(v.structured_output, StructuredOutput::Prompt { .. }).then(Validation::judge_schema),
+            None => self
+                .nodes
+                .message()
+                .get(node)
+                .and_then(|m| m.output.as_ref())
+                .and_then(|o| o.schema_prompt.clone()),
+        }
+    }
+
+    /// One answer to `schema`, written by the program, from a call with no tools, enforced by `mechanism`. With
+    /// `prompt`, an answer that is not one JSON value is sent back until `max_attempts`; the corrections stay in
+    /// `call.corrections`. The usage, the time and the logprobs of the answer are those of all its calls.
+    pub(super) async fn ask(
+        &self,
+        node: &str,
+        model: &str,
+        llm: &dyn Llm,
+        call: &mut ModelInvocation,
+        schema: &Value,
+        mechanism: StructuredOutput,
+    ) -> Result<ModelResponse, Error> {
+        let fail = |rule: Rule, msg: String| Error::new(Phase::Execution, Path::node(node), rule, msg);
+        let (mut usage, mut time, mut logprobs) = (Usage::default(), 0.0, Vec::new());
+        let mut attempt = 0u32;
+        loop {
+            attempt += 1;
+            let mut response = self
+                .invoke_model(node, model, llm, call)
+                .await
+                .map_err(|e| fail(Rule::ModelFailed, e.to_string()).with_detail_if(e.said()))?;
+            usage += response.info.usage;
+            time += response.info.execution_time;
+            if let Some(why) = logprobs_missing(call, &response) {
+                return Err(fail(Rule::ModelFailed, why));
+            }
+            logprobs.append(&mut response.logprobs);
+            let mechanism = match mechanism {
+                StructuredOutput::Api => Mechanism::Api(SchemaOf::Program),
+                StructuredOutput::Prompt { max_attempts } => Mechanism::Prompt {
+                    attempt,
+                    max: max_attempts,
+                },
+            };
+            match self.answer(node, model, schema, mechanism, response)? {
+                Next::Done(mut done) => {
+                    (done.info.usage, done.info.execution_time) = (usage, time);
+                    done.logprobs = logprobs;
+                    return Ok(*done);
+                }
+                Next::Correct(messages) => call.corrections.extend(messages),
+            }
+        }
     }
 
     /// The `max_attempts` of `node`, or its default.
@@ -121,13 +181,15 @@ impl Program {
             Checked::NotJson { why } | Checked::Incomplete { cut: None, why } => Err(match mechanism {
                 Mechanism::Prompt { max, .. } => fail(
                     Rule::AttemptLimit,
-                    format!("{who} did not answer one JSON value in {max} attempts, the `max_attempts` of the node"),
+                    format!("{who} did not answer one JSON value in {max} attempts, the limit of `max_attempts`"),
                 )
                 .with_detail(format!("{why}\nanswer: {said}")),
                 Mechanism::Api(of) => {
                     let hint = match of {
                         SchemaOf::Node => "; use `schema_prompt` with a model whose API does not enforce the schema",
-                        SchemaOf::Program => "",
+                        SchemaOf::Program => {
+                            "; use `structured_output: prompt` with a model whose API does not enforce the schema"
+                        }
                     };
                     fail(
                         Rule::SchemaMismatch,

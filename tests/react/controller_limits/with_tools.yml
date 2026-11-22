@@ -99,6 +99,7 @@ graph:
     - react:
         controller: c
         max_iterations: 3
+        structured_output: api
         components:
           - worker: w1
           - parallel:

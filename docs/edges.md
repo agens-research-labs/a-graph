@@ -89,6 +89,7 @@ A `react` is not a group of branches: a controller decides at run time which wor
 - react:
     controller: planner
     max_iterations: 10
+    structured_output: api
     components:
       - worker: researcher
       - worker: writer
@@ -111,8 +112,13 @@ controller is the only link between the workers and the rest of the graph.
 - The program gives the controller the list of the worker ids; what each worker does must be said in the prompt of the
   controller.
 - `max_iterations` is the most calls to workers. A controller that asks for one more fails the run (`react_limit`).
-- The controller has no tools, MCP servers, skills, blackboard or output `schema` of its own: its output is defined
-  by the `react`. Give those to a worker.
+- `structured_output` (mandatory) says how the structure is enforced: `api`, by the API of the provider, as `schema`
+  does for a node; `prompt`, by a-graph, as `schema_prompt` does (see [nodes](nodes.md#schema_prompt)), with
+  `max_attempts` (default 3, at least 1, only with `prompt`) counted at every turn. A routing output that is not one
+  JSON value is corrected in its turn; the next turn gets the routing output alone, and the end of the controller
+  counts the corrections of all its turns.
+- The controller has no tools, MCP servers, skills, blackboard, output `schema` or `schema_prompt` of its own: its
+  output is defined by the `react`. Give those to a worker.
 - A `react` cannot be a worker of another `react`, nor stand in a group among its workers: the file is refused
   (`react_nested`).
 

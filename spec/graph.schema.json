@@ -2581,6 +2581,17 @@
                   "response": {
                     "description": "Accepted and not used: the answer of a validation node always has the shape `{ validation, reasons, log }`."
                   },
+                  "structured_output": {
+                    "enum": [
+                      "api",
+                      "prompt"
+                    ],
+                    "description": "How the answer of the model is made to match the schema a-graph writes for it. `api`: the API of the provider enforces it, as `schema` does for a node. `prompt`: a-graph does, as `schema_prompt` does for a node, for a model whose API does not; the provider gets no schema. Mandatory."
+                  },
+                  "max_attempts": {
+                    "type": "integer",
+                    "description": "With `structured_output: prompt` only: the most calls for one answer, the first one included, so that 1 corrects nothing. The default is 3, at least 1. When the last one is not one JSON value the run stops (`attempt_limit`)."
+                  },
                   "on_error": {
                     "enum": [
                       "stop",
@@ -2592,6 +2603,7 @@
                 "required": [
                   "model",
                   "resources",
+                  "structured_output",
                   "on_error"
                 ],
                 "additionalProperties": false,
@@ -2785,11 +2797,22 @@
       "properties": {
         "controller": {
           "type": "string",
-          "description": "The node that decides at every turn which worker to call, or gives the final answer, which is the output of the `react`. It has no tools, MCP servers, skills, blackboard or output `schema` of its own."
+          "description": "The node that decides at every turn which worker to call, or gives the final answer, which is the output of the `react`. It has no tools, MCP servers, skills, blackboard, output `schema` or `schema_prompt` of its own."
         },
         "max_iterations": {
           "type": "integer",
           "description": "The most calls to workers. One more fails the run (`react_limit`)."
+        },
+        "structured_output": {
+          "enum": [
+            "api",
+            "prompt"
+          ],
+          "description": "How the answer of the model is made to match the schema a-graph writes for it. `api`: the API of the provider enforces it, as `schema` does for a node. `prompt`: a-graph does, as `schema_prompt` does for a node, for a model whose API does not; the provider gets no schema. Mandatory."
+        },
+        "max_attempts": {
+          "type": "integer",
+          "description": "With `structured_output: prompt` only: the most calls for one answer, the first one included, so that 1 corrects nothing. The default is 3, at least 1. When the last one is not one JSON value the run stops (`attempt_limit`)."
         },
         "components": {
           "type": "array",
@@ -2802,6 +2825,7 @@
       "required": [
         "controller",
         "max_iterations",
+        "structured_output",
         "components"
       ],
       "additionalProperties": false,

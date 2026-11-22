@@ -135,6 +135,7 @@ impl Reader<'_> {
         let mut o = Obj::new(v, at.clone(), &mut self.errs)?;
         let controller = o.req::<String>(key::CONTROLLER, &mut self.errs);
         let max_iterations = o.req::<u32>(key::MAX_ITERATIONS, &mut self.errs);
+        let structured_output = crate::graph::nodes::structured_output(&mut o, &mut self.errs);
         let components = o.value(key::COMPONENTS);
         let controller = controller.and_then(|id| self.node(&Value::String(id), &at.key(key::CONTROLLER)));
         let workers = components
@@ -143,6 +144,7 @@ impl Reader<'_> {
         Some(React {
             controller: controller?,
             max_iterations: max_iterations?,
+            structured_output: structured_output?,
             workers,
         })
     }

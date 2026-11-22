@@ -1,11 +1,10 @@
 //! Running a validation node: the judge reads what its blocks say, with its prompt, and answers
 //! the fixed verdict `{ validation, reasons, log }`.
 
-use super::structured::SchemaOf;
 use super::{NodeInput, Program};
 use crate::error::{Error, Path, Phase, Rule};
 use crate::graph::Entity;
-use crate::graph::nodes::component::Validation;
+use crate::graph::nodes::component::{StructuredOutput, Validation};
 
 /// What the judge decided.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,13 +23,17 @@ impl Program {
             .models
             .get(&prepared.model)
             .ok_or_else(|| fail(Rule::UnknownRef, format!("model `{}` is not built", prepared.model)))?;
-        let response = self
-            .invoke_model(&id, &prepared.model, llm, &prepared.call)
-            .await
-            .map_err(|e| fail(Rule::ModelFailed, e.to_string()).with_detail_if(e.said()))?;
         // the verdict matches its schema, or the run stops here: `validation` is a boolean
+        let mechanism = self
+            .nodes
+            .validation()
+            .get(node)
+            .map_or(StructuredOutput::Api, |v| v.structured_output);
+        let mut call = prepared.call;
         let schema = Validation::judge_schema();
-        let response = self.structured(&id, &prepared.model, &schema, SchemaOf::Program, response)?;
+        let response = self
+            .ask(&id, &prepared.model, llm, &mut call, &schema, mechanism)
+            .await?;
         let verdict = response.structured.clone().unwrap_or_default();
         let approved = verdict["validation"] == serde_json::Value::Bool(true);
         self.node_finished(node, &response, Some(if approved { "approved" } else { "refused" }));

@@ -157,6 +157,16 @@ const JUDGE_MESSAGE: Shape = Shape::Map(&[MESSAGE_INPUT_FIELD]);
 
 const NODE_MODEL_DOC: &str = "The model of the node and the settings of its calls.";
 
+/// How a schema written by the program is enforced: the verdict of a judge, the routing output of a `react`.
+pub(super) const STRUCTURED_OUTPUT_FIELD: Field = Field::req(STRUCTURED_OUTPUT, Shape::Words(&["api", "prompt"])).doc(
+    "How the answer of the model is made to match the schema a-graph writes for it. `api`: the API of the provider enforces it, as `schema` does for a node. `prompt`: a-graph does, as `schema_prompt` does for a node, for a model whose API does not; the provider gets no schema. Mandatory.",
+);
+
+/// The most calls for one answer of `structured_output: prompt`.
+pub(super) const MAX_ATTEMPTS_FIELD: Field = Field::opt(MAX_ATTEMPTS, Shape::Int).doc(
+    "With `structured_output: prompt` only: the most calls for one answer, the first one included, so that 1 corrects nothing. The default is 3, at least 1. When the last one is not one JSON value the run stops (`attempt_limit`).",
+);
+
 const VALIDATION_NODE_BODY: Shape = Shape::Map(&[
     Field::req(MODEL, NODE_MODEL).doc(NODE_MODEL_DOC),
     Field::req(RESOURCES, JUDGE_RESOURCES).doc("The prompt of the node, its only resource."),
@@ -165,6 +175,8 @@ const VALIDATION_NODE_BODY: Shape = Shape::Map(&[
     Field::opt(MEDIA, JUDGE_MEDIA).doc("The media the node reads."),
     Field::opt(MESSAGE, JUDGE_MESSAGE).doc("Where the text the node judges comes from."),
     Field::opt(RESPONSE, Shape::Any).doc("Accepted and not used: the answer of a validation node always has the shape `{ validation, reasons, log }`."),
+    STRUCTURED_OUTPUT_FIELD,
+    MAX_ATTEMPTS_FIELD,
     Field::req(ON_ERROR, Shape::Words(&["stop", "node"])).doc(
         "What a refusal does. `stop`: the run ends, and the final output gets the reasons and the log. `node`: the run goes on, and the next node receives the problem as its `agent_message`; it needs a node after it.",
     ),

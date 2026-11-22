@@ -39,6 +39,7 @@ graph:
         resources: { prompt: p_judge }
         message:
           input: { agent_message: true }
+        structured_output: api
         on_error: stop
     - id: e
       model: { id: m }

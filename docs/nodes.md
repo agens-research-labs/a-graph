@@ -84,8 +84,10 @@ provider, and checks it against the schema. The answer is the whole text, or the
   of the context window it says that the request exceeded it.
 
 What the model wrote is the `detail` of the error, never its message. The verdict of a judge and the routing output of
-a react controller are checked against their schema in the same way. With `schema`, the message of an answer that is
-not one JSON value suggests `schema_prompt`.
+a react controller are checked against their schema in the same way; their mechanism is the `structured_output` of
+the validation node or of the `react`: `api` as `schema`, `prompt` as `schema_prompt`. With the API, the message of an
+answer that is not one JSON value suggests the other mechanism: `schema_prompt` for a node,
+`structured_output: prompt` for a judge or a controller.
 
 ### `schema_prompt`
 
@@ -123,6 +125,7 @@ key `validation-node`:
     model: { id: fast, max_tokens: 1000 }
     resources: { prompt: criterion }
     message: { input: { agent_message: true } }
+    structured_output: api
     on_error: stop
 ```
 
@@ -132,7 +135,9 @@ Its blocks have the same keys, in the same places, as those of a node, but only 
 roles, without writing them. It has no `tools`, `mcp_servers`, `skills`, `write`, `cleanup` or `output`.
 
 Its answer has a fixed shape, `{ "validation": true | false, "reasons": "...", "log": "..." }`, which the model is
-asked to follow.
+asked to follow. `structured_output` (mandatory) says how: `api`, through the API of the provider, as `schema` does
+for a node; `prompt`, through the prompt, as [`schema_prompt`](#schema_prompt) does, with `max_attempts` (default 3,
+at least 1, only with `prompt`).
 
 - Approved: the message it examined goes on to the next node unchanged. Only the message: the media do not pass.
 - Refused, with `on_error: stop`: the run ends here and `end` is not reached. The final output gets one more item, from

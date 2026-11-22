@@ -1,0 +1,65 @@
+# The react enforces the routing output through the prompt, at most twice.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1, generativelanguage.googleapis.com] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:9
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: p_s
+      content: { system: "", user: "S({{user_message}})" }
+    - id: p_c
+      content: { system: "", user: "C({{agent_message}})" }
+    - id: p_w1
+      content: { system: "", user: "W1({{agent_message}})" }
+    - id: p_z
+      content: { system: "", user: "Z({{agent_message}})" }
+graph:
+  nodes:
+    - id: s
+      model: { id: m }
+      resources: { prompt: p_s }
+      message:
+        input: { user_message: true }
+        output: { node: true }
+    - id: c
+      model: { id: m }
+      resources: { prompt: p_c }
+      message:
+        input: { agent_message: true }
+        output: { node: true }
+    - id: w1
+      model: { id: m }
+      resources: { prompt: p_w1 }
+      message:
+        input: { agent_message: true }
+        output: { node: true }
+    - id: z
+      model: { id: m }
+      resources: { prompt: p_z }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true }
+  edges:
+    - start: s
+    - react:
+        controller: c
+        max_iterations: 3
+        structured_output: prompt
+        max_attempts: 2
+        components:
+          - worker: w1
+    - end: z

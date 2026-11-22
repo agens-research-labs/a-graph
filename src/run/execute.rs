@@ -20,12 +20,12 @@ use tokio::task::JoinSet;
 use super::events::{CTX, Where, here};
 use super::judge::Verdict;
 use super::node::logprobs_missing;
-use super::structured::SchemaOf;
+use super::structured::{SchemaOf, with_instructions};
 use super::{Content, Delivery, NodeInput, NodeOutput, Program};
 use crate::error::{Error, Path, Phase, Rule};
 use crate::graph::Entity;
 use crate::graph::edges::{Group, Pattern, React, Step};
-use crate::graph::nodes::component::OnError;
+use crate::graph::nodes::component::{OnError, StructuredOutput};
 use crate::models::{BatchRequest, ChatEntry, MediaOutput, Role, TokenLogprob};
 use crate::schema::key;
 
@@ -537,29 +537,33 @@ impl Program {
                 .ok_or_else(|| error(Rule::UnknownRef, format!("model `{}` is not built", prepared.model)))?;
             let mut call = prepared.call;
             let schema = React::routing_schema(&ids);
-            call.schema = Some(schema.clone());
+            // `api`: the provider enforces the routing output; `prompt`: it gets none, and the schema is written at
+            // the end of the system prompt
+            match r.structured_output {
+                StructuredOutput::Api => call.schema = Some(schema.clone()),
+                StructuredOutput::Prompt { .. } => call.system = with_instructions(call.system, &schema),
+            }
             // what the controller reads from its memory stays in every turn, before the steps of the react
             let remembered = call.history.clone();
 
             let (mut turns, mut items, mut dispatched) = (Vec::new(), Vec::new(), 0u32);
-            // the tokens of every turn, in order: those of the whole routing output, not only of `answer`
+            // the tokens of every call, in order: those of the whole routing output, not only of `answer`
             let mut logprobs = Vec::new();
-            // the controller ends with the usage and the time of all its turns, as a node with tools does
-            let (mut usage, mut time) = (Default::default(), 0.0);
+            // the controller ends with the usage, the time and the corrections of all its turns, as a node with
+            // tools does
+            let (mut usage, mut time, mut corrections) = (Default::default(), 0.0, 0u32);
             loop {
-                let response = self
-                    .invoke_model(&cid, &prepared.model, llm, &call)
-                    .await
-                    .map_err(|e| error(Rule::ModelFailed, e.to_string()).with_detail_if(e.said()))?;
-                usage += response.info.usage;
-                time += response.info.execution_time;
-                if let Some(why) = logprobs_missing(&call, &response) {
-                    return Err(error(Rule::ModelFailed, why));
-                }
-                logprobs.extend(response.logprobs.iter().cloned());
                 // the routing output matches its schema, or the run stops here: `done` is a boolean and
                 // `next_worker` one of the workers, or empty
-                let response = self.structured(&cid, &prepared.model, &schema, SchemaOf::Program, response)?;
+                let mut response = self
+                    .ask(&cid, &prepared.model, llm, &mut call, &schema, r.structured_output)
+                    .await?;
+                usage += response.info.usage;
+                time += response.info.execution_time;
+                corrections += response.info.corrections.unwrap_or(0);
+                logprobs.append(&mut response.logprobs);
+                // the corrections belong to their turn: the next one has the routing output alone
+                call.corrections.clear();
                 let routing = response.structured.clone().unwrap_or_default();
                 let done = routing["done"] == Value::Bool(true);
 
@@ -571,6 +575,7 @@ impl Program {
                     let mut last = response;
                     (last.message, last.structured) = (Some(answer.to_string()), None);
                     (last.info.usage, last.info.execution_time) = (usage, time);
+                    last.info.corrections = Some(corrections);
                     last.logprobs = std::mem::take(&mut logprobs);
                     let (delivery, item) =
                         self.parts(controller, self.finish_node(controller, &prepared.input, last).await?);

@@ -28,9 +28,11 @@ const GROUP: Shape = Shape::Lazy {
 
 static REACT_SHAPE: Shape = Shape::Map(&[
     Field::req(CONTROLLER, NODE_REF).doc(
-        "The node that decides at every turn which worker to call, or gives the final answer, which is the output of the `react`. It has no tools, MCP servers, skills, blackboard or output `schema` of its own.",
+        "The node that decides at every turn which worker to call, or gives the final answer, which is the output of the `react`. It has no tools, MCP servers, skills, blackboard, output `schema` or `schema_prompt` of its own.",
     ),
     Field::req(MAX_ITERATIONS, Shape::Int).doc("The most calls to workers. One more fails the run (`react_limit`)."),
+    super::graph::STRUCTURED_OUTPUT_FIELD,
+    super::graph::MAX_ATTEMPTS_FIELD,
     Field::req(COMPONENTS, Shape::List(&WORKER_ENTRY)).doc("The workers the controller may call. Two workers with the same id are an error (`duplicate_id`)."),
 ]);
 

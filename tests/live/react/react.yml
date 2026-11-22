@@ -76,6 +76,7 @@ graph:
     - react:
         controller: boss
         max_iterations: 4
+        structured_output: api
         components:
           - worker: vault
           - worker: weather

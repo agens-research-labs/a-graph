@@ -192,6 +192,7 @@ graph:
           output: { node: true }
         blackboard:
           id: findings
+        structured_output: api
         on_error: stop
     - id: d
       model: { id: local }

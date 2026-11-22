@@ -329,17 +329,20 @@ impl<'a> Nodes<'a> {
                 format!("node `{id}` is a react controller: it cannot have a blackboard; give it to a worker"),
             ));
         }
-        if node
-            .get(key::MESSAGE)
-            .and_then(|m| m.get(key::OUTPUT))
-            .and_then(|o| o.get(key::SCHEMA))
-            .is_some()
-        {
-            c.errs.push(error(
-                &at.key(key::MESSAGE).key(key::OUTPUT).key(key::SCHEMA),
-                Rule::UnexpectedField,
-                format!("node `{id}` is a react controller: its output is defined by the react"),
-            ));
+        // the routing output is the schema of the controller, and `structured_output` of the react enforces it
+        for field in [key::SCHEMA, key::SCHEMA_PROMPT] {
+            if node
+                .get(key::MESSAGE)
+                .and_then(|m| m.get(key::OUTPUT))
+                .and_then(|o| o.get(field))
+                .is_some()
+            {
+                c.errs.push(error(
+                    &at.key(key::MESSAGE).key(key::OUTPUT).key(field),
+                    Rule::UnexpectedField,
+                    format!("node `{id}` is a react controller: its output is defined by the react"),
+                ));
+            }
         }
     }
 

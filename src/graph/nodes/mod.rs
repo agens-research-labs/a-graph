@@ -4,6 +4,8 @@
 pub mod component;
 mod read;
 
+pub(crate) use read::structured_output;
+
 use std::collections::HashMap;
 
 use serde_norway::Value;

@@ -5,7 +5,7 @@
 use std::collections::{HashMap, HashSet};
 
 use super::edges::{Edges, Group, Pattern, Step};
-use super::nodes::component::{InFrom, MessageInput, Model as NodeModel, OutFrom, Validation};
+use super::nodes::component::{InFrom, MessageInput, Model as NodeModel, OutFrom, StructuredOutput, Validation};
 use super::nodes::{Entity, Nodes};
 use crate::error::{Error, Path, Phase, Rule};
 use crate::external::External;
@@ -46,17 +46,16 @@ pub fn interpret(
         };
         let asked = Asked {
             // a react controller answers with the routing output, which the model has to be able to give
-            schema: controllers
-                .get(&e)
-                .cloned()
-                .or_else(|| nodes.validation().get(e).map(|_| Validation::judge_schema()))
-                .or_else(|| {
-                    nodes
-                        .message()
-                        .get(e)
-                        .and_then(|x| x.output.as_ref())
-                        .and_then(|o| o.schema.clone())
-                }),
+            // only with the API: with `prompt` the provider gets no schema
+            schema: match (controllers.get(&e), nodes.validation().get(e)) {
+                (Some(routing), _) => routing.clone(),
+                (None, Some(v)) => (v.structured_output == StructuredOutput::Api).then(Validation::judge_schema),
+                (None, None) => nodes
+                    .message()
+                    .get(e)
+                    .and_then(|x| x.output.as_ref())
+                    .and_then(|o| o.schema.clone()),
+            },
             logprobs: nodes
                 .message()
                 .get(e)
@@ -661,15 +660,20 @@ fn inside(step: &Step, out: &mut Vec<Entity>) {
     }
 }
 
-/// The react controllers and the routing schema each one answers with.
-fn controllers(nodes: &Nodes, edges: &Edges) -> HashMap<Entity, serde_json::Value> {
-    fn walk(steps: &[Step], nodes: &Nodes, out: &mut HashMap<Entity, serde_json::Value>) {
+/// The react controllers and the routing schema each one asks of the API of its model: none with
+/// `structured_output: prompt`.
+fn controllers(nodes: &Nodes, edges: &Edges) -> HashMap<Entity, Option<serde_json::Value>> {
+    fn walk(steps: &[Step], nodes: &Nodes, out: &mut HashMap<Entity, Option<serde_json::Value>>) {
         for step in steps {
             match step {
                 Step::Node(_) => {}
                 Step::Group(g) => walk(&g.fan, nodes, out),
                 Step::React(r) => {
-                    out.insert(r.controller, super::edges::React::routing_schema(&r.worker_ids(nodes)));
+                    let api = r.structured_output == StructuredOutput::Api;
+                    out.insert(
+                        r.controller,
+                        api.then(|| super::edges::React::routing_schema(&r.worker_ids(nodes))),
+                    );
                     walk(&r.workers, nodes, out);
                 }
             }

@@ -59,3 +59,12 @@ mod verdict_kept_out;
 
 #[path = "judge_model_error/judge_model_error.rs"]
 mod judge_model_error;
+
+#[path = "judge_mechanism/judge_mechanism.rs"]
+mod judge_mechanism;
+
+#[path = "judge_corrects/judge_corrects.rs"]
+mod judge_corrects;
+
+#[path = "judge_text_verdict/judge_text_verdict.rs"]
+mod judge_text_verdict;

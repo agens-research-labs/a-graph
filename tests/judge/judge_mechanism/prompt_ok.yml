@@ -1,0 +1,54 @@
+# The judge enforces its verdict through the prompt, at most twice.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: error }
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:9
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: p_s
+      content: { system: "", user: "S({{user_message}})" }
+    - id: p_judge
+      content: { system: "Judge the text.", user: "J({{agent_message}})" }
+    - id: p_z
+      content: { system: "", user: "Z({{agent_message}})" }
+graph:
+  nodes:
+    - id: s
+      model: { id: m }
+      resources: { prompt: p_s }
+      message:
+        input: { user_message: true }
+        output: { node: true }
+    - id: judge
+      validation-node:
+        model: { id: m }
+        resources: { prompt: p_judge }
+        message:
+          input: { agent_message: true }
+        structured_output: prompt
+        max_attempts: 2
+        on_error: stop
+    - id: z
+      model: { id: m }
+      resources: { prompt: p_z }
+      message:
+        input: { agent_message: true }
+        output: { assistant_message: true }
+  edges:
+    - start: s
+    - next: judge
+    - end: z
