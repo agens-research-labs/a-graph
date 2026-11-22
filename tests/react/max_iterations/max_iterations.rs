@@ -11,7 +11,7 @@ async fn max_iterations() {
     let (p, seen) = program(
         here(),
         "max_iterations",
-        script(|_, _| json!({ "done": false, "next_worker": "w1", "input": "again" })),
+        script(|_, _| full(json!({ "done": false, "next_worker": "w1", "input": "again" }))),
     )
     .await;
     let e = p.run("hi").await.unwrap_err();

@@ -10,21 +10,28 @@ async fn structured_stops() {
         body(&req)["response_format"],
         json!({ "type": "json_schema", "json_schema": { "name": "output", "schema": { "type": "object" }, "strict": false } })
     );
+    // the text comes back as it came: the JSON is read by `models::structured`, whatever the provider
     let r = r.unwrap();
-    assert_eq!(r.structured, Some(json!({ "a": 1 })));
-    assert!(r.message.is_none());
+    assert_eq!((r.message.as_deref(), &r.structured), (Some("{\"a\":1}"), &None));
 
-    // a cut answer has its JSON cut, at max_tokens or at the end of the context window
+    // with a schema, a cut answer is not an error of the provider: its text and its stop reason come back
     for finish in ["length", "model_length"] {
         let (r, _) = one_call(
             c.clone(),
             Resp::ok(completion(json!({ "role": "assistant", "content": "{\"a\":" }), finish)),
         )
         .await;
-        assert!(matches!(r, Err(ModelError::Truncated { .. })), "{finish}: {r:?}");
+        assert!(
+            r.as_ref()
+                .is_ok_and(|r| r.stop_reason.is_cut() && r.message.as_deref() == Some("{\"a\":")),
+            "{finish}: {r:?}"
+        );
     }
     let (r, _) = one_call(c, Resp::ok(text_answer("not json"))).await;
-    assert!(matches!(r, Err(ModelError::InvalidResponse { .. })), "{r:?}");
+    assert!(
+        r.as_ref().is_ok_and(|r| r.message.as_deref() == Some("not json")),
+        "{r:?}"
+    );
 
     for (finish, expected) in [
         ("length", StopReason::MaxTokens),

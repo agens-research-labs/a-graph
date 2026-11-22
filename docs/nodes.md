@@ -68,12 +68,23 @@ With an output `schema` (a JSON Schema written on the node), the model answers i
 value instead of a text. A schema that is not a valid JSON Schema is refused when the file is checked (`bad_value`).
 The schema reaches the model with its keys in the order they are written, and the JSON answer keeps the order the
 model wrote. `ollama` and `openai` make the model write the fields in the order of the
-schema: a field of reasoning written before the answer is written first. When the model refuses, the answer is the
-text of the refusal instead. A node that has a
-`schema` and goes through output utilities gives them the JSON as a text, and what they give back is a text. An answer
-that stopped before its end, at `max_tokens` or at the end of the context window, has its JSON cut: the run stops
-(`model_failed`), and the message says which of the two: at `max_tokens` it asks to increase `max_tokens`, at the end
-of the context window it says that the request exceeded it.
+schema: a field of reasoning written before the answer is written first. A node that has a
+`schema` and goes through output utilities gives them the JSON as a text, and what they give back is a text.
+
+The provider enforces the schema as far as its API does; a-graph then reads the answer itself, the same way for every
+provider, and checks it against the schema. The answer is the whole text, or the whole content of the one code fence
+(` ``` ` or ` ```json `) the text is made of; anything else around the JSON is not taken away. The run stops when:
+
+- the answer is not one JSON value (a text, a text around the JSON, two values, a JSON left open by a model that ended
+  by itself), or a JSON that does not match the schema: `schema_mismatch`;
+- the model refuses: `model_refused`. Only `anthropic`, `openai` and `bedrock` tell a refusal; with `gemini`,
+  `mistral`, `ollama` and `custom` a refusal is a text like any other, and is read as one;
+- the answer stopped before its end, at `max_tokens` or at the end of the context window, so its JSON is cut:
+  `model_failed`, and the message says which of the two: at `max_tokens` it asks to increase `max_tokens`, at the end
+  of the context window it says that the request exceeded it.
+
+What the model wrote is the `detail` of the error, never its message. The verdict of a judge and the routing output of
+a react controller are checked against their schema in the same way.
 
 Each produced media decides its own destinations with its `assistant` and `node`.
 

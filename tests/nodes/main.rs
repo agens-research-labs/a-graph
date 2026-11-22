@@ -30,6 +30,24 @@ mod schema_not_object;
 #[path = "schema_not_valid/schema_not_valid.rs"]
 mod schema_not_valid;
 
+#[path = "schema_text_answer/schema_text_answer.rs"]
+mod schema_text_answer;
+
+#[path = "schema_cut_answer/schema_cut_answer.rs"]
+mod schema_cut_answer;
+
+#[path = "schema_broken_answer/schema_broken_answer.rs"]
+mod schema_broken_answer;
+
+#[path = "schema_fenced_answer/schema_fenced_answer.rs"]
+mod schema_fenced_answer;
+
+#[path = "schema_wrong_shape/schema_wrong_shape.rs"]
+mod schema_wrong_shape;
+
+#[path = "schema_refused/schema_refused.rs"]
+mod schema_refused;
+
 #[path = "schema_yml_to_json/schema_yml_to_json.rs"]
 mod schema_yml_to_json;
 

@@ -13,9 +13,9 @@ async fn error_detail_written() {
     let (p, _) = program(here(), "error_detail_written", verdict).await;
     p.run("hi").await.unwrap_err();
     let lines = crate::common::run::log_lines("error_detail_written");
-    let error = lines.iter().find(|l| l["code"] == "bad_value").unwrap();
+    let error = lines.iter().find(|l| l["code"] == "schema_mismatch").unwrap();
     assert_eq!(
-        error["message"], "the verdict of the judge has no `validation`",
+        error["message"], "the answer of model `m` (ollama) does not match its schema",
         "{error}"
     );
     let detail = error["detail"].as_str().unwrap_or_default();

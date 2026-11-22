@@ -199,7 +199,7 @@ impl Llm for Bedrock {
         }
         let client = self.client().await?;
         let (out, secs) = timed(self.converse(&client, call)).await;
-        self.parse_converse(call.schema.is_some(), out?, secs)
+        self.parse_converse(out?, secs)
     }
 
     async fn invoke_batch(&self, requests: Vec<BatchRequest>, events: BatchEvents) -> BatchReturn {

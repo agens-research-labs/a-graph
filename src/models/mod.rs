@@ -20,6 +20,7 @@ mod reasoning;
 mod requirements;
 mod response;
 mod spec;
+pub mod structured;
 pub(crate) mod timing;
 
 pub use anthropic::Anthropic;

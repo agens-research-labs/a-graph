@@ -166,7 +166,7 @@ impl Llm for Mistral {
         let (text, secs) = timed(self.post_text("/v1/chat/completions", &body)).await;
         let value: Value =
             serde_json::from_str(&text?).map_err(|e| self.who.invalid(format!("the answer is not JSON: {e}")))?;
-        self.parse_completion(call.schema.is_some(), &value, secs)
+        self.parse_completion(&value, secs)
     }
 
     async fn invoke_batch(&self, requests: Vec<BatchRequest>, events: BatchEvents) -> BatchReturn {

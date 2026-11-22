@@ -4,6 +4,7 @@
 use super::{NodeInput, Program};
 use crate::error::{Error, Path, Phase, Rule};
 use crate::graph::Entity;
+use crate::graph::nodes::component::Validation;
 
 /// What the judge decided.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -26,14 +27,11 @@ impl Program {
             .invoke_model(&id, &prepared.model, llm, &prepared.call)
             .await
             .map_err(|e| fail(Rule::ModelFailed, e.to_string()).with_detail_if(e.said()))?;
-        let verdict = response
-            .structured
-            .clone()
-            .filter(serde_json::Value::is_object)
-            .ok_or_else(|| fail(Rule::BadValue, "the judge did not answer with the verdict".into()))?;
-        let approved = verdict["validation"].as_bool().ok_or_else(|| {
-            fail(Rule::BadValue, "the verdict of the judge has no `validation`".into()).with_detail(verdict.to_string())
-        })?;
+        // the verdict matches its schema, or the run stops here: `validation` is a boolean
+        let schema = Validation::judge_schema();
+        let response = self.structured(&id, &schema, response)?;
+        let verdict = response.structured.clone().unwrap_or_default();
+        let approved = verdict["validation"] == serde_json::Value::Bool(true);
         self.node_finished(node, &response, Some(if approved { "approved" } else { "refused" }));
         if approved {
             return Ok(Verdict::Approved);

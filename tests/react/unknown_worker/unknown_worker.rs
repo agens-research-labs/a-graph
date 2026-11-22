@@ -16,6 +16,6 @@ async fn unknown_worker() {
     let e = p.run("hi").await.unwrap_err();
     assert_eq!(
         (e.rule.code(), e.path.to_string()),
-        ("unknown_ref", "node(c)".to_string())
+        ("schema_mismatch", "node(c)".to_string())
     );
 }

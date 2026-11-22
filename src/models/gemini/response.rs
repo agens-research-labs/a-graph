@@ -122,20 +122,8 @@ impl Gemini {
             stop_reason = StopReason::ToolCall;
         }
 
-        let (mut message, mut structured) = (None, None);
-        if call.schema.is_some() {
-            if stop_reason.is_cut() {
-                return Err(self.who.truncated(stop_reason));
-            }
-            if tools_call.is_empty() {
-                structured = Some(
-                    serde_json::from_str(&text)
-                        .map_err(|e| self.who.invalid(format!("the output is not the JSON asked for: {e}")))?,
-                );
-            }
-        } else if !text.is_empty() {
-            message = Some(text);
-        }
+        // with a schema or not, the text goes back as it came: the JSON is read by `models::structured`
+        let (message, structured) = (Some(text).filter(|t| !t.is_empty()), None);
 
         // total_output_tokens does not include the thinking tokens; total_input_tokens includes the cached ones
         let u = v.get("usage").cloned().unwrap_or(Value::Null);

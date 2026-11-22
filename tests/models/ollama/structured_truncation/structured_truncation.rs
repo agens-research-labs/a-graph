@@ -8,9 +8,9 @@ async fn structured_truncation() {
 
     let (r, req) = one_call(c.clone(), Resp::ok(text_answer("{\"a\":1}"))).await;
     assert_eq!(body(&req)["format"], json!({ "type": "object" }));
+    // the text comes back as it came: the JSON is read by `models::structured`, whatever the provider
     let r = r.unwrap();
-    assert_eq!(r.structured, Some(json!({ "a": 1 })));
-    assert!(r.message.is_none());
+    assert_eq!((r.message.as_deref(), &r.structured), (Some("{\"a\":1}"), &None));
 
     let (r, _) = one_call(
         c.clone(),
@@ -20,10 +20,17 @@ async fn structured_truncation() {
         )),
     )
     .await;
-    assert!(matches!(r, Err(ModelError::Truncated { .. })), "{r:?}");
+    assert!(
+        r.as_ref()
+            .is_ok_and(|r| r.stop_reason.is_cut() && r.message.as_deref() == Some("{\"a\":")),
+        "{r:?}"
+    );
 
     let (r, _) = one_call(c, Resp::ok(text_answer("not json"))).await;
-    assert!(matches!(r, Err(ModelError::InvalidResponse { .. })), "{r:?}");
+    assert!(
+        r.as_ref().is_ok_and(|r| r.message.as_deref() == Some("not json")),
+        "{r:?}"
+    );
 
     let (r, _) = one_call(
         call("q"),

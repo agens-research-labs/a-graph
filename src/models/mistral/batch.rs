@@ -11,7 +11,7 @@ use crate::models::{BatchEvent, BatchEvents, BatchOutcome, BatchRequest, BatchRe
 impl Mistral {
     pub(super) async fn run_batch(&self, requests: Vec<BatchRequest>, events: BatchEvents) -> BatchReturn {
         let mut results: Vec<BatchResult> = Vec::new();
-        let mut sent = Vec::new(); // (id, wants a schema)
+        let mut sent = Vec::new(); // the ids, in order
         let mut items = Vec::new();
         for r in requests {
             let built = if r.invocation.output_media.is_empty() {
@@ -23,7 +23,7 @@ impl Mistral {
             };
             match built {
                 Ok(body) => {
-                    sent.push((r.id.clone(), r.invocation.schema.is_some()));
+                    sent.push(r.id.clone());
                     items.push(json!({ "custom_id": r.id, "body": body }));
                 }
                 // a request that cannot even be built does not stop the others
@@ -115,17 +115,17 @@ impl Mistral {
             }
         }
 
-        for (id, schema) in sent {
+        for id in sent {
             let result = match by_id.remove(&id) {
                 None => Err(self.who.invalid(format!("the batch has no result for request `{id}`"))),
-                Some(line) => self.batch_result(schema, &line),
+                Some(line) => self.batch_result(&line),
             };
             results.push(BatchResult { id, result });
         }
         Ok(results)
     }
 
-    fn batch_result(&self, schema: bool, line: &Value) -> Result<crate::models::ModelResponse, ModelError> {
+    fn batch_result(&self, line: &Value) -> Result<crate::models::ModelResponse, ModelError> {
         if let Some(err) = line.get("error").filter(|e| !e.is_null()) {
             let said = err.get("message").and_then(Value::as_str).map(str::to_string);
             return Err(self.who.provider_said(None, None, "batch request failed", said));
@@ -142,7 +142,7 @@ impl Mistral {
                 .provider_said(Some(status as u16), None, "batch request failed", said));
         }
         // the time of one request inside a batch is not measurable: 0
-        self.parse_completion(schema, body, 0.0)
+        self.parse_completion(body, 0.0)
     }
 
     /// `POST /v1/batch/jobs/{id}/cancel`: the job goes to `CANCELLATION_REQUESTED`, then `CANCELLED`. When it is

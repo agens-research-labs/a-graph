@@ -422,6 +422,11 @@ impl Program {
                 if let Some(why) = logprobs_missing(&prepared[i].call, &response) {
                     return Err(node_error(i, why));
                 }
+                // an answer of the job is checked against the schema of its node, as a single call is
+                let response = match &prepared[i].call.schema {
+                    Some(schema) => self.structured(self.nodes.id(nodes[i]).unwrap_or_default(), schema, response)?,
+                    None => response,
+                };
                 answers[i] = Some(response);
             }
         }
@@ -524,7 +529,8 @@ impl Program {
                 .get(&prepared.model)
                 .ok_or_else(|| error(Rule::UnknownRef, format!("model `{}` is not built", prepared.model)))?;
             let mut call = prepared.call;
-            call.schema = Some(React::routing_schema(&ids));
+            let schema = React::routing_schema(&ids);
+            call.schema = Some(schema.clone());
             // what the controller reads from its memory stays in every turn, before the steps of the react
             let remembered = call.history.clone();
 
@@ -544,15 +550,11 @@ impl Program {
                     return Err(error(Rule::ModelFailed, why));
                 }
                 logprobs.extend(response.logprobs.iter().cloned());
-                let routing = response.structured.clone().filter(Value::is_object).ok_or_else(|| {
-                    error(
-                        Rule::BadValue,
-                        "the controller did not answer with the routing output".into(),
-                    )
-                })?;
-                let done = routing["done"]
-                    .as_bool()
-                    .ok_or_else(|| error(Rule::BadValue, "the routing output has no `done`".into()))?;
+                // the routing output matches its schema, or the run stops here: `done` is a boolean and
+                // `next_worker` one of the workers, or empty
+                let response = self.structured(&cid, &schema, response)?;
+                let routing = response.structured.clone().unwrap_or_default();
+                let done = routing["done"] == Value::Bool(true);
 
                 if done {
                     let answer = routing["answer"].as_str().filter(|a| !a.is_empty()).ok_or_else(|| {
@@ -593,9 +595,11 @@ impl Program {
                         .with_detail(routing.to_string())
                     })?
                     .to_string();
+                // the schema allows only the names of the workers: another name is an answer that does not
+                // match it
                 let position = ids.iter().position(|i| *i == name).ok_or_else(|| {
                     error(
-                        Rule::UnknownRef,
+                        Rule::SchemaMismatch,
                         "the controller named a worker that is not in this react".into(),
                     )
                     .with_detail(name.clone())

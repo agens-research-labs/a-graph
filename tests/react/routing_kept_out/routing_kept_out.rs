@@ -11,15 +11,15 @@ async fn routing_kept_out() {
     let cases = [
         (
             json!({ "done": true, "notes": "the patient has diabetes" }),
-            "missing_field",
+            "schema_mismatch",
         ),
         (
             json!({ "done": false, "input": "the patient has diabetes" }),
-            "missing_field",
+            "schema_mismatch",
         ),
         (
             json!({ "done": false, "next_worker": "the patient has diabetes", "input": "x" }),
-            "unknown_ref",
+            "schema_mismatch",
         ),
     ];
     for (routing, rule) in cases {

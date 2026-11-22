@@ -193,6 +193,10 @@ impl Program {
                 response.info.usage = usage;
                 response.info.execution_time = time;
                 response.logprobs = logprobs;
+                // the final answer is the one that gives the JSON of the schema
+                if let Some(schema) = &call.schema {
+                    response = self.structured(&id, schema, response)?;
+                }
                 return Ok(response);
             }
 

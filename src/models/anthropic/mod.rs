@@ -305,7 +305,7 @@ impl Llm for Anthropic {
         let (text, secs) = timed(self.send(self.client.post(self.messages_endpoint()).json(&body))).await;
         let value: Value =
             serde_json::from_str(&text?).map_err(|e| self.invalid(format!("the answer is not JSON: {e}")))?;
-        self.parse_message(call.schema.is_some(), &value, secs)
+        self.parse_message(&value, secs)
     }
 
     async fn invoke_batch(&self, requests: Vec<BatchRequest>, events: BatchEvents) -> BatchReturn {

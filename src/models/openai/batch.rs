@@ -15,7 +15,7 @@ pub(super) const POLL_INTERVAL: Duration = Duration::from_secs(30);
 impl OpenAi {
     pub(super) async fn run_batch(&self, requests: Vec<BatchRequest>, events: BatchEvents) -> BatchReturn {
         let mut results: Vec<BatchResult> = Vec::new();
-        let mut sent = Vec::new(); // (id, wants a schema)
+        let mut sent = Vec::new(); // the ids, in order
         let mut lines = Vec::new();
         // on Azure the batch names its own (Global-Batch) deployment
         let model = self.batch_model.clone().unwrap_or_else(|| self.model.clone());
@@ -29,7 +29,7 @@ impl OpenAi {
             };
             match built {
                 Ok(body) => {
-                    sent.push((r.id.clone(), r.invocation.schema.is_some()));
+                    sent.push(r.id.clone());
                     lines.push(
                         json!({ "custom_id": r.id, "method": "POST", "url": "/v1/responses", "body": body })
                             .to_string(),
@@ -145,17 +145,17 @@ impl OpenAi {
             }
         }
 
-        for (id, schema) in sent {
+        for id in sent {
             let result = match by_id.remove(&id) {
                 None => Err(self.who.invalid(format!("the batch has no result for request `{id}`"))),
-                Some(line) => self.batch_result(schema, &line),
+                Some(line) => self.batch_result(&line),
             };
             results.push(BatchResult { id, result });
         }
         Ok(results)
     }
 
-    fn batch_result(&self, schema: bool, line: &Value) -> Result<crate::models::ModelResponse, ModelError> {
+    fn batch_result(&self, line: &Value) -> Result<crate::models::ModelResponse, ModelError> {
         if let Some(err) = line.get("error").filter(|e| !e.is_null()) {
             let code = err.get("code").and_then(Value::as_str);
             let said = err.get("message").and_then(Value::as_str).map(str::to_string);
@@ -180,7 +180,7 @@ impl OpenAi {
                 .provider_said(Some(status as u16), code, "batch request failed", said));
         }
         // the time of one request inside a batch is not measurable: 0
-        self.parse_response(schema, body, 0.0)
+        self.parse_response(body, 0.0)
     }
 
     /// `POST /batches/{id}/cancel`: the batch goes to `cancelling`, then `cancelled`. When it is refused, the status

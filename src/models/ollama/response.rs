@@ -6,7 +6,7 @@ use super::Ollama;
 use crate::models::{ModelError, ModelResponse, ResponseInfo, StopReason, ToolCall, Usage, token_logprobs};
 
 impl Ollama {
-    pub(crate) fn parse_chat(&self, schema: bool, v: &Value, execution_time: f64) -> Result<ModelResponse, ModelError> {
+    pub(crate) fn parse_chat(&self, v: &Value, execution_time: f64) -> Result<ModelResponse, ModelError> {
         let msg = v.get("message").ok_or_else(|| self.who.invalid("no `message`"))?;
         let text = msg.get("content").and_then(Value::as_str).unwrap_or_default();
         let done_reason = v.get("done_reason").and_then(Value::as_str).unwrap_or_default();
@@ -70,20 +70,8 @@ impl Ollama {
             stop_reason = StopReason::ToolCall;
         }
 
-        let (mut message, mut structured) = (None, None);
-        if schema {
-            if stop_reason.is_cut() {
-                return Err(self.who.truncated(stop_reason));
-            }
-            if tools_call.is_empty() {
-                structured = Some(
-                    serde_json::from_str(text)
-                        .map_err(|e| self.who.invalid(format!("the output is not the JSON asked for: {e}")))?,
-                );
-            }
-        } else if !text.is_empty() {
-            message = Some(text.to_string());
-        }
+        // with a schema or not, the text goes back as it came: the JSON is read by `models::structured`
+        let (message, structured) = (Some(text.to_string()).filter(|t| !t.is_empty()), None);
 
         // prompt_eval_count is the whole prompt, cached tokens included; the thinking tokens are in
         // eval_count and the server does not count them apart

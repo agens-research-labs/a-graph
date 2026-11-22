@@ -11,12 +11,7 @@ fn count(v: Option<&Value>, key: &str) -> u64 {
 }
 
 impl OpenAi {
-    pub(crate) fn parse_response(
-        &self,
-        schema: bool,
-        v: &Value,
-        execution_time: f64,
-    ) -> Result<ModelResponse, ModelError> {
+    pub(crate) fn parse_response(&self, v: &Value, execution_time: f64) -> Result<ModelResponse, ModelError> {
         let status = v.get("status").and_then(Value::as_str).unwrap_or("completed");
         if status == "failed" {
             let code = v.pointer("/error/code").and_then(Value::as_str);
@@ -118,22 +113,10 @@ impl OpenAi {
             stop_reason = StopReason::ToolCall;
         }
 
-        let (mut message, mut structured) = (None, None);
-        if !refusal.is_empty() {
-            message = Some(refusal);
-        } else if schema {
-            if stop_reason.is_cut() {
-                return Err(self.who.truncated(stop_reason));
-            }
-            if tools_call.is_empty() && stop_reason != StopReason::Refused {
-                structured = Some(
-                    serde_json::from_str(&text)
-                        .map_err(|e| self.who.invalid(format!("the output is not the JSON asked for: {e}")))?,
-                );
-            }
-        } else if !text.is_empty() {
-            message = Some(text);
-        }
+        // a refusal is its text; with a schema or not, the text goes back as it came: the JSON is read by
+        // `models::structured`
+        let text = if refusal.is_empty() { text } else { refusal };
+        let (message, structured) = (Some(text).filter(|t| !t.is_empty()), None);
 
         let u = v.get("usage");
         let cached = count(u.and_then(|u| u.get("input_tokens_details")), "cached_tokens");

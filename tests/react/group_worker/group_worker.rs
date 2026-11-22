@@ -12,9 +12,9 @@ async fn group_worker() {
         "group_worker",
         script(|n, last| {
             if n == 0 {
-                json!({ "done": false, "next_worker": "wi", "input": "gather" })
+                full(json!({ "done": false, "next_worker": "wi", "input": "gather" }))
             } else {
-                json!({ "done": true, "answer": last })
+                full(json!({ "done": true, "answer": last }))
             }
         }),
     )

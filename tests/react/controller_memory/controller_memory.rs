@@ -13,9 +13,9 @@ async fn controller_memory() {
         "controller_memory",
         script(|n, _| {
             if n == 0 {
-                json!({ "done": false, "next_worker": "w1", "input": "find X" })
+                full(json!({ "done": false, "next_worker": "w1", "input": "find X" }))
             } else {
-                json!({ "done": true, "answer": "end" })
+                full(json!({ "done": true, "answer": "end" }))
             }
         }),
     )

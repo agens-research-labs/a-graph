@@ -10,13 +10,7 @@ fn count(v: &Value, key: &str) -> u64 {
 }
 
 impl Anthropic {
-    /// `schema`: the node asked for structured output, so the text is JSON.
-    pub(crate) fn parse_message(
-        &self,
-        schema: bool,
-        v: &Value,
-        execution_time: f64,
-    ) -> Result<ModelResponse, ModelError> {
+    pub(crate) fn parse_message(&self, v: &Value, execution_time: f64) -> Result<ModelResponse, ModelError> {
         let blocks = v
             .get("content")
             .and_then(Value::as_array)
@@ -77,22 +71,8 @@ impl Anthropic {
             stop_reason = StopReason::ToolCall;
         }
 
-        let (mut message, mut structured) = (None, None);
-        // a refusal is a text, schema or not
-        if schema && stop_reason != StopReason::Refused {
-            if stop_reason.is_cut() {
-                return Err(self.who.truncated(stop_reason));
-            }
-            // a model that asks for a tool first has no JSON yet
-            if tools_call.is_empty() {
-                structured = Some(
-                    serde_json::from_str(&text)
-                        .map_err(|e| self.invalid(format!("the output is not the JSON asked for: {e}")))?,
-                );
-            }
-        } else if !text.is_empty() {
-            message = Some(text);
-        }
+        // with a schema or not, the text goes back as it came: the JSON is read by `models::structured`
+        let (message, structured) = (Some(text).filter(|t| !t.is_empty()), None);
 
         let usage_v = v.get("usage").cloned().unwrap_or(Value::Null);
         let usage = Usage {

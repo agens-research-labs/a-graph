@@ -9,6 +9,15 @@ pub use serde_json::{Value, json};
 pub use std::sync::atomic::{AtomicUsize, Ordering};
 pub use std::sync::{Arc, Mutex};
 
+/// A routing output with every field its schema requires: the ones `turn` leaves out are empty.
+pub fn full(turn: Value) -> Value {
+    let mut out = json!({ "reasoning": "", "done": false, "next_worker": "", "input": "", "answer": "" });
+    for (k, v) in turn.as_object().unwrap() {
+        out[k] = v.clone();
+    }
+    out
+}
+
 pub fn chat(text: &str) -> String {
     json!({ "model": "m", "message": { "role": "assistant", "content": text }, "done": true, "done_reason": "stop", "prompt_eval_count": 1, "eval_count": 1 }).to_string()
 }

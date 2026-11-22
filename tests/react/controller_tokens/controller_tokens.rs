@@ -12,8 +12,8 @@ async fn controller_tokens() {
         here(),
         "controller_tokens",
         script(|n, _| match n {
-            0 | 1 => json!({ "done": false, "next_worker": "w1", "input": "go" }),
-            _ => json!({ "done": true, "answer": "end" }),
+            0 | 1 => full(json!({ "done": false, "next_worker": "w1", "input": "go" })),
+            _ => full(json!({ "done": true, "answer": "end" })),
         }),
     )
     .await;

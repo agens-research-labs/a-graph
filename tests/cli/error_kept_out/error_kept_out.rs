@@ -27,7 +27,7 @@ async fn error_kept_out() {
     let (model, _) = listen(judge).await;
     let r = a_graph(&[&ported(&path(), &[("model", model)]), "hi"], None).await;
     assert_eq!(r.code, 3, "{}", r.stderr);
-    assert!(r.stderr.contains("bad_value"), "{}", r.stderr);
+    assert!(r.stderr.contains("schema_mismatch"), "{}", r.stderr);
     assert!(
         r.stderr.contains("content_redacted"),
         "the log is there too: {}",

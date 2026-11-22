@@ -11,19 +11,26 @@ async fn structured_truncation() {
         body(&req)["response_format"],
         json!({ "type": "text", "mime_type": "application/json", "schema": { "type": "object" } })
     );
+    // the text comes back as it came: the JSON is read by `models::structured`, whatever the provider
     let r = r.unwrap();
-    assert_eq!(r.structured, Some(json!({ "a": 1 })));
-    assert!(r.message.is_none());
+    assert_eq!((r.message.as_deref(), &r.structured), (Some("{\"a\":1}"), &None));
 
     let (r, _) = one_call(
         c.clone(),
         Resp::ok(interaction("incomplete", json!([output("{\"a\":")]))),
     )
     .await;
-    assert!(matches!(r, Err(ModelError::Truncated { .. })), "{r:?}");
+    assert!(
+        r.as_ref()
+            .is_ok_and(|r| r.stop_reason.is_cut() && r.message.as_deref() == Some("{\"a\":")),
+        "{r:?}"
+    );
 
     let (r, _) = one_call(c, Resp::ok(text_answer("not json"))).await;
-    assert!(matches!(r, Err(ModelError::InvalidResponse { .. })), "{r:?}");
+    assert!(
+        r.as_ref().is_ok_and(|r| r.message.as_deref() == Some("not json")),
+        "{r:?}"
+    );
 
     // without a schema, running out of tokens is a stop reason, not an error
     let (r, _) = one_call(call("q"), Resp::ok(interaction("incomplete", json!([output("cut")])))).await;

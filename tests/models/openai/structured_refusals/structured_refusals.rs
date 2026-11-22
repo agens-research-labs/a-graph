@@ -11,13 +11,17 @@ async fn structured_refusals() {
         body(&req)["text"],
         json!({ "format": { "type": "json_schema", "name": "output", "schema": { "type": "object" }, "strict": false } })
     );
+    // the text comes back as it came: the JSON is read by `models::structured`, whatever the provider
     let r = r.unwrap();
-    assert_eq!(r.structured, Some(json!({ "a": 1 })));
-    assert!(r.message.is_none());
+    assert_eq!((r.message.as_deref(), &r.structured), (Some("{\"a\":1}"), &None));
 
     let cut = json!({ "id": "resp_1", "status": "incomplete", "incomplete_details": { "reason": "max_output_tokens" }, "output": [message("{\"a\":")] }).to_string();
     let (r, _) = one_call(c.clone(), Resp::ok(cut.clone())).await;
-    assert!(matches!(r, Err(ModelError::Truncated { .. })), "{r:?}");
+    assert!(
+        r.as_ref()
+            .is_ok_and(|r| r.stop_reason.is_cut() && r.message.as_deref() == Some("{\"a\":")),
+        "{r:?}"
+    );
     // without a schema it is a stop reason, not an error
     let (r, _) = one_call(call("q"), Resp::ok(cut)).await;
     let r = r.unwrap();

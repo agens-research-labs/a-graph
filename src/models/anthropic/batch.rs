@@ -16,12 +16,12 @@ impl Anthropic {
 
     pub(super) async fn run_batch(&self, requests: Vec<BatchRequest>, events: BatchEvents) -> BatchReturn {
         let mut results: Vec<BatchResult> = Vec::new();
-        let mut sent = Vec::new(); // (id, wants a schema)
+        let mut sent = Vec::new(); // the ids, in order
         let mut items = Vec::new();
         for r in requests {
             match self.request_body(&r.invocation) {
                 Ok(params) => {
-                    sent.push((r.id.clone(), r.invocation.schema.is_some()));
+                    sent.push(r.id.clone());
                     items.push(json!({ "custom_id": r.id, "params": params }));
                 }
                 // a request that cannot even be built does not stop the others
@@ -116,10 +116,10 @@ impl Anthropic {
             }
         }
 
-        for (id, schema) in sent {
+        for id in sent {
             let result = match by_id.remove(&id) {
                 None => Err(self.invalid(format!("the batch has no result for request `{id}`"))),
-                Some(line) => self.batch_result(schema, &line["result"]),
+                Some(line) => self.batch_result(&line["result"]),
             };
             results.push(BatchResult { id, result });
         }
@@ -141,10 +141,10 @@ impl Anthropic {
         refused_unless_over(refused, state.as_deref(), &["ended", "canceling"])
     }
 
-    fn batch_result(&self, schema: bool, result: &Value) -> Result<crate::models::ModelResponse, ModelError> {
+    fn batch_result(&self, result: &Value) -> Result<crate::models::ModelResponse, ModelError> {
         match result.get("type").and_then(Value::as_str) {
             // the time of one request inside a batch is not measurable: 0
-            Some("succeeded") => self.parse_message(schema, &result["message"], 0.0),
+            Some("succeeded") => self.parse_message(&result["message"], 0.0),
             Some("errored") => {
                 let code = result.pointer("/error/error/type").and_then(Value::as_str);
                 let said = result

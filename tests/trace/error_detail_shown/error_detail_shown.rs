@@ -22,7 +22,10 @@ async fn error_detail_shown() {
     let spans = spans_of(&collector);
     let run = named(&spans, "run");
     let status = run["status"]["message"].as_str().unwrap();
-    assert!(status.contains("bad_value") && !status.contains("diabetes"), "{run}");
+    assert!(
+        status.contains("schema_mismatch") && !status.contains("diabetes"),
+        "{run}"
+    );
     let detail = attribute(run, "a_graph.detail").unwrap_or_default();
     assert!(
         detail["stringValue"].as_str().unwrap_or_default().contains("diabetes"),

@@ -12,13 +12,13 @@ async fn verdict_kept_out() {
     let verdict = json!({ "reasons": "the patient has diabetes", "log": "" });
     let (p, _) = program(here(), "verdict_kept_out", verdict).await;
     let e = p.run("hi").await.unwrap_err();
-    assert_eq!(e.rule.code(), "bad_value");
+    assert_eq!(e.rule.code(), "schema_mismatch");
     assert!(!e.message.contains("diabetes"), "{}", e.message);
     assert!(e.detail.as_deref().is_some_and(|d| d.contains("diabetes")), "{e:?}");
 
     let log = std::fs::read_to_string("target/test-output/verdict_kept_out.log").unwrap();
     assert!(!log.contains("diabetes"), "{log}");
     let lines = crate::common::run::log_lines("verdict_kept_out");
-    let error = lines.iter().find(|l| l["code"] == "bad_value").unwrap();
+    let error = lines.iter().find(|l| l["code"] == "schema_mismatch").unwrap();
     assert_eq!(error["content_redacted"], true, "{error}");
 }

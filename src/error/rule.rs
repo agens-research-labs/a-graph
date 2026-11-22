@@ -59,6 +59,8 @@ rules! {
     ValidationNoNext => "validation_no_next",
     ValidationInGroup => "validation_in_group",
     ModelFailed => "model_failed",
+    SchemaMismatch => "schema_mismatch",
+    ModelRefused => "model_refused",
     ReactLimit => "react_limit",
     ToolLimit => "tool_limit",
     UtilityFailed => "utility_failed",

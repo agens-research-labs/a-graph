@@ -14,12 +14,7 @@ use super::convert::from_document;
 use crate::models::{ModelError, ModelResponse, ResponseInfo, StopReason, ToolCall, Usage};
 
 impl Bedrock {
-    pub(super) fn parse_converse(
-        &self,
-        schema: bool,
-        out: ConverseOutput,
-        execution_time: f64,
-    ) -> Result<ModelResponse, ModelError> {
+    pub(super) fn parse_converse(&self, out: ConverseOutput, execution_time: f64) -> Result<ModelResponse, ModelError> {
         let Some(Output::Message(message)) = out.output() else {
             return Err(self.who.invalid("no message in the answer"));
         };
@@ -72,21 +67,8 @@ impl Bedrock {
             stop_reason = StopReason::ToolCall;
         }
 
-        let (mut message, mut structured) = (None, None);
-        // a refusal is a text, schema or not: the message of the guardrail
-        if schema && stop_reason != StopReason::Refused {
-            if stop_reason.is_cut() {
-                return Err(self.who.truncated(stop_reason));
-            }
-            if tools_call.is_empty() {
-                structured = Some(
-                    serde_json::from_str(&text)
-                        .map_err(|e| self.who.invalid(format!("the output is not the JSON asked for: {e}")))?,
-                );
-            }
-        } else if !text.is_empty() {
-            message = Some(text);
-        }
+        // with a schema or not, the text goes back as it came: the JSON is read by `models::structured`
+        let (message, structured) = (Some(text).filter(|t| !t.is_empty()), None);
 
         // the cached tokens are counted apart from inputTokens
         let u = out.usage();

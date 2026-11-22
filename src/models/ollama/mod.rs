@@ -101,7 +101,7 @@ impl Llm for Ollama {
         let (text, secs) = timed(http::send(&self.who, req, &ERRORS)).await;
         let value: Value =
             serde_json::from_str(&text?).map_err(|e| self.who.invalid(format!("the answer is not JSON: {e}")))?;
-        self.parse_chat(call.schema.is_some(), &value, secs)
+        self.parse_chat(&value, secs)
     }
 
     async fn invoke_batch(&self, _requests: Vec<BatchRequest>, _events: BatchEvents) -> BatchReturn {

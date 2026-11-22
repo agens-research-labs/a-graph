@@ -256,7 +256,7 @@ impl Llm for OpenAi {
         let (text, secs) = timed(self.post_text("/responses", &body)).await;
         let value: Value =
             serde_json::from_str(&text?).map_err(|e| self.who.invalid(format!("the answer is not JSON: {e}")))?;
-        self.parse_response(call.schema.is_some(), &value, secs)
+        self.parse_response(&value, secs)
     }
 
     async fn invoke_batch(&self, requests: Vec<BatchRequest>, events: BatchEvents) -> BatchReturn {

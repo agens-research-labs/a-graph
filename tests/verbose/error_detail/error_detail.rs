@@ -17,7 +17,7 @@ async fn error_detail() {
         let lines = screen.lines();
         let at = lines
             .iter()
-            .position(|l| l.contains("✗ bad_value"))
+            .position(|l| l.contains("✗ schema_mismatch"))
             .unwrap_or_else(|| panic!("{lines:?}"));
         assert!(!lines[at].contains("diabetes"), "{lines:?}");
         let under = lines.get(at + 1).cloned().unwrap_or_default();

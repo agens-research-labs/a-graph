@@ -15,9 +15,9 @@ async fn logprobs_every_turn() {
         }
         let n = turns.fetch_add(1, Ordering::SeqCst);
         let routing = if n == 0 {
-            json!({ "done": false, "next_worker": "w1", "input": "find X", "reasoning": "r" })
+            full(json!({ "done": false, "next_worker": "w1", "input": "find X", "reasoning": "r" }))
         } else {
-            json!({ "done": true, "answer": "X" })
+            full(json!({ "done": true, "answer": "X" }))
         };
         let token = format!("turn{n}");
         Resp::ok(json!({ "model": "m", "message": { "role": "assistant", "content": routing.to_string() }, "done": true, "done_reason": "stop",

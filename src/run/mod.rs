@@ -9,6 +9,7 @@ mod mcp;
 mod memory;
 mod node;
 mod output;
+mod structured;
 mod tools;
 mod utility;
 mod vectordb;

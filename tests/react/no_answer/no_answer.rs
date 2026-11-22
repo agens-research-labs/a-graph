@@ -7,6 +7,11 @@ fn here() -> &'static std::path::Path {
 /// A controller that is done without an answer is an error.
 #[tokio::test]
 async fn no_answer() {
-    let (p, _) = program(here(), "no_answer", script(|_, _| json!({ "done": true }))).await;
+    let (p, _) = program(
+        here(),
+        "no_answer",
+        script(|_, _| json!({ "reasoning": "", "done": true, "next_worker": "", "input": "", "answer": "" })),
+    )
+    .await;
     assert_eq!(p.run("hi").await.unwrap_err().rule.code(), "missing_field");
 }

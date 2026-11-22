@@ -32,7 +32,7 @@ async fn error_kept_out() {
 
     let (status, body) = s.run(request.clone()).await;
     assert_eq!(status, 502, "{body}");
-    assert_eq!(body["errors"][0]["rule"], "bad_value", "{body}");
+    assert_eq!(body["errors"][0]["rule"], "schema_mismatch", "{body}");
     assert!(!body.to_string().contains("diabetes"), "{body}");
 
     let (_, started) = s.start_run(request).await;
@@ -42,6 +42,6 @@ async fn error_kept_out() {
     assert!(!shown.join("\n").contains("diabetes"), "{shown:?}");
     assert_eq!(events.last().unwrap().0, "error", "{shown:?}");
     let state = s.finished(&id).await;
-    assert_eq!(state["errors"][0]["rule"], "bad_value", "{state}");
+    assert_eq!(state["errors"][0]["rule"], "schema_mismatch", "{state}");
     assert!(!state.to_string().contains("diabetes"), "{state}");
 }

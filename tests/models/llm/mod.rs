@@ -122,5 +122,8 @@ mod error_names_model;
 #[path = "cut_says_why/cut_says_why.rs"]
 mod cut_says_why;
 
+#[path = "structured_check/structured_check.rs"]
+mod structured_check;
+
 #[path = "manager_serves/manager_serves.rs"]
 mod manager_serves;

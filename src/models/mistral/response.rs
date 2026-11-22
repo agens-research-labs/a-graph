@@ -6,12 +6,7 @@ use super::{Mistral, PROVIDER};
 use crate::models::{ModelError, ModelResponse, ResponseInfo, StopReason, ToolCall, Usage, token_logprobs};
 
 impl Mistral {
-    pub(crate) fn parse_completion(
-        &self,
-        schema: bool,
-        v: &Value,
-        execution_time: f64,
-    ) -> Result<ModelResponse, ModelError> {
+    pub(crate) fn parse_completion(&self, v: &Value, execution_time: f64) -> Result<ModelResponse, ModelError> {
         let choice = v
             .pointer("/choices/0")
             .ok_or_else(|| self.who.invalid("no `choices`"))?;
@@ -85,20 +80,8 @@ impl Mistral {
             stop_reason = StopReason::ToolCall;
         }
 
-        let (mut message, mut structured) = (None, None);
-        if schema {
-            if stop_reason.is_cut() {
-                return Err(self.who.truncated(stop_reason));
-            }
-            if tools_call.is_empty() {
-                structured = Some(
-                    serde_json::from_str(&text)
-                        .map_err(|e| self.who.invalid(format!("the output is not the JSON asked for: {e}")))?,
-                );
-            }
-        } else if !text.is_empty() {
-            message = Some(text);
-        }
+        // with a schema or not, the text goes back as it came: the JSON is read by `models::structured`
+        let (message, structured) = (Some(text).filter(|t| !t.is_empty()), None);
 
         let n = |p: &str| v.pointer(p).and_then(Value::as_u64).unwrap_or(0);
         let usage = Usage {

@@ -11,9 +11,9 @@ async fn several_workers() {
         here(),
         "several_workers",
         script(|n, last| match n {
-            0 => json!({ "done": false, "next_worker": "w1", "input": "one" }),
-            1 => json!({ "done": false, "next_worker": "w1", "input": format!("two after {last}") }),
-            _ => json!({ "done": true, "answer": "end" }),
+            0 => full(json!({ "done": false, "next_worker": "w1", "input": "one" })),
+            1 => full(json!({ "done": false, "next_worker": "w1", "input": format!("two after {last}") })),
+            _ => full(json!({ "done": true, "answer": "end" })),
         }),
     )
     .await;

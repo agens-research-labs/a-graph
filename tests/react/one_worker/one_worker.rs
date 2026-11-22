@@ -12,9 +12,9 @@ async fn one_worker() {
         "one_worker",
         script(|n, last| {
             if n == 0 {
-                json!({ "done": false, "next_worker": "w1", "input": "find X", "reasoning": "I need X" })
+                full(json!({ "done": false, "next_worker": "w1", "input": "find X", "reasoning": "I need X" }))
             } else {
-                json!({ "done": true, "answer": format!("got: {last}") })
+                full(json!({ "done": true, "answer": format!("got: {last}") }))
             }
         }),
     )
