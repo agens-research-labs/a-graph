@@ -27,6 +27,9 @@ mod schema_gives_json;
 #[path = "schema_not_object/schema_not_object.rs"]
 mod schema_not_object;
 
+#[path = "schema_not_valid/schema_not_valid.rs"]
+mod schema_not_valid;
+
 #[path = "schema_yml_to_json/schema_yml_to_json.rs"]
 mod schema_yml_to_json;
 

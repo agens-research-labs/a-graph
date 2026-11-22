@@ -651,7 +651,7 @@ The form with `url` and `access`:
 | `node` | no | `true` or `false` | `true`: the answer goes to the node connected after, as its `agent_message`. The default is `false`. |
 | `reasoning` | no | `true` or `false` | `true`: the reasoning of the model goes to the final output, even when `assistant_message` is false. It never goes to another node. The default is `false`. |
 | `logprobs` | no | whole number | From 0 to 20: the log probability of every token of the answer goes to the final output, even when `assistant_message` is false, with that many most likely alternatives for each token; on `ollama` and `custom` a model that reasons gives those of its reasoning too, before them. It never goes to another node. Only on `openai`, `mistral`, `ollama`, `custom` and `azure_foundry` with publisher `openai`. Without it nothing is asked. |
-| `schema` | no | any value | A JSON Schema, written as JSON in a text or as YAML: the model answers in that shape, and the answer is a JSON value. |
+| `schema` | no | any value | A JSON Schema, written as JSON in a text or as YAML: the model answers in that shape, and the answer is a JSON value. It must be a valid JSON Schema (`bad_value`). |
 | `utility` | no | the id of an utility, or list of: the id of an utility | Utilities that change the answer once, before every destination. |
 
 ## `graph.nodes[].validation-node`

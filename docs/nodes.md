@@ -65,8 +65,9 @@ tokens, so the two may differ. A refusal has none. An answer with a text and no 
 ignores the request, stops the run (`model_failed`).
 
 With an output `schema` (a JSON Schema written on the node), the model answers in that shape and the answer is a JSON
-value instead of a text. The schema reaches the model with its keys in the order they are written, and the JSON
-answer keeps the order the model wrote. `ollama` and `openai` make the model write the fields in the order of the
+value instead of a text. A schema that is not a valid JSON Schema is refused when the file is checked (`bad_value`).
+The schema reaches the model with its keys in the order they are written, and the JSON answer keeps the order the
+model wrote. `ollama` and `openai` make the model write the fields in the order of the
 schema: a field of reasoning written before the answer is written first. When the model refuses, the answer is the
 text of the refusal instead. A node that has a
 `schema` and goes through output utilities gives them the JSON as a text, and what they give back is a text. An answer

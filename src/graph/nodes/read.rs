@@ -233,7 +233,8 @@ pub(super) fn message(mut o: Obj, errs: &mut Errs) -> Message {
     }
 }
 
-/// A JSON Schema written as a JSON string or as yml: a-graph checks only that it is a JSON object.
+/// A JSON Schema written as a JSON string or as yml: a JSON object that is a valid JSON Schema, as the
+/// `parameters` of a tool.
 fn schema(v: Value, at: &crate::error::Path, errs: &mut Errs) -> Option<serde_json::Value> {
     let json = match v {
         Value::String(s) => {
@@ -242,7 +243,17 @@ fn schema(v: Value, at: &crate::error::Path, errs: &mut Errs) -> Option<serde_js
         other => serde_json::to_value(other).map_err(|e| format!("the schema cannot be read as JSON: {e}")),
     };
     match json {
-        Ok(j) if j.is_object() => Some(j),
+        Ok(j) if j.is_object() => match jsonschema::validator_for(&j) {
+            Ok(_) => Some(j),
+            Err(e) => {
+                errs.add(
+                    at,
+                    Rule::BadValue,
+                    format!("the schema is not a valid JSON Schema: {e}"),
+                );
+                None
+            }
+        },
         Ok(_) => {
             errs.add(at, Rule::BadValue, "the schema must be a JSON object");
             None
