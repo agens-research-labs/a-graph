@@ -38,6 +38,7 @@ async fn url_refused() {
             location: None,
             drip: None,
             raw: answer.raw.clone(),
+            encoding: answer.encoding,
         })
         .await;
         let (p, seen) = program_with(here(), name, &[("files", files)], Resp::ok(chat("ok", None))).await;

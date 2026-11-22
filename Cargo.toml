@@ -17,7 +17,8 @@ serde_path_to_error = "0.1"
 # preserve_order: a schema reaches the model with its keys in the order they are written
 serde_json = { version = "1", features = ["preserve_order"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
-reqwest = { version = "0.13", default-features = false, features = ["rustls", "json", "multipart"] }
+# gzip, deflate: a url answered compressed is read as what it holds; written here, not left to another crate
+reqwest = { version = "0.13", default-features = false, features = ["rustls", "json", "multipart", "gzip", "deflate"] }
 tokio = { version = "1.53.2", features = ["rt", "rt-multi-thread", "macros", "sync", "time", "process", "io-util", "net", "signal"] }
 clap = { version = "4", features = ["derive"] }
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
@@ -43,6 +44,8 @@ jsonschema = { version = "0.60.0", default-features = false }
 [dev-dependencies]
 # `test-util`: a test with a paused clock, for a limit of time that a real wait would make long
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "io-util", "time", "test-util"] }
+# a test server that answers compressed, as a url may
+flate2 = "1"
 
 # no debug information for the dependencies in development and test builds: the test programs
 # go from about 540 MB to about 190 MB each; the code of the project keeps it whole

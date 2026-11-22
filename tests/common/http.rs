@@ -23,6 +23,8 @@ pub struct Resp {
     pub drip: Option<std::time::Duration>,
     /// Bytes sent instead of `body`, which need not be text.
     pub raw: Option<Vec<u8>>,
+    /// The `content-encoding` header, for a body sent compressed.
+    pub encoding: Option<&'static str>,
 }
 
 impl Resp {
@@ -33,6 +35,7 @@ impl Resp {
             location: None,
             drip: None,
             raw: None,
+            encoding: None,
         }
     }
     pub fn status(status: u16, body: impl Into<String>) -> Self {
@@ -42,6 +45,7 @@ impl Resp {
             location: None,
             drip: None,
             raw: None,
+            encoding: None,
         }
     }
     pub fn redirect(status: u16, to: impl Into<String>) -> Self {
@@ -51,6 +55,7 @@ impl Resp {
             location: Some(to.into()),
             drip: None,
             raw: None,
+            encoding: None,
         }
     }
     /// A 200 whose body is `bytes`, which need not be text.
@@ -58,6 +63,16 @@ impl Resp {
         Resp {
             raw: Some(bytes),
             ..Resp::ok("")
+        }
+    }
+    /// A 200 whose body is `text` compressed with gzip, sent with `content-encoding: gzip`.
+    pub fn gzip(text: &[u8]) -> Self {
+        use std::io::Write;
+        let mut e = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+        e.write_all(text).unwrap();
+        Resp {
+            encoding: Some("gzip"),
+            ..Resp::bytes(e.finish().unwrap())
         }
     }
     /// The same answer, its body sent one byte every `every`.
@@ -172,8 +187,12 @@ async fn start(
                             release.notified().await;
                         }
                         let location = resp.location.map(|l| format!("location: {l}\r\n")).unwrap_or_default();
+                        let encoding = resp
+                            .encoding
+                            .map(|e| format!("content-encoding: {e}\r\n"))
+                            .unwrap_or_default();
                         let head = format!(
-                            "HTTP/1.1 {} X\r\ncontent-type: application/json\r\n{location}content-length: {}\r\n\r\n",
+                            "HTTP/1.1 {} X\r\ncontent-type: application/json\r\n{location}{encoding}content-length: {}\r\n\r\n",
                             resp.status,
                             resp.raw.as_ref().map_or(resp.body.len(), Vec::len),
                         );
