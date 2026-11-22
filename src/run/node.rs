@@ -386,7 +386,7 @@ impl Program {
                     // the bytes the url answered when the run started, as a media in base64
                     Some(Origin::Source(Source::Url { url, mime_type, .. })) => Item::Base64 {
                         mime_type: mime_type.clone().or_else(|| mime_of_url(url)),
-                        data: STANDARD.encode(self.url_media(&entry.id).map_err(|e| fail(Rule::Io, e))?.as_slice()),
+                        data: STANDARD.encode(self.url_media(&entry.id).map_err(|e| fail(Rule::Io, e))?.bytes()),
                     },
                     None => {
                         return Err(fail(Rule::Io, format!("media `{}` is not declared", entry.id)));
@@ -441,8 +441,8 @@ impl Program {
         }
     }
 
-    /// The bytes the url of media `id` answered when the run started.
-    fn url_media(&self, id: &str) -> Result<std::sync::Arc<Vec<u8>>, String> {
+    /// What the url of media `id` answered when the run started.
+    fn url_media(&self, id: &str) -> Result<super::sources::Body, String> {
         self.downloaded_media(id)
             .ok_or_else(|| format!("media `{id}`: its url was not downloaded, the run has not started"))
     }
@@ -479,12 +479,15 @@ impl Program {
                     .map(MediaInput::Markdown)
                     .map_err(|e| format!("media `{id}` is not text: {e}"))
             }
-            (MediaKind::Md, Source::Url { .. }) => String::from_utf8(self.url_media(id)?.as_ref().clone())
-                .map(MediaInput::Markdown)
-                .map_err(|e| format!("media `{id}` is not text: {e}")),
+            // checked to be text when it was downloaded: one copy, no second check
+            (MediaKind::Md, Source::Url { .. }) => self
+                .url_media(id)?
+                .text()
+                .map(|t| MediaInput::Markdown(t.to_string()))
+                .ok_or_else(|| format!("media `{id}`: its url was not downloaded as text")),
             (MediaKind::Img(f), Source::Url { .. }) => Ok(MediaInput::Image {
                 format: f.clone(),
-                data: STANDARD.encode(self.url_media(id)?.as_slice()),
+                data: STANDARD.encode(self.url_media(id)?.bytes()),
             }),
             (MediaKind::Audio(_) | MediaKind::Video(_), _) => {
                 Err(format!("media `{id}`: audio and video input are not supported yet"))

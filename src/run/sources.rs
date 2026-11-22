@@ -27,9 +27,34 @@ const TIME: Duration = Duration::from_secs(60);
 /// What the urls of the run in progress answered: the bytes of each media and the texts of each prompt, by id.
 #[derive(Debug, Default)]
 pub(super) struct Downloaded {
-    /// Each body as it was read: an `Arc` of the `Vec` itself, so that keeping it copies nothing.
-    media: HashMap<String, Arc<Vec<u8>>>,
+    media: HashMap<String, Body>,
     prompts: HashMap<String, PromptContent>,
+}
+
+/// The body a media url answered, kept as it was read: an `Arc` of the `String` or of the `Vec` itself, so that
+/// keeping it copies nothing.
+#[derive(Debug, Clone)]
+pub(super) enum Body {
+    /// A `md` some node reads with no utility: checked to be text once, when it was downloaded.
+    Text(Arc<String>),
+    Bytes(Arc<Vec<u8>>),
+}
+
+impl Body {
+    pub(super) fn bytes(&self) -> &[u8] {
+        match self {
+            Body::Text(t) => t.as_bytes(),
+            Body::Bytes(b) => b,
+        }
+    }
+
+    /// The text, when it was checked at the download.
+    pub(super) fn text(&self) -> Option<&str> {
+        match self {
+            Body::Text(t) => Some(t),
+            Body::Bytes(_) => None,
+        }
+    }
 }
 
 /// One resource to download.
@@ -108,10 +133,15 @@ impl Program {
             );
             match w.what {
                 What::Media { text } => {
-                    if text && let Err(e) = std::str::from_utf8(&bytes) {
-                        return Err(fail(Rule::Io, format!("it is not text: {e}")));
-                    }
-                    got.media.insert(w.id.to_string(), Arc::new(bytes));
+                    let body = if text {
+                        // takes the `Vec` as it is: the check is the only pass over the bytes
+                        let t = String::from_utf8(bytes)
+                            .map_err(|e| fail(Rule::Io, format!("it is not text: {}", e.utf8_error())))?;
+                        Body::Text(Arc::new(t))
+                    } else {
+                        Body::Bytes(Arc::new(bytes))
+                    };
+                    got.media.insert(w.id.to_string(), body);
                 }
                 What::Prompt => {
                     let content = prompt_of(&bytes).map_err(|(rule, why)| fail(rule, why))?;
@@ -135,8 +165,8 @@ impl Program {
         self.sources.lock().unwrap().take();
     }
 
-    /// The bytes the url of media `id` answered in the run in progress.
-    pub(super) fn downloaded_media(&self, id: &str) -> Option<Arc<Vec<u8>>> {
+    /// What the url of media `id` answered in the run in progress.
+    pub(super) fn downloaded_media(&self, id: &str) -> Option<Body> {
         self.sources.lock().unwrap().as_ref()?.media.get(id).cloned()
     }
 

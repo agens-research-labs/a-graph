@@ -54,6 +54,9 @@ mod url_gzip_budget;
 #[path = "url_gzip_read/url_gzip_read.rs"]
 mod url_gzip_read;
 
+#[path = "url_md_both/url_md_both.rs"]
+mod url_md_both;
+
 #[path = "url_md_read/url_md_read.rs"]
 mod url_md_read;
 
