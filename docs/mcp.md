@@ -50,7 +50,7 @@ without a handshake) and falls back to the older ones (`initialize`).
 ## Calls
 
 - The result of a call is the structured content of the answer, if it has one; otherwise its text blocks, one after
-  the other on separate lines.
+  the other on separate lines, with any other kind of block written as JSON.
 - The arguments of a call are checked against the input schema the server gave for the tool, as for the `parameters`
   of [tools](tools.md): arguments that do not match are told to the model, and the tool is not called. A schema of the
   server that is not a valid JSON Schema is not enforced: the arguments of that tool are not checked, and the run says

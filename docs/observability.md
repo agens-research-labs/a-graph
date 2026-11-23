@@ -95,7 +95,8 @@ safe metadata observed by the shared REST transport: `server.address`, `server.p
 HTTP status; an HTTP 200 followed by an invalid model response still records HTTP 200 alongside the model error.
 
 These attributes describe the **first** shared-transport REST request of the logical model invocation. If that
-invocation makes more than one request, `a_graph.http_request_count` records the count instead of silently replacing
+invocation makes more than one request, `http_request_count` (`a_graph.http_request_count` in the trace) records the
+count instead of silently replacing
 the primary request's metadata with a later request's. Metadata is bounded and isolated between parallel invocations.
 SDK traffic bypassing this transport gets configured destination metadata only; HTTP method/status are not guessed.
 This does not add individual HTTP/retry spans or propagate `traceparent`/`tracestate`. No URL paths, query strings,

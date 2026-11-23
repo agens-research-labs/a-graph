@@ -54,7 +54,8 @@ A variable that is not set is an error (`env_missing`). When it is reported depe
 
 - the keys of the models, and the headers of tools, utilities, the log, the trace and the urls of media and prompts:
   when the file is checked, before anything runs;
-- the key of a vector database, and the `env` and `headers` of an MCP server: when they are used, during the run.
+- the key of a vector database, and the `env` and `headers` of an MCP server: when they are used, during the run,
+  where the error is `io`.
 
 When the file is checked, the variables are read only after the [destinations](#network): a file that names a host
 it may not reach is reported with `network_not_allowed` alone, and its variables are not read. The headers of the
