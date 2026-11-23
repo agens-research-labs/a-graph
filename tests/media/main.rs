@@ -33,6 +33,9 @@ mod media_markdown;
 #[path = "media_one_writer/media_one_writer.rs"]
 mod media_one_writer;
 
+#[path = "media_schema_refused/media_schema_refused.rs"]
+mod media_schema_refused;
+
 #[path = "media_source_or_generate/media_source_or_generate.rs"]
 mod media_source_or_generate;
 

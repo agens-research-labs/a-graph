@@ -148,6 +148,10 @@ impl Llm for Mistral {
         if req.logprobs.is_some() && !req.output_media.is_empty() {
             problems.push("a produced speech gives no logprobs".to_string());
         }
+        // the media api answers no text, so no answer could match a schema
+        if req.schema.is_some() && !req.output_media.is_empty() {
+            problems.push("an output schema and a produced media cannot be asked together".to_string());
+        }
         if problems.is_empty() {
             Ok(())
         } else {

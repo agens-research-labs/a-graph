@@ -31,6 +31,7 @@ async fn check_limits() {
     let req = ModelRequirements {
         input_media: vec![MediaKind::Audio("wav".into())],
         output_media: vec![bad],
+        schema: Some(json!({})),
         ..Default::default()
     };
     let ModelError::Unsupported { problems, .. } = m.check(&req).unwrap_err() else {
@@ -44,6 +45,7 @@ async fn check_limits() {
         "background",
         "language_code",
         "provider",
+        "schema and a produced media",
     ] {
         assert!(all.contains(needle), "missing `{needle}` in: {all}");
     }
