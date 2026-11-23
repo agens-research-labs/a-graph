@@ -109,8 +109,9 @@ both are generated from the code.
 
 ## What it does not do yet
 
-- A prompt, a media or a blackboard read from a `url`: the file is accepted, but a node that uses one fails when it runs.
-- `search`, and a memory kept in a vector database (`provider: vectordb`): the same.
+- A blackboard kept at a `url`: the file is refused when it is checked.
+- `search`, and a memory kept in a vector database (`provider: vectordb`): the file is accepted, but a node that uses
+  one fails when it runs.
 - Audio and video in: no provider takes them yet.
 - A `react` inside a `react`.
 - The batch of Gemini, and of Vertex AI with publisher `google`.
