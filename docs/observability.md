@@ -85,8 +85,9 @@ when there is one, `node`.
 - `{ url: <endpoint>, headers: ... }`: an HTTP endpoint, as `application/x-ndjson` POSTs of at most 100 events each.
 
 Runtime records carry `trace_id` and `span_id`, shared with the exported trace. Each run gets a new trace ID,
-including when a program is reused. Before a run starts (for example during validation), these IDs are absent.
-IDs are present in runtime logs even when trace export is disabled.
+including when a program is reused, unless the request brings a valid `traceparent` (see
+[the trace of the caller](#the-trace-of-the-caller)). Before a run starts (for example during validation), these IDs
+are absent. IDs are present in runtime logs even when trace export is disabled.
 
 Model-start records include the configured `server.address` and effective `server.port`, without URL userinfo,
 path or query. These remain available for cancelled calls and SDK-backed providers. Model completion records add
@@ -134,6 +135,7 @@ program sends **one** POST with the whole timeline, in OTLP over HTTP with JSON,
   and HTTP status when the provider error exposes one; no token counts are invented for failed calls. The failing
   call's open ancestors are marked as failed too. An in-flight model call cancelled by a timeout or shutdown is
   closed at flush, marked `interrupted` with `error.type=cancelled`.
+- The ids of the spans are random, so two runs in the same trace never share one.
 - Other spans still open at failure are closed as `interrupted`. A failed run is marked as failed.
 - The service name is `passport.adl.name`. `service.version` and the instrumentation scope version identify the
   a-graph binary (`CARGO_PKG_VERSION`); `a_graph.graph.version` identifies `passport.adl.version`.
@@ -152,6 +154,24 @@ error-detail attribute. Truncation preserves UTF-8 boundaries and adds `a_graph.
 per-content-field limit, not a cap on the number of spans or the entire export. The passport can still forbid all
 contents; enabling capture never bypasses redaction. Logs and the live display retain their existing passport-based
 policy and are not affected by these trace-only settings.
+
+### The trace of the caller
+
+A request to the service (`POST /run`, `POST /runs`, see [serve](serve.md#running-a-graph)) may carry a
+`traceparent` header ([W3C Trace Context](https://www.w3.org/TR/trace-context/)), for example
+`00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01`. When it is valid, the run is in that trace: the trace id
+of its spans and of its log is the caller's, and the span of the run hangs from the span the header names. Valid
+means: lowercase hex, a trace id and a span id that are not all zeros, a version other than `ff`, exactly the four
+fields for the version `00` (a later version may add fields after a dash, which are not read), and one header only.
+Anything else is as no header, never an error: the run has a trace of its own. `tracestate` is not read.
+
+When the flag of the header is `00`, the caller does not record its trace: the run sends nothing to `trace.endpoint`,
+as if there were no `trace` block, but its log still carries the trace id of the caller. Only the bit `sampled` of
+the flag is read.
+
+The answer gives back the `traceparent` of the run, so that the caller finds it: the trace, the span of the run, and
+the flag `01` when the trace of the run is sent, `00` otherwise (no `trace` block, or a caller that does not record).
+A request without the header gets it too, with the run's own trace.
 
 For a runnable Collector → Jaeger demo, see [examples/03-observability](../examples/03-observability/README.md).
 It verifies the OTLP trace path; JSON logs stay local and no metrics are exported.

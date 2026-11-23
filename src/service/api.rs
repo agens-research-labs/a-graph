@@ -46,6 +46,8 @@ impl Endpoint {
         let errors = |description: &str| json!({ "description": description, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Errors" } } } });
         let request = json!({ "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Request" } } } });
         let id = json!([{ "name": "id", "in": "path", "required": true, "description": "The id of the run, as `POST /runs` gave it.", "schema": { "type": "string" } }]);
+        let caller = json!([{ "name": "traceparent", "in": "header", "required": false, "description": "The trace of the caller (W3C Trace Context): when it is valid, the run is in that trace, under the span it names, and with the flag `00` its trace is not sent. A header that is not valid, or two of them, are as no header: the run has a trace of its own.", "schema": { "type": "string" } }]);
+        let traceparent = json!({ "traceparent": { "description": "The trace of the run and its span (W3C Trace Context, version `00`): the trace of the caller, or one of its own; the flag is `01` when the trace of the run is sent to a collector, `00` otherwise.", "schema": { "type": "string" } } });
         let refusals = |mut responses: serde_json::Map<String, Value>| {
             responses.insert("400".into(), errors("The body is not a JSON object with `yml`, `message` and, if wanted, `session` (an unknown key too), or `session` is not a name."));
             responses.insert(
@@ -83,22 +85,28 @@ impl Endpoint {
             }),
             Endpoint::Run => {
                 let mut ok = serde_json::Map::new();
-                ok.insert("200".into(), json!({ "description": "The run ended well: its result, the same JSON as the command line writes.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Result" } } } }));
-                ok.insert("502".into(), errors("The run failed: a model, a utility, a tool, or it lasted more than `run_timeout_seconds` (`run_timeout`), or the service was stopped before it ended (`service_stopped`)."));
+                ok.insert("200".into(), json!({ "description": "The run ended well: its result, the same JSON as the command line writes.", "headers": traceparent.clone(), "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Result" } } } }));
+                let mut failed = errors(
+                    "The run failed: a model, a utility, a tool, or it lasted more than `run_timeout_seconds` (`run_timeout`), or the service was stopped before it ended (`service_stopped`).",
+                );
+                failed["headers"] = traceparent;
+                ok.insert("502".into(), failed);
                 json!({
                     "summary": "Runs a graph and answers when it is done.",
                     "description": "The graph is built again for each request: requests share nothing but the folders of their sessions.",
+                    "parameters": caller,
                     "requestBody": request,
                     "responses": refusals(ok),
                 })
             }
             Endpoint::Start => {
                 let mut ok = serde_json::Map::new();
-                ok.insert("202".into(), json!({ "description": "The run started. The refusals of `POST /run` happen here, before any run is created.", "content": { "application/json": { "schema": {
+                ok.insert("202".into(), json!({ "description": "The run started. The refusals of `POST /run` happen here, before any run is created.", "headers": traceparent, "content": { "application/json": { "schema": {
                     "type": "object", "properties": { "run": { "type": "string", "description": "The id of the run, random: whoever knows it can watch the run." } }, "required": ["run"], "additionalProperties": false,
                 } } } }));
                 json!({
                     "summary": "Starts a graph and answers at once with the id of the run, to watch it while it goes.",
+                    "parameters": caller,
                     "requestBody": request,
                     "responses": refusals(ok),
                 })
