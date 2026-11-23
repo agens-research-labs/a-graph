@@ -367,6 +367,8 @@ impl Program {
                 reasoning: response.reasoning,
                 calls: response.tools_call,
                 results,
+                // the corrections the model answered with these tools go before them
+                corrections: std::mem::take(&mut call.corrections),
             });
         }
     }

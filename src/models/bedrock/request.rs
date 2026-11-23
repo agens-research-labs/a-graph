@@ -146,9 +146,13 @@ impl Bedrock {
         messages.push(build(ConversationRole::User, content).map_err(fail)?);
 
         for round in &call.tool_rounds {
+            // the corrections of `schema_prompt` that the model answered with this round, where they happened
+            for e in &round.corrections {
+                messages.push(entry(e)?);
+            }
             messages.extend(self.tool_round(round)?);
         }
-        // the corrections of `schema_prompt` come last, after the tool rounds
+        // the corrections that no tool round followed come last
         for e in &call.corrections {
             messages.push(entry(e)?);
         }

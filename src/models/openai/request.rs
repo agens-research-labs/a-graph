@@ -106,9 +106,11 @@ impl OpenAi {
         items.push(json!({ "role": "user", "content": parts }));
 
         for round in &call.tool_rounds {
+            // the corrections of `schema_prompt` that the model answered with this round, where they happened
+            items.extend(round.corrections.iter().map(entry));
             items.extend(tool_round(round));
         }
-        // the corrections of `schema_prompt` come last, after the tool rounds
+        // the corrections that no tool round followed come last
         items.extend(call.corrections.iter().map(entry));
         items
     }

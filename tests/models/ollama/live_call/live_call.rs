@@ -38,6 +38,7 @@ async fn live_call() {
             result: json!("sunny, 22 C"),
             is_error: false,
         }],
+        corrections: vec![],
     }];
     let second = model.invoke(&c).await.unwrap();
     assert_eq!(second.stop_reason, StopReason::End);

@@ -48,6 +48,7 @@ async fn tool_round() {
             result: json!({ "reason": "down" }),
             is_error: true,
         }],
+        corrections: vec![],
     }];
     let (_, req) = one_call(c, Resp::ok(text_answer("done"))).await;
     let b = body(&req);

@@ -3,6 +3,9 @@
 #[path = "../common/mod.rs"]
 mod common;
 
+#[path = "correction_then_tool/correction_then_tool.rs"]
+mod correction_then_tool;
+
 #[path = "count_restarts/count_restarts.rs"]
 mod count_restarts;
 

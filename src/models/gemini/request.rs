@@ -105,9 +105,11 @@ impl Gemini {
         steps.push(json!({ "type": "user_input", "content": content }));
 
         for round in &call.tool_rounds {
+            // the corrections of `schema_prompt` that the model answered with this round, where they happened
+            steps.extend(round.corrections.iter().map(entry));
             steps.extend(tool_round(round));
         }
-        // the corrections of `schema_prompt` come last, after the tool rounds
+        // the corrections that no tool round followed come last
         steps.extend(call.corrections.iter().map(entry));
         Ok(steps)
     }
