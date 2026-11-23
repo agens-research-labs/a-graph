@@ -98,8 +98,9 @@ What `impl Llm` must keep:
   batch), all the problems in one `ModelError::Unsupported`. A provider without batch refuses `req.batch` here and
   answers `invoke_batch` with `unsupported`.
 - `invoke` makes one call, one round: the loop of the tools belongs to the node. The `StopReason` says why the answer
-  ended; `MaxTokens` and `ContextExceeded` are cut answers, whose tool calls are never run, and with a schema they
-  are `Identity::truncated`. A refused answer is `Refused`, with no tool calls.
+  ended; `MaxTokens` and `ContextExceeded` are cut answers: one that asks for a tool is `Identity::truncated`, and its
+  tool calls are never run. With a schema the text goes back as it came, cut or not: the JSON is read by
+  `models::structured`. A refused answer is `Refused`, with no tool calls.
 - The calls go through `http::send` (or `send_bytes`) with the `ErrorShape` of the provider: the JSON pointers of the
   code and of the message of its error answers, and which answers are about the credentials. `api_error` reads them:
   the message of the error says the status and the code, what the provider wrote is its `said`, written only where
