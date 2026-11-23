@@ -28,6 +28,7 @@ pub async fn correction_accepted(model: &dyn Llm, mut call: ModelInvocation) {
             result: json!("sunny, 22 C"),
             is_error: false,
         }],
+        corrections: vec![],
     }];
     call.corrections = vec![
         ChatEntry {

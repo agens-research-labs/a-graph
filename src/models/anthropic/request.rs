@@ -122,9 +122,11 @@ impl Anthropic {
         messages.push(json!({ "role": "user", "content": content }));
 
         for round in &call.tool_rounds {
+            // the corrections of `schema_prompt` that the model answered with this round, where they happened
+            messages.extend(round.corrections.iter().map(entry));
             messages.extend(tool_round(round));
         }
-        // the corrections of `schema_prompt` come last, after the tool rounds
+        // the corrections that no tool round followed come last
         messages.extend(call.corrections.iter().map(entry));
         Ok(messages)
     }

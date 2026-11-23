@@ -24,6 +24,7 @@ async fn correction_last() {
             result: json!("sunny"),
             is_error: false,
         }],
+        corrections: vec![],
     }];
     c.corrections = vec![
         ChatEntry {

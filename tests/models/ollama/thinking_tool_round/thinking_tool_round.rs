@@ -51,6 +51,7 @@ async fn thinking_tool_round() {
                 is_error: true,
             },
         ],
+        corrections: vec![],
     }];
     let (_, req) = one_call(c, Resp::ok(text_answer("done"))).await;
     let b = body(&req);

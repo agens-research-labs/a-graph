@@ -105,7 +105,8 @@ The value must match this JSON Schema:
 The answer is read and checked as with `schema`, with one difference: an answer that is not one JSON value (a text, a
 text around the JSON, two values, a JSON left open by a model that ended by itself) is sent back to the model, after
 everything else in the conversation, tool rounds included, with a fixed request to answer again with one JSON value
-only. `max_attempts` (default 3, at least 1, only with `schema_prompt`) is the most calls for one answer, the first one
+only. If the model then asks for a tool, the conversation keeps the order in which things happened: the wrong answer
+and the correction, then that tool round. `max_attempts` (default 3, at least 1, only with `schema_prompt`) is the most calls for one answer, the first one
 included; when the last one is not one JSON value either, the run stops (`attempt_limit`), with that answer as the
 `detail`. Everything else is never corrected and stops the run as with `schema`: a JSON that does not match the
 schema, a refusal, a cut answer. The wrong answers and the corrections are not the answer of the node: what goes on,

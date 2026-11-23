@@ -47,6 +47,7 @@ async fn tool_rounds() {
                 is_error: true,
             },
         ],
+        corrections: vec![],
     }];
     let (_, req) = one_call(c, Resp::ok(text_answer("done"))).await;
     let m = body(&req)["messages"].clone();
