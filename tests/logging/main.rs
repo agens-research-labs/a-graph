@@ -36,6 +36,9 @@ mod one_write_per_line;
 #[path = "redaction/redaction.rs"]
 mod redaction;
 
+#[path = "redirect_final/redirect_final.rs"]
+mod redirect_final;
+
 #[path = "server_error_retried/server_error_retried.rs"]
 mod server_error_retried;
 
