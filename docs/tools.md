@@ -51,10 +51,11 @@ An answer that is not JSON is a failure too.
   fix.
 - An answer of the model that stopped before its end, at `max_tokens` or at the end of the context window, and asks
   for tools: no tool is called, since a call may be cut anywhere, and the run stops (`model_failed`). It happens
-  with or without an output `schema`; a larger `max_tokens` is the fix. Without a `schema`, a cut answer that asks
-  for no tool is the answer of the node.
+  with or without an output `schema`; a larger `max_tokens` is the fix. Without a `schema` or a `schema_prompt`, a
+  cut answer that asks for no tool is the answer of the node.
 - An answer the model or the provider refused, and that asks for tools: no tool is called, and the node ends as with
-  any refusal. Its `node.end` event says `stop` `Refused` (see [observability](observability.md)).
+  any refusal. Without a `schema` or a `schema_prompt` its `node.end` event says `stop` `Refused` (see
+  [observability](observability.md)); with one the run stops (`model_refused`).
 
 ## The loop
 
