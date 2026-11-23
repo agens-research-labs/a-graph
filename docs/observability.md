@@ -175,7 +175,7 @@ Remote error-message text is not printed. These OTLP rules do not change deliver
   warnings;
 - `detail`: also the model calls, the tool calls, the answers checked against a schema
   (`structured <outcome> · <mechanism> · attempt <n>/<max>`), the utilities, the readings of vector databases and
-  memories, and the contents, as the passport allows.
+  memories, the downloads of media and prompts from a `url`, and the contents, as the passport allows.
 
 Colors are used only when the standard error is a terminal and the variable `NO_COLOR` is not set: nodes in bold cyan,
 groups in bold orange with their branches drawn under them, tools in blue, errors in red, warnings in yellow,
