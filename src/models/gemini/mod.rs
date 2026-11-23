@@ -75,14 +75,18 @@ impl Gemini {
                 format!("environment variable `{}` is not set", m.api_key),
             )
         })?;
-        Self::assemble(
+        let gemini = Self::assemble(
             &m.common.id,
             &m.common.model,
             "gemini",
             Auth::Key(api_key),
             INTERACTIONS_URL.into(),
             at,
-        )
+        )?;
+        Ok(match &m.host {
+            Some(host) => gemini.with_base_url(host),
+            None => gemini,
+        })
     }
 
     /// Gemini on Vertex AI (publisher google), with the Google Application Default Credentials.
@@ -129,8 +133,8 @@ impl Gemini {
         })
     }
 
-    /// For tests: another server for the Gemini API. Not reachable from the yml, whose host the
-    /// allow-list checks.
+    /// Another server for the Gemini API: the `host` of the yml, which the allow-list checks, or the server of a
+    /// test.
     pub fn with_base_url(mut self, url: impl Into<String>) -> Self {
         self.url = format!("{}/v1beta/interactions", url.into().trim_end_matches('/'));
         self

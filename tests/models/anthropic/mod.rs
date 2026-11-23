@@ -18,6 +18,7 @@ fn api_model(var: &str) -> AnthropicModel {
         },
         api_key: var.into(),
         workspace_id: None,
+        host: None,
     }
 }
 
@@ -119,6 +120,9 @@ fn live_model() -> Anthropic {
 
 #[path = "plain_call/plain_call.rs"]
 mod plain_call;
+
+#[path = "gateway_host/gateway_host.rs"]
+mod gateway_host;
 
 #[path = "workspace_id/workspace_id.rs"]
 mod workspace_id;

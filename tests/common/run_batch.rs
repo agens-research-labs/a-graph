@@ -152,6 +152,7 @@ pub async fn program_on(
         },
         api_key: "A_GRAPH_TEST_RUN_BATCH_KEY".into(),
         workspace_id: None,
+        host: None,
     };
     p.models.insert(
         "m",

@@ -335,6 +335,10 @@
                 "type": "string",
                 "description": "The Anthropic workspace, sent as the header `anthropic-workspace-id`, for a key that is not bound to a workspace. It is an id, not a secret."
               },
+              "host": {
+                "type": "string",
+                "description": "The server the calls go to instead of `https://api.anthropic.com`, a gateway for example, with the paths of the API under it (`<host>/v1/messages`). The batches go there too. Its host must be in `allowed_hosts`."
+              },
               "provider": {
                 "const": "anthropic"
               }
@@ -398,6 +402,10 @@
                 ],
                 "additionalProperties": false,
                 "description": "The key of the API, read from an environment variable when the file is checked."
+              },
+              "host": {
+                "type": "string",
+                "description": "The server the calls go to instead of `https://api.openai.com/v1`, a gateway for example, with the paths of the Responses API under it (`<host>/responses`). The batches go there too. Its host must be in `allowed_hosts`."
               },
               "provider": {
                 "const": "openai"
@@ -463,6 +471,10 @@
                 "additionalProperties": false,
                 "description": "The key of the API, read from an environment variable when the file is checked."
               },
+              "host": {
+                "type": "string",
+                "description": "The server the calls go to instead of `https://generativelanguage.googleapis.com`, a gateway for example, with the paths of the API under it (`<host>/v1beta/interactions`). Its host must be in `allowed_hosts`."
+              },
               "provider": {
                 "const": "gemini"
               }
@@ -526,6 +538,10 @@
                 ],
                 "additionalProperties": false,
                 "description": "The key of the API, read from an environment variable when the file is checked."
+              },
+              "host": {
+                "type": "string",
+                "description": "The server the calls go to instead of `https://api.mistral.ai`, a gateway for example, with the paths of the API under it (`<host>/v1/chat/completions`). The batches go there too. Its host must be in `allowed_hosts`."
               },
               "provider": {
                 "const": "mistral"

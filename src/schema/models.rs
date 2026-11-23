@@ -21,9 +21,23 @@ const COMMON: &[Field] = &[
 const ANTHROPIC: &[Field] = &[
     API_KEY_FIELD,
     Field::opt(WORKSPACE_ID, Shape::Text).doc("The Anthropic workspace, sent as the header `anthropic-workspace-id`, for a key that is not bound to a workspace. It is an id, not a secret."),
+    Field::opt(HOST, Shape::Text).doc("The server the calls go to instead of `https://api.anthropic.com`, a gateway for example, with the paths of the API under it (`<host>/v1/messages`). The batches go there too. Its host must be in `allowed_hosts`."),
 ];
 
-const API_KEY_ONLY: &[Field] = &[API_KEY_FIELD];
+const OPENAI: &[Field] = &[
+    API_KEY_FIELD,
+    Field::opt(HOST, Shape::Text).doc("The server the calls go to instead of `https://api.openai.com/v1`, a gateway for example, with the paths of the Responses API under it (`<host>/responses`). The batches go there too. Its host must be in `allowed_hosts`."),
+];
+
+const GEMINI: &[Field] = &[
+    API_KEY_FIELD,
+    Field::opt(HOST, Shape::Text).doc("The server the calls go to instead of `https://generativelanguage.googleapis.com`, a gateway for example, with the paths of the API under it (`<host>/v1beta/interactions`). Its host must be in `allowed_hosts`."),
+];
+
+const MISTRAL: &[Field] = &[
+    API_KEY_FIELD,
+    Field::opt(HOST, Shape::Text).doc("The server the calls go to instead of `https://api.mistral.ai`, a gateway for example, with the paths of the API under it (`<host>/v1/chat/completions`). The batches go there too. Its host must be in `allowed_hosts`."),
+];
 
 const BEDROCK: &[Field] = &[
     Field::req(REGION, Shape::Text).doc("The AWS region the model runs in, for example `eu-west-1`."),
@@ -101,13 +115,13 @@ pub(super) const MODELS: Shape = Shape::List(&Shape::Tagged {
             ANTHROPIC,
             "The Anthropic Messages API (`api.anthropic.com`). A node that uses it must set `max_tokens`.",
         ),
-        Variant::new("openai", API_KEY_ONLY, "The OpenAI Responses API (`api.openai.com`)."),
+        Variant::new("openai", OPENAI, "The OpenAI Responses API (`api.openai.com`)."),
         Variant::new(
             "gemini",
-            API_KEY_ONLY,
+            GEMINI,
             "The Gemini API with an API key, not Vertex AI (`generativelanguage.googleapis.com`). It has no batch, and reasoning cannot be switched off.",
         ),
-        Variant::new("mistral", API_KEY_ONLY, "The Mistral API (`api.mistral.ai`)."),
+        Variant::new("mistral", MISTRAL, "The Mistral API (`api.mistral.ai`)."),
         Variant::new(
             "bedrock",
             BEDROCK,

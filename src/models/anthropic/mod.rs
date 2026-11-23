@@ -88,7 +88,7 @@ impl Anthropic {
     /// the model is in the yml. A variable that is not set is an error now, not at the first call.
     pub fn new(m: &AnthropicModel, at: &Path) -> Result<Self, Error> {
         let key = env_key(&m.api_key, &at.key(key::API_KEY))?;
-        Self::assemble(
+        let anthropic = Self::assemble(
             &m.common.id,
             &m.common.model,
             "anthropic",
@@ -99,7 +99,11 @@ impl Anthropic {
             },
             String::new(),
             at,
-        )
+        )?;
+        Ok(match &m.host {
+            Some(host) => anthropic.with_base_url(host),
+            None => anthropic,
+        })
     }
 
     /// Claude on Vertex AI (publisher anthropic), with the Google Application Default Credentials.
@@ -172,8 +176,8 @@ impl Anthropic {
         })
     }
 
-    /// For tests: another server for the direct API. Not reachable from the yml, whose host the
-    /// allow-list checks.
+    /// Another server for the direct API, for the calls and the batches: the `host` of the yml, which the allow-list
+    /// checks, or the server of a test.
     pub fn with_base_url(mut self, url: impl Into<String>) -> Self {
         self.base_url = url.into().trim_end_matches('/').to_string();
         self

@@ -85,7 +85,7 @@ answer, with its status.
 
 Every destination written in the file is checked, before anything runs:
 
-- the host of every model and embedding provider, and for a `bedrock` model with a `batch` block also the Bedrock
+- the host of every model and embedding provider (the host of its `host`, when it has one), and for a `bedrock` model with a `batch` block also the Bedrock
   control API and the S3 buckets of the batch (see [models](models.md#batch));
 - the `url` of utilities, tools and MCP servers with `transport: http`;
 - the `url` of prompts and media read from the network;

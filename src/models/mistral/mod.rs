@@ -81,13 +81,13 @@ impl Mistral {
             who: Identity::new(&m.common.id, PROVIDER),
             model: m.common.model.clone(),
             api_key,
-            base_url: BASE_URL.into(),
+            base_url: m.host.as_deref().unwrap_or(BASE_URL).trim_end_matches('/').to_string(),
             poll_interval: POLL_INTERVAL,
             client,
         })
     }
 
-    /// For tests: another server. Not reachable from the yml, whose host the allow-list checks.
+    /// For tests: another server, as the `host` of the yml.
     pub fn with_base_url(mut self, url: impl Into<String>) -> Self {
         self.base_url = url.into().trim_end_matches('/').to_string();
         self
