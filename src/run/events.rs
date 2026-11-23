@@ -30,14 +30,15 @@ pub(super) fn here() -> Where {
 #[derive(Default)]
 pub(crate) struct Spans {
     trace_id: std::sync::Mutex<Option<String>>,
-    next: std::sync::atomic::AtomicU64,
     run: std::sync::atomic::AtomicU64,
     nodes: std::sync::Mutex<std::collections::HashMap<String, u64>>,
 }
 
 impl Spans {
+    /// A new interval: random, so that two runs in the same trace never share one. It is the lower half of a random
+    /// uuid, 62 random bits whose first bit is always 1: never 0, which means "none".
     fn id(&self) -> u64 {
-        self.next.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1
+        uuid::Uuid::new_v4().as_u64_pair().1
     }
 }
 

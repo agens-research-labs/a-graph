@@ -51,6 +51,9 @@ mod run_error_failed;
 #[path = "sends_otlp_json/sends_otlp_json.rs"]
 mod sends_otlp_json;
 
+#[path = "span_ids_random/span_ids_random.rs"]
+mod span_ids_random;
+
 #[path = "times_nest/times_nest.rs"]
 mod times_nest;
 
