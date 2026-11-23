@@ -78,7 +78,7 @@ impl OpenAi {
             &m.common.model,
             "openai",
             Auth::Bearer(key),
-            BASE_URL.into(),
+            m.host.as_deref().unwrap_or(BASE_URL).trim_end_matches('/').to_string(),
             None,
             at,
         )
@@ -156,8 +156,7 @@ impl OpenAi {
         &self.base_url
     }
 
-    /// For tests: another server (the whole base, `/v1` included). Not reachable from the yml,
-    /// whose host the allow-list checks.
+    /// For tests: another server (the whole base, `/v1` included), as the `host` of the yml.
     pub fn with_base_url(mut self, url: impl Into<String>) -> Self {
         self.base_url = url.into().trim_end_matches('/').to_string();
         self

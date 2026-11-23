@@ -125,6 +125,7 @@ The Anthropic Messages API (`api.anthropic.com`). A node that uses it must set `
 |---|---|---|---|
 | `api_key` | yes | secret | The key of the API, read from an environment variable when the file is checked. |
 | `workspace_id` | no | text | The Anthropic workspace, sent as the header `anthropic-workspace-id`, for a key that is not bound to a workspace. It is an id, not a secret. |
+| `host` | no | text | The server the calls go to instead of `https://api.anthropic.com`, a gateway for example, with the paths of the API under it (`<host>/v1/messages`). The batches go there too. Its host must be in `allowed_hosts`. |
 
 ## `models[]` with `provider: openai`
 
@@ -133,6 +134,7 @@ The OpenAI Responses API (`api.openai.com`).
 | Key | Required | Value | Description |
 |---|---|---|---|
 | `api_key` | yes | secret | The key of the API, read from an environment variable when the file is checked. |
+| `host` | no | text | The server the calls go to instead of `https://api.openai.com/v1`, a gateway for example, with the paths of the Responses API under it (`<host>/responses`). The batches go there too. Its host must be in `allowed_hosts`. |
 
 ## `models[]` with `provider: gemini`
 
@@ -141,6 +143,7 @@ The Gemini API with an API key, not Vertex AI (`generativelanguage.googleapis.co
 | Key | Required | Value | Description |
 |---|---|---|---|
 | `api_key` | yes | secret | The key of the API, read from an environment variable when the file is checked. |
+| `host` | no | text | The server the calls go to instead of `https://generativelanguage.googleapis.com`, a gateway for example, with the paths of the API under it (`<host>/v1beta/interactions`). Its host must be in `allowed_hosts`. |
 
 ## `models[]` with `provider: mistral`
 
@@ -149,6 +152,7 @@ The Mistral API (`api.mistral.ai`).
 | Key | Required | Value | Description |
 |---|---|---|---|
 | `api_key` | yes | secret | The key of the API, read from an environment variable when the file is checked. |
+| `host` | no | text | The server the calls go to instead of `https://api.mistral.ai`, a gateway for example, with the paths of the API under it (`<host>/v1/chat/completions`). The batches go there too. Its host must be in `allowed_hosts`. |
 
 ## `models[]` with `provider: bedrock`
 

@@ -18,10 +18,10 @@ models:
 
 | `provider` | Service | Host checked against `allowed_hosts` |
 |---|---|---|
-| `anthropic` | the Anthropic Messages API | `api.anthropic.com` |
-| `openai` | the OpenAI Responses API | `api.openai.com` |
-| `gemini` | the Gemini API, with an API key (not Vertex AI) | `generativelanguage.googleapis.com` |
-| `mistral` | the Mistral API (`api.mistral.ai`). Mistral models hosted on Bedrock, Vertex AI or Azure are not covered | `api.mistral.ai` |
+| `anthropic` | the Anthropic Messages API | `api.anthropic.com`, or the host of `host` (see [a gateway](#a-gateway-in-front-of-a-provider)) |
+| `openai` | the OpenAI Responses API | `api.openai.com`, or the host of `host` |
+| `gemini` | the Gemini API, with an API key (not Vertex AI) | `generativelanguage.googleapis.com`, or the host of `host` |
+| `mistral` | the Mistral API (`api.mistral.ai`). Mistral models hosted on Bedrock, Vertex AI or Azure are not covered | `api.mistral.ai`, or the host of `host` |
 | `bedrock` | Amazon Bedrock, the Converse API | `bedrock-runtime.<region>.amazonaws.com` |
 | `vertex_ai` | Google Cloud Vertex AI; `publisher` is `anthropic` or `google` | `aiplatform.googleapis.com` for `location: global`, `aiplatform.<us\|eu>.rep.googleapis.com` for `us` and `eu`, `<location>-aiplatform.googleapis.com` for a region |
 | `azure_foundry` | Microsoft Foundry; `publisher` is `anthropic` or `openai` | `<resource>.services.ai.azure.com` for anthropic, `<resource>.openai.azure.com` for openai |
@@ -30,6 +30,40 @@ models:
 
 On `vertex_ai` and `azure_foundry`, `publisher` decides the format of the requests and which keys are required. On
 `azure_foundry`, `model` is the name of the deployment created in the Foundry portal.
+
+## A gateway in front of a provider
+
+`anthropic`, `openai`, `gemini` and `mistral` take an optional `host`: the server the calls go to instead of the API
+of the provider, for example an AI gateway that meters the calls, sets quotas or holds the keys of the providers, or
+a proxy of the company. The value is the base of the API, as the SDK of the provider takes it, and the paths of the
+API go under it:
+
+| `provider` | Default `host` | A call goes to |
+|---|---|---|
+| `anthropic` | `https://api.anthropic.com` | `<host>/v1/messages` |
+| `openai` | `https://api.openai.com/v1` | `<host>/responses` |
+| `gemini` | `https://generativelanguage.googleapis.com` | `<host>/v1beta/interactions` |
+| `mistral` | `https://api.mistral.ai` | `<host>/v1/chat/completions` |
+
+```yaml
+models:
+  - id: smart
+    provider: openai
+    model: gpt-5
+    input: [text]
+    output: [text]
+    api_key: { env: GATEWAY_KEY }
+    host: https://gateway.example.com/openai/v1
+```
+
+- The host of `host`, on its port, must be in `allowed_hosts`, as for a local server; the host of the provider is no
+  longer needed, since nothing goes there.
+- Everything goes to `host`, the batches too (`anthropic`, `openai`, `mistral`), and the key named by `api_key`
+  goes with them: a gateway that does not serve the batch API of the provider answers with an error, which stops the
+  run (`model_failed`).
+- The requests are those of the provider, unchanged: the gateway must speak the same API. `openai` uses the Responses
+  API, not Chat Completions, so a server that is "compatible with OpenAI" only for Chat Completions does not work.
+  The produced media of `openai` and `mistral` (images, speech) go under `host` as well.
 
 ## Credentials
 

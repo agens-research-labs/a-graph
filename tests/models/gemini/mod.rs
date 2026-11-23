@@ -16,6 +16,7 @@ fn api_model(var: &str) -> ApiModel {
             output: vec![Modality::Text],
         },
         api_key: var.into(),
+        host: None,
     }
 }
 
@@ -114,6 +115,9 @@ fn vertex_model(location: &str) -> VertexModel {
 
 #[path = "plain_call/plain_call.rs"]
 mod plain_call;
+
+#[path = "gateway_host/gateway_host.rs"]
+mod gateway_host;
 
 #[path = "reasoning_levels/reasoning_levels.rs"]
 mod reasoning_levels;

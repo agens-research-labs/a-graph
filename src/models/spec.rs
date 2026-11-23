@@ -55,13 +55,17 @@ pub struct AnthropicModel {
     pub api_key: EnvVar,
     /// Sent as `anthropic-workspace-id`: needed by an API key not scoped to a workspace.
     pub workspace_id: Option<String>,
+    /// The server the calls go to instead of the API of Anthropic: a gateway, or a proxy.
+    pub host: Option<String>,
 }
 
-/// OpenAI, Gemini and Mistral: an API key and nothing else.
+/// OpenAI, Gemini and Mistral: an API key and, if wanted, another server.
 #[derive(Debug, Clone)]
 pub struct ApiModel {
     pub common: Common,
     pub api_key: EnvVar,
+    /// The server the calls go to instead of the API of the provider: a gateway, or a proxy.
+    pub host: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -219,24 +223,41 @@ pub(super) fn read(mut o: Obj, errs: &mut Errs) -> Option<Model> {
         (Provider::Anthropic, common) => {
             let api_key = o.req_secret(key::API_KEY, errs);
             let workspace_id = o.opt::<String>(key::WORKSPACE_ID, errs);
+            let host = o.opt::<String>(key::HOST, errs);
             Model::Anthropic(AnthropicModel {
                 common,
                 api_key: api_key?,
                 workspace_id,
+                host,
             })
         }
-        (Provider::Openai, common) => Model::Openai(ApiModel {
-            common,
-            api_key: o.req_secret(key::API_KEY, errs)?,
-        }),
-        (Provider::Gemini, common) => Model::Gemini(ApiModel {
-            common,
-            api_key: o.req_secret(key::API_KEY, errs)?,
-        }),
-        (Provider::Mistral, common) => Model::Mistral(ApiModel {
-            common,
-            api_key: o.req_secret(key::API_KEY, errs)?,
-        }),
+        (Provider::Openai, common) => {
+            let api_key = o.req_secret(key::API_KEY, errs);
+            let host = o.opt::<String>(key::HOST, errs);
+            Model::Openai(ApiModel {
+                common,
+                api_key: api_key?,
+                host,
+            })
+        }
+        (Provider::Gemini, common) => {
+            let api_key = o.req_secret(key::API_KEY, errs);
+            let host = o.opt::<String>(key::HOST, errs);
+            Model::Gemini(ApiModel {
+                common,
+                api_key: api_key?,
+                host,
+            })
+        }
+        (Provider::Mistral, common) => {
+            let api_key = o.req_secret(key::API_KEY, errs);
+            let host = o.opt::<String>(key::HOST, errs);
+            Model::Mistral(ApiModel {
+                common,
+                api_key: api_key?,
+                host,
+            })
+        }
         (Provider::Bedrock, common) => {
             let region = o.req::<String>(key::REGION, errs);
             let credentials = o
