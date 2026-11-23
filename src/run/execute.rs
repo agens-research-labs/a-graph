@@ -135,10 +135,7 @@ impl Program {
         self.close_mcp().await;
         self.close_sources();
         self.run_finished(started, output.as_ref().err());
-        // the timeline of the run goes to the collector, whatever the outcome
-        if let Some(t) = &self.tracer {
-            t.flush().await;
-        }
+        self.send_trace().await;
         output
     }
 

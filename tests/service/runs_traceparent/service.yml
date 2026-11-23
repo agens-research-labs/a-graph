@@ -1,0 +1,6 @@
+# The configuration of the service for this test ({{port:service}}); the sessions keep their files in target/test-service/runs_traceparent.
+port: {{port:service}}
+data_dir: target/test-service/runs_traceparent
+allowed_hosts: [127.0.0.1]
+allowed_env: {}
+allowed_ambient: []

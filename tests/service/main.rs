@@ -21,6 +21,9 @@ mod body_too_large;
 #[path = "busy_costs_nothing/busy_costs_nothing.rs"]
 mod busy_costs_nothing;
 
+#[path = "caller_trace_joined/caller_trace_joined.rs"]
+mod caller_trace_joined;
+
 #[path = "config_limits/config_limits.rs"]
 mod config_limits;
 
@@ -126,6 +129,9 @@ mod runs_replay;
 #[path = "runs_result/runs_result.rs"]
 mod runs_result;
 
+#[path = "runs_traceparent/runs_traceparent.rs"]
+mod runs_traceparent;
+
 #[path = "runs_unknown/runs_unknown.rs"]
 mod runs_unknown;
 
@@ -167,6 +173,12 @@ mod together;
 
 #[path = "too_many_events/too_many_events.rs"]
 mod too_many_events;
+
+#[path = "trace_not_sent/trace_not_sent.rs"]
+mod trace_not_sent;
+
+#[path = "traceparent_ignored/traceparent_ignored.rs"]
+mod traceparent_ignored;
 
 #[path = "url_env_wrong_host/url_env_wrong_host.rs"]
 mod url_env_wrong_host;

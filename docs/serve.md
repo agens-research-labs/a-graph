@@ -59,6 +59,11 @@ services:
   after it ends, then it is forgotten. Its id is random: whoever knows it can watch the run.
 - `GET /health` tells that the service is up.
 
+A request of `POST /run` or `POST /runs` may carry a `traceparent` header (W3C Trace Context): the run then goes in
+the trace of the caller. The answer, the 200 or 502 of `POST /run` and the 202 of `POST /runs`, has the `traceparent`
+of the run, with the span of the run, so that the caller finds it in its trace; a request refused before its run is
+created has none. See [the trace of the caller](observability.md#the-trace-of-the-caller).
+
 At most `max_runs` runs go on at once (8 when the file does not say), those of `POST /run` and of `POST /runs`
 together. A request beyond it is refused with 503 (`too_many_runs`) before its body is read, so it costs nothing: it
 is not queued, the caller tries again later. A caller still sending the body when it is refused gets the 503, then

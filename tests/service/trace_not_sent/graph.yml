@@ -1,0 +1,36 @@
+# One node (model mock on {{port:model}}) whose run sends its trace to the collector mock on {{port:collector}} and
+# writes its log in the folder of the session.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: t
+    description: t
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [127.0.0.1] } }
+observability: { level: info, output: { file: run.log } }
+trace:
+  endpoint: http://127.0.0.1:{{port:collector}}/v1/traces
+verbose: { level: off }
+models:
+  - id: m
+    provider: ollama
+    model: m
+    host: http://127.0.0.1:{{port:model}}
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: p
+      content: { system: "", user: "Q: {{user_message}}" }
+graph:
+  nodes:
+    - id: a
+      model: { id: m, max_tokens: 50 }
+      resources: { prompt: p }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true }
+  edges:
+    - start: a

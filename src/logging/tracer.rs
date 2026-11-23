@@ -261,13 +261,9 @@ impl Tracer {
         let now = now_nanos();
         let (trace_id, mut spans) = {
             let mut st = self.state.lock().unwrap();
-            // Interrupted descendants must not extend past the already-closed run span.
-            let ended = st
-                .done
-                .iter()
-                .find(|s| s.parent == 0 && s.name == "run")
-                .map(|s| s.end)
-                .unwrap_or(now);
+            // Interrupted descendants must not extend past the already-closed run span. It is found by its name, the
+            // only span called `run`: its parent may be the span of a caller (`traceparent`).
+            let ended = st.done.iter().find(|s| s.name == "run").map(|s| s.end).unwrap_or(now);
             let open: Vec<Span> = st
                 .open
                 .drain()
@@ -294,6 +290,15 @@ impl Tracer {
         spans.sort_by_key(|s| (s.start, s.id));
         let body = self.body(&trace_id, &spans).to_string();
         deliver(&self.client, &self.url, &self.headers, body, &self.delivery, "trace").await;
+    }
+
+    /// Forgets the timeline of the run without sending it, and starts a new one: the caller of the run said it does
+    /// not record its trace.
+    pub fn discard(&self) {
+        let mut st = self.state.lock().unwrap();
+        st.trace_id = None;
+        st.open.clear();
+        st.done.clear();
     }
 
     /// The OTLP/JSON document of one trace.

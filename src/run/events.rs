@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use super::Program;
 use crate::graph::Entity;
-use crate::logging::{Event, LogLevel};
+use crate::logging::{Event, LogLevel, TraceContext};
 use crate::models::{Llm, ModelError, ModelInvocation, ModelResponse};
 
 /// Where the code that runs is: how many groups it is inside of, and the interval of the trace
@@ -32,6 +32,24 @@ pub(crate) struct Spans {
     trace_id: std::sync::Mutex<Option<String>>,
     run: std::sync::atomic::AtomicU64,
     nodes: std::sync::Mutex<std::collections::HashMap<String, u64>>,
+    /// The trace the next run goes in, chosen before it starts (`join_trace`); taken by that run only.
+    joined: std::sync::Mutex<Option<Joined>>,
+    /// Whether the trace of the run in progress is thrown away instead of sent: its caller does not record it.
+    unsampled: std::sync::atomic::AtomicBool,
+}
+
+/// The trace and the span of a run, chosen before it starts.
+struct Joined {
+    trace_id: String,
+    run: u64,
+    /// The span of the caller, or 0.
+    parent: u64,
+    sampled: bool,
+}
+
+/// A new trace id: 32 hex digits of a random uuid.
+fn new_trace_id() -> String {
+    uuid::Uuid::new_v4().simple().to_string()
 }
 
 impl Spans {
@@ -99,11 +117,51 @@ impl Program {
         ev.span(id, parent)
     }
 
+    /// Puts the next run in the trace of the caller, or in a trace of its own when there is none, and gives the
+    /// `traceparent` of that run: its trace, its span, and whether its trace is sent (a `trace` block, and a caller
+    /// that records). Only the next run: the one after gets a new trace, as always.
+    pub(crate) fn join_trace(&self, caller: Option<TraceContext>) -> String {
+        let run = self.spans.id();
+        let (trace_id, parent, sampled) = match caller {
+            Some(c) => (c.trace_id, c.parent, c.sampled),
+            None => (new_trace_id(), 0, true),
+        };
+        let traceparent = TraceContext::traceparent(&trace_id, run, sampled && self.tracer.is_some());
+        *self.spans.joined.lock().unwrap() = Some(Joined {
+            trace_id,
+            run,
+            parent,
+            sampled,
+        });
+        traceparent
+    }
+
     pub(super) fn run_started(&self) {
-        *self.spans.trace_id.lock().unwrap() = Some(uuid::Uuid::new_v4().simple().to_string());
-        let id = self.spans.id();
-        self.spans.run.store(id, std::sync::atomic::Ordering::SeqCst);
-        self.emit(Event::new(LogLevel::Info, "run.start").span(id, 0));
+        let joined = self.spans.joined.lock().unwrap().take().unwrap_or_else(|| Joined {
+            trace_id: new_trace_id(),
+            run: self.spans.id(),
+            parent: 0,
+            sampled: true,
+        });
+        *self.spans.trace_id.lock().unwrap() = Some(joined.trace_id);
+        self.spans.run.store(joined.run, std::sync::atomic::Ordering::SeqCst);
+        self.spans
+            .unsampled
+            .store(!joined.sampled, std::sync::atomic::Ordering::SeqCst);
+        // the parent of the run is the span of its caller, if any: inside the run nothing changes
+        self.emit(Event::new(LogLevel::Info, "run.start").span(joined.run, joined.parent));
+    }
+
+    /// Sends the timeline of the run to the collector, whatever the outcome; or forgets it, when the caller of the
+    /// run does not record its trace.
+    pub(super) async fn send_trace(&self) {
+        if let Some(t) = &self.tracer {
+            if self.spans.unsampled.load(std::sync::atomic::Ordering::SeqCst) {
+                t.discard();
+            } else {
+                t.flush().await;
+            }
+        }
     }
 
     pub(super) fn run_finished(&self, started: Instant, failure: Option<&crate::error::Error>) {

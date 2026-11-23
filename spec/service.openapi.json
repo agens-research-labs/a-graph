@@ -36,6 +36,17 @@
       "post": {
         "summary": "Runs a graph and answers when it is done.",
         "description": "The graph is built again for each request: requests share nothing but the folders of their sessions.",
+        "parameters": [
+          {
+            "name": "traceparent",
+            "in": "header",
+            "required": false,
+            "description": "The trace of the caller (W3C Trace Context): when it is valid, the run is in that trace, under the span it names, and with the flag `00` its trace is not sent. A header that is not valid, or two of them, are as no header: the run has a trace of its own.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -49,6 +60,14 @@
         "responses": {
           "200": {
             "description": "The run ended well: its result, the same JSON as the command line writes.",
+            "headers": {
+              "traceparent": {
+                "description": "The trace of the run and its span (W3C Trace Context, version `00`): the trace of the caller, or one of its own; the flag is `01` when the trace of the run is sent to a collector, `00` otherwise.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -63,6 +82,14 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Errors"
+                }
+              }
+            },
+            "headers": {
+              "traceparent": {
+                "description": "The trace of the run and its span (W3C Trace Context, version `00`): the trace of the caller, or one of its own; the flag is `01` when the trace of the run is sent to a collector, `00` otherwise.",
+                "schema": {
+                  "type": "string"
                 }
               }
             }
@@ -126,6 +153,17 @@
     "/runs": {
       "post": {
         "summary": "Starts a graph and answers at once with the id of the run, to watch it while it goes.",
+        "parameters": [
+          {
+            "name": "traceparent",
+            "in": "header",
+            "required": false,
+            "description": "The trace of the caller (W3C Trace Context): when it is valid, the run is in that trace, under the span it names, and with the flag `00` its trace is not sent. A header that is not valid, or two of them, are as no header: the run has a trace of its own.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -139,6 +177,14 @@
         "responses": {
           "202": {
             "description": "The run started. The refusals of `POST /run` happen here, before any run is created.",
+            "headers": {
+              "traceparent": {
+                "description": "The trace of the run and its span (W3C Trace Context, version `00`): the trace of the caller, or one of its own; the flag is `01` when the trace of the run is sent to a collector, `00` otherwise.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {

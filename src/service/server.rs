@@ -25,6 +25,7 @@ use super::rules::{SESSION_MARKER, valid_session};
 use super::runs::{Next, Runs, SessionInUse, errors_json, run_within};
 use super::{ServiceConfig, prepare};
 use crate::error::{Error, Path, Phase, Rule};
+use crate::logging::{TRACEPARENT, TraceContext};
 use crate::run::{Program, build_with_env};
 
 /// The most a request may weigh: a graph and, in base64, the files it reads.
@@ -401,6 +402,8 @@ async fn run(
     let Ok(permit) = app.permits.clone().try_acquire_owned() else {
         return busy(app.config.max_runs);
     };
+    // read before the body, which takes the request
+    let caller = TraceContext::from_headers(request.headers());
     let body = match read_body(&app, request).await {
         Ok(body) => body,
         Err(refusal) => return refusal,
@@ -411,6 +414,7 @@ async fn run(
         Ok(x) => x,
         Err(refusal) => return refusal,
     };
+    let traceparent = program.join_trace(caller);
     // the run is a task of its own that holds the permit and the session: a caller that hangs up drops this handler,
     // not the run, so the permit is given back, and the session can be swept, only when the run really ends (or is
     // stopped by its timeout or the shutdown)
@@ -429,10 +433,20 @@ async fn run(
             format!("the run stopped: {e}"),
         ))
     });
-    match outcome {
+    let answer = match outcome {
         Ok(output) => Json200(output.to_json()).into_response(),
         Err(e) => failure(StatusCode::BAD_GATEWAY, &[e]),
+    };
+    with_traceparent(answer, &traceparent)
+}
+
+/// The answer with the `traceparent` of its run, so that the caller finds the run in its trace.
+fn with_traceparent(mut answer: Response, traceparent: &str) -> Response {
+    // a traceparent is ASCII hex and dashes, always a valid header value
+    if let Ok(value) = axum::http::HeaderValue::from_str(traceparent) {
+        answer.headers_mut().insert(TRACEPARENT, value);
     }
+    answer
 }
 
 async fn start(
@@ -446,6 +460,7 @@ async fn start(
     let Ok(permit) = app.permits.clone().try_acquire_owned() else {
         return busy(app.config.max_runs);
     };
+    let caller = TraceContext::from_headers(request.headers());
     let body = match read_body(&app, request).await {
         Ok(body) => body,
         Err(refusal) => return refusal,
@@ -455,8 +470,12 @@ async fn start(
         Ok(x) => x,
         Err(refusal) => return refusal,
     };
+    let traceparent = program.join_trace(caller);
     let id = app.runs.start(program, message, permit, app.deadline.clone(), using);
-    (StatusCode::ACCEPTED, axum::Json(json!({ "run": id }))).into_response()
+    with_traceparent(
+        (StatusCode::ACCEPTED, axum::Json(json!({ "run": id }))).into_response(),
+        &traceparent,
+    )
 }
 
 fn not_found(id: &str) -> Response {

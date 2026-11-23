@@ -132,6 +132,21 @@ impl Service {
         (status, r.json().await.unwrap_or(Value::Null))
     }
 
+    /// POST this path (`/run` or `/runs`) with a `traceparent` header for each value given: the status, the
+    /// `traceparent` of the answer, if any, and the JSON.
+    pub async fn post_traced(&self, path: &str, traceparents: &[&str], body: Value) -> (u16, Option<String>, Value) {
+        let mut request = reqwest::Client::new()
+            .post(format!("http://127.0.0.1:{}{path}", self.port))
+            .json(&body);
+        for t in traceparents {
+            request = request.header("traceparent", *t);
+        }
+        let r = request.send().await.unwrap();
+        let status = r.status().as_u16();
+        let traceparent = r.headers().get("traceparent").map(|v| v.to_str().unwrap().to_string());
+        (status, traceparent, r.json().await.unwrap_or(Value::Null))
+    }
+
     /// POST /run with this text as the body, whatever it is.
     pub async fn run_raw(&self, body: &str) -> (u16, Value) {
         let r = reqwest::Client::new()
