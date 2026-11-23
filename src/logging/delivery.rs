@@ -75,7 +75,8 @@ pub(super) async fn deliver(
                 }
                 return;
             }
-            Ok(r) if r.status().is_client_error() && r.status() != reqwest::StatusCode::TOO_MANY_REQUESTS => {
+            // only a 5xx or a 429 may pass: a 3xx is final too, since redirects are not followed
+            Ok(r) if !r.status().is_server_error() && r.status() != reqwest::StatusCode::TOO_MANY_REQUESTS => {
                 eprintln!("a-graph: the {what} endpoint refused the data ({})", r.status());
                 return;
             }
