@@ -101,8 +101,9 @@ service has.
 
 ## Sessions
 
-A request may name a `session`, a name of letters, digits, `-`, `_` and `.`, at most 64 characters; without it, the
-session is `default`. Each session has its own folder, `<data_dir>/<session>/`, created at its first request. A name
+A request may name a `session`, a name of letters, digits, `-`, `_` and `.`, at most 64 characters and not made of
+dots only; without it, the session is `default`. Each session has its own folder, `<data_dir>/<session>/`,
+created at its first request. A name
 keeps its case: `A` and `a` are two sessions with two folders, unless the filesystem of `data_dir` ignores case (as
 on macOS), where they are one folder. Two
 requests with the same session use the same folder, so a memory or a blackboard file written by one is read by the
@@ -265,6 +266,6 @@ docker run -p 8080:8080 \
 ```
 
 Run it from the root of the project: if `service.yml` is not in the folder, Docker creates an empty directory with
-that name and the service stops with ``a-graph: cannot read `/etc/a-graph/service.yml`: Is a directory``. The image holds only the
+that name and the service stops with ``a-graph: cannot read `/etc/a-graph/service.yml`: Is a directory (os error 21)``. The image holds only the
 program. A container does not inherit the variables of your terminal: name each one with `-e NAME` (the value is
 taken from your shell).
