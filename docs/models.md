@@ -63,14 +63,14 @@ it cannot do is an error (`not_supported`).
 | `provider` | Media in | Media out | Batch | Logprobs | Tools | Schema | Refusal |
 |---|---|---|---|---|---|---|---|
 | `anthropic` | text, images (jpeg, png, gif, webp) | none | yes | no | yes | yes | yes |
-| `openai` | text, images | one image or one audio per call | yes | yes, for text | yes | yes | yes |
+| `openai` | text, images | one image or one audio per call | yes | yes, for text | yes | yes, not with a produced media | yes |
 | `gemini` | text, images | one image or one audio per call | no | no | yes | yes, not with a produced media | no |
-| `mistral` | text, images | one audio per call (speech) | yes | yes, for text | yes | yes | no |
+| `mistral` | text, images | one audio per call (speech) | yes | yes, for text | yes | yes, not with a produced media | no |
 | `bedrock` | text, images (png, jpeg, gif, webp) | none | yes, without an output `schema` | no | yes | yes, not in a batch | yes |
 | `vertex_ai`, publisher `anthropic` | as `anthropic` | none | no | no | yes | yes | yes |
 | `vertex_ai`, publisher `google` | as `gemini` | as `gemini` | no | no | yes | as `gemini` | no |
 | `azure_foundry`, publisher `anthropic` | as `anthropic` | none | no | no | yes | yes | yes |
-| `azure_foundry`, publisher `openai` | as `openai` | as `openai` | yes | as `openai` | yes | yes | yes |
+| `azure_foundry`, publisher `openai` | as `openai` | as `openai` | yes | as `openai` | yes | as `openai` | yes |
 | `ollama`, `custom` | text, images | none | no | yes | yes | yes, see below | no |
 
 - Audio and video in are not supported yet by any provider.
@@ -80,7 +80,8 @@ it cannot do is an error (`not_supported`).
 - A node that uses an `anthropic` model, or publisher `anthropic` on `vertex_ai` or `azure_foundry`, must set
   `max_tokens`.
 - `gemini`, and `vertex_ai` with publisher `google`, cannot switch reasoning off: `reasoning: off` is an error.
-- With `gemini` (and publisher `google`) an output `schema` and a produced media cannot be asked together.
+- With `openai`, `gemini` and `mistral` (and their publishers) an output `schema` and a produced media cannot be asked
+  together: the media comes with no text to match the schema (`not_supported`).
 - Schema: an output `schema`, and the verdict of a judge or the routing output of a `react` with
   `structured_output: api`, enforced by the API (see [nodes](nodes.md)). On `ollama` the cloud models ignore it: use
   `schema_prompt`, or `structured_output: prompt`. On `custom` whether it is enforced depends on the server.

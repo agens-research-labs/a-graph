@@ -88,4 +88,19 @@ async fn check_limits() {
         panic!("not Unsupported")
     };
     assert!(problems.join(" | ").contains("`style`"), "{problems:?}");
+    // the images api answers no text: a schema could never be matched
+    let ModelError::Unsupported { problems, .. } = m
+        .check(&ModelRequirements {
+            output_media: vec![image("png", generate(), None)],
+            schema: Some(json!({})),
+            ..Default::default()
+        })
+        .unwrap_err()
+    else {
+        panic!("not Unsupported")
+    };
+    assert!(
+        problems.join(" | ").contains("schema and a produced media"),
+        "{problems:?}"
+    );
 }
