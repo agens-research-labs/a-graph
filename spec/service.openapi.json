@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "a-graph service",
-    "version": "0.10.0",
+    "version": "0.11.0",
     "description": "The HTTP service of a-graph, `a-graph --serve service.yml`: it runs the graphs it is sent. Generated from the code by `a-graph --print-service-api`: do not edit it by hand."
   },
   "paths": {
