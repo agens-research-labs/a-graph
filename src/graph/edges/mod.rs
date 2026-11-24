@@ -94,8 +94,9 @@ impl React {
 
 #[derive(Debug)]
 pub struct Edges {
-    start: Entity,
-    /// `None` in a graph of one node: the `start` alone.
+    /// `None` in a graph whose first entry is a group or a `react`.
+    start: Option<Entity>,
+    /// `None` in a graph of one node, the `start` alone, and in one whose last entry is a group or a `react`.
     end: Option<Entity>,
     /// The entries between `start` and `end`, in the order of the yml.
     steps: Vec<Step>,
@@ -107,7 +108,7 @@ impl Edges {
         read::build(list, nodes)
     }
 
-    pub fn start(&self) -> Entity {
+    pub fn start(&self) -> Option<Entity> {
         self.start
     }
 

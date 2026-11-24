@@ -21,6 +21,9 @@ mod edge_node_exists;
 #[path = "fan_not_empty/fan_not_empty.rs"]
 mod fan_not_empty;
 
+#[path = "group_alone_runs/group_alone_runs.rs"]
+mod group_alone_runs;
+
 #[path = "group_order/group_order.rs"]
 mod group_order;
 

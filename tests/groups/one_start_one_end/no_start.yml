@@ -1,4 +1,4 @@
-# Variant of valid.yml: No `start`.
+# Variant of valid.yml: No `start`, and the first entry is a `next`, not a group or a `react`.
 graph_spec: "1.0"
 passport:
   adl:

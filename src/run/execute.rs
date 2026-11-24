@@ -143,21 +143,27 @@ impl Program {
         let user = user_message.to_string();
         let mut items = Vec::new();
 
-        let first = self.step_node(self.edges.start(), &Carry::default(), &user).await?;
-        items.extend(first.item);
-        if first.halted {
-            return Ok(RunOutput { items });
+        // without `start` the first group or `react` receives only the message of the user, as a `start` node would
+        let mut carry = Carry::default();
+        if let Some(start) = self.edges.start() {
+            let first = self.step_node(start, &carry, &user).await?;
+            items.extend(first.item);
+            if first.halted {
+                return Ok(RunOutput { items });
+            }
+            carry = Carry::of(&first.delivery);
         }
         let stepped = self
             .clone()
-            .run_steps(self.edges.steps().to_vec(), Carry::of(&first.delivery), user.clone())
+            .run_steps(self.edges.steps().to_vec(), carry, user.clone())
             .await?;
         items.extend(stepped.items);
         // a judge that stops the run sends it straight to the output, `end` is not reached
         if stepped.halted {
             return Ok(RunOutput { items });
         }
-        // a graph of one node has no `end`: its only node has run
+        // a graph of one node has no `end`: its only node has run; nor one that ends with a group or a `react`, whose
+        // nodes have already sent to the output what they send to it
         if let Some(end) = self.edges.end() {
             let last = self.step_node(end, &stepped.carry, &user).await?;
             items.extend(last.item);

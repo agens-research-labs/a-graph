@@ -769,9 +769,9 @@ A map with exactly one of these keys.
 
 | Key | Value | Description |
 |---|---|---|
-| `start` | the id of a node | The first node: the first entry, and the only `start` (`edge_start`). A graph of one node is its `start` alone. |
+| `start` | the id of a node | The first node: the first entry, and the only `start` (`edge_start`). A graph of one node is its `start` alone. A graph whose first entry is a group or a `react` may leave it out: that entry then takes the message of the user. |
 | `next` | the id of a node | A node that runs after the entry before it. A node may appear more than once in the edges, and each appearance is a run of it. |
-| `end` | the id of a node | The last node: the last entry, and the only `end` (`edge_end`). Every graph needs it, except one of a single node. |
+| `end` | the id of a node | The last node: the last entry, and the only `end` (`edge_end`). Every graph needs it, except one of a single node and one whose last entry is a group or a `react`: there the result is what the nodes send to the final output. |
 | `linear` | a `group` (below) | A group whose branches run one after the other. `limit` is not allowed. |
 | `parallel` | a `group` (below) | A group whose branches run all together, each as a task of its own; with `limit`, at most that many at a time. The first branch that fails ends the run. |
 | `concurrent` | a `group` (below) | A group whose branches run all together, at most `limit` at a time; `limit` is mandatory. The first branch that fails ends the run. |

@@ -364,7 +364,8 @@ fn previous_nodes(edges: &Edges) -> HashMap<Entity, Vec<Entity>> {
         }
     }
     let mut map = HashMap::new();
-    let mut carry = vec![edges.start()];
+    // without `start`, nothing comes before the first group or `react`
+    let mut carry: Vec<Entity> = edges.start().into_iter().collect();
     for step in edges.steps() {
         carry = walk(step, carry, &mut map);
     }

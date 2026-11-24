@@ -9,7 +9,10 @@ fn here() -> &'static std::path::Path {
 #[test]
 fn list_as_written() {
     let (n, e) = build(&own_yml(here())).unwrap();
-    assert_eq!((n.id(e.start()), e.end().and_then(|x| n.id(x))), (Some("a"), Some("g")));
+    assert_eq!(
+        (e.start().and_then(|x| n.id(x)), e.end().and_then(|x| n.id(x))),
+        (Some("a"), Some("g"))
+    );
     let [Step::Node(judge), Step::Group(parallel)] = e.steps() else {
         panic!("{:?}", e.steps())
     };
