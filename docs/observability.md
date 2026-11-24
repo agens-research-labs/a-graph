@@ -32,9 +32,9 @@ the contents are hidden. Even for public data, traces require the separate opt-i
 | `node.end` | info | `model`, `input_tokens`, `output_tokens`, `duration`, `stop`, `verdict` for a validation node, and `corrections` for a node whose answer was checked against a schema | |
 | `group.start` | info | `pattern` (`linear`, `parallel`, `concurrent`, `batch`, `react`), `branches` | |
 | `group.end` | info | `pattern`, `duration` | |
-| `model.start` | debug | `model`, `gen_ai.request.model`, `gen_ai.provider.name`, `gen_ai.operation.name` | |
-| `model.error` | error | `model`, `gen_ai.provider.name`, `error.type`, `http.response.status_code` when available, `duration`, `message` | `system_prompt`, `prompt`, `detail` |
-| `model.call` | debug | `model`, `input_tokens`, `output_tokens`, `duration`, `gen_ai.*` (see below) | `system_prompt`, `prompt`, `answer`, `reasoning` |
+| `model.start` | debug | `model`, `gen_ai.request.model`, `gen_ai.provider.name`, `gen_ai.operation.name`, and `server.address`, `server.port` when the address of the model is known | |
+| `model.error` | error | `model`, `gen_ai.provider.name`, `error.type`, `duration`, `message`, `http.response.status_code` when available, and the HTTP fields except on `bedrock` (see below) | `system_prompt`, `prompt`, `detail` |
+| `model.call` | debug | `model`, `input_tokens`, `output_tokens`, `duration`, `gen_ai.*`, and the HTTP fields except on `bedrock` (see below) | `system_prompt`, `prompt`, `answer`, `reasoning` |
 | `tool.call` | debug | `kind` (`tool`, `mcp`, `skill`), `name`, `duration`, `is_error` | `result` |
 | `structured.attempt` | debug when `valid`, warn otherwise | `model`, `mechanism` (`api`, `prompt`), `attempt`, `max_attempts`, `outcome` (`valid`, `not_json`, `incomplete`, `refused`, `schema_mismatch`), `message` | `reasons`, and `correction` when the answer is sent back |
 | `utility.call` | debug | `id`, `place`, `duration` | |
@@ -42,6 +42,8 @@ the contents are hidden. Even for public data, traces require the separate opt-i
 | `read.memory` | debug | `id`, `messages`, `summary`, `duration` | |
 | `read.media` | debug | `id`, `bytes`, `duration` | |
 | `read.prompt` | debug | `id`, `bytes`, `duration` | |
+
+The requests of a `batch` give no `model.start`, `model.call` or `model.error`.
 
 `read.media` and `read.prompt` are the downloads of the media and of the prompts read from a `url`, when the run
 starts (see [media](media.md#a-media-from-a-url)): `id` is the media or the prompt, `bytes` what its url answered. The
@@ -84,35 +86,39 @@ when there is one, `node`.
 - `{ file: <path> }`: a file;
 - `{ url: <endpoint>, headers: ... }`: an HTTP endpoint, as `application/x-ndjson` POSTs of at most 100 events each.
 
-Runtime records carry `trace_id` and `span_id`, shared with the exported trace. Each run gets a new trace ID,
-including when a program is reused, unless the request brings a valid `traceparent` (see
-[the trace of the caller](#the-trace-of-the-caller)). Before a run starts (for example during validation), these IDs
-are absent. IDs are present in runtime logs even when trace export is disabled.
+Every event of a run carries `trace_id` and `span_id`, the ids of the trace, also when there is no `trace` block.
+Each run has a trace of its own, also when the same program runs again, unless the request brings a valid
+`traceparent` (see [the trace of the caller](#the-trace-of-the-caller)). The events written before the run starts,
+such as the errors of the check of the file, have no ids.
 
-Model-start records include the configured `server.address` and effective `server.port`, without URL userinfo,
-path or query. These remain available for cancelled calls and SDK-backed providers. Model completion records add
-safe metadata observed by the shared REST transport: `server.address`, `server.port`, `url.scheme`,
-`http.request.method` and `http.response.status_code` when a response was received. A network failure has no invented
-HTTP status; an HTTP 200 followed by an invalid model response still records HTTP 200 alongside the model error.
+The HTTP fields of a model call:
 
-These attributes describe the **first** shared-transport REST request of the logical model invocation. If that
-invocation makes more than one request, `http_request_count` (`a_graph.http_request_count` in the trace) records the
-count instead of silently replacing
-the primary request's metadata with a later request's. Metadata is bounded and isolated between parallel invocations.
-SDK traffic bypassing this transport gets configured destination metadata only; HTTP method/status are not guessed.
-This does not add individual HTTP/retry spans or propagate `traceparent`/`tracestate`. No URL paths, query strings,
-credentials, request headers or bodies are captured by this instrumentation. Reqwest network errors also omit their
-URL so that query secrets cannot leak through the run's error message.
+- `model.start` has `server.address` and `server.port`: the host and the port of the model, without user, path or
+  query. They are there also for a call that is cancelled, and on `bedrock`.
+- `model.call` and `model.error` add what the program saw of the first HTTP request of the call: `server.address`,
+  `server.port`, `url.scheme`, `http.request.method`, and `http.response.status_code` when an answer came. A network
+  failure has no status; an answer 200 that cannot be read keeps its 200 next to the error. A call that made more than
+  one request adds `http_request_count`, how many, and its other fields stay those of the first request. Each call
+  has its own fields, also when calls run in parallel.
+- On `bedrock` the calls go through the AWS SDK: `model.call` and `model.error` have none of these fields.
+- No path, query, key, header or body is written. The calls to the providers get no span of their own and carry no
+  `traceparent`. The message of a network error of a model call never holds the url, whose query may hold a secret.
 
-Model-call records retain `model` as the graph alias and add `gen_ai.provider.name`, `gen_ai.response.model`,
-`gen_ai.operation.name` (`chat`), and `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens`. The GenAI input
-count includes cache-read and cache-write tokens; the existing `input_tokens` remains the uncached count.
-`system_prompt` and `prompt` are the resolved system and current user text, not a reconstruction of the full
-provider request (history, media, schemas and tool rounds are not included).
+In `model.call`, `model` is the id of the model in the graph; `gen_ai.provider.name`, `gen_ai.response.model` (the
+model that answered, as the provider names it, or the model of the graph when the provider names none),
+`gen_ai.operation.name` (`chat`), `gen_ai.usage.input_tokens` and `gen_ai.usage.output_tokens` follow the conventions
+of OpenTelemetry. `gen_ai.usage.input_tokens` is `input_tokens` plus the tokens read from and written to the cache of
+the provider. On `anthropic` and `bedrock` the provider's count of the input already leaves the cached tokens out; on
+`openai`, `gemini` and `ollama` the program takes the cached tokens away from the provider's count; `mistral` gives no
+count of cached tokens, so `input_tokens` is its `prompt_tokens` and the two fields are equal. `system_prompt` and `prompt` are the system text and the user text of the call:
+the prompt of the node with its placeholders filled and, at the end of the system text, what a-graph adds (the
+catalog of the skills, the instructions of `schema_prompt` or of `structured_output: prompt`). They are not the whole
+request: the history, the media, the schemas and the rounds of the tools are left out.
 
-For machine-readable logs on stderr set `verbose: { level: off }`, or send the log to a separate file. Otherwise
-JSON records and human progress messages share stderr. Delivery/write failure notices and the CLI's final error
-summary are still plain text; use a separate log file when you need a strictly JSON-only stream on failures too.
+With the log on the standard error and a display that is not `off`, the two are mixed. For a standard error of JSON
+only, set `verbose: { level: off }`, or send the log to a file or a url. The notices of a log or a trace that cannot
+be delivered, and the errors the command line writes at the end, are plain text all the same: only a log in a file
+or at a url is JSON alone.
 
 A log that cannot be written never stops the run: the standard error says so.
 
@@ -123,24 +129,28 @@ program sends **one** POST with the whole timeline, in OTLP over HTTP with JSON,
 (for example `http://host:4318/v1/traces`).
 
 - One trace for each run, with one span for the run, one for every group and every node, and inside a node one for
-  every model call, tool call, MCP call, skill call, checked answer (`structured <outcome>`) and reading of a vector
-  database or memory; the download of a media or a prompt from a `url` is a span inside the run, `read media <id>` or
-  `read prompt <id>`. The spans have their real start and duration, so the branches of a `parallel` group overlap.
-- The attributes of a span are the fields of its events, with unique keys (end values replace start values).
-  Application attributes use `a_graph.*`; `gen_ai.*`, `server.*`, HTTP method/status, `url.scheme` and `error.type`
-  retain their standard names.
-  Contents are included only as the passport allows.
-- Non-batch model invocations open a `CLIENT` span before calling the provider, and close it on success or error.
-  Run, group and node spans are `INTERNAL`. Provider errors retain a bounded-category `error.type`, provider identity
-  and HTTP status when the provider error exposes one; no token counts are invented for failed calls. The failing
-  call's open ancestors are marked as failed too. An in-flight model call cancelled by a timeout or shutdown is
-  closed at flush, marked `interrupted` with `error.type=cancelled`.
+  every model call, tool call, MCP call, skill call and checked answer (`structured <outcome>`). What a node does
+  before its model is called (the utilities of its input, the reading of its vector databases, memories and media)
+  and after its answer (the utilities of its output and of its blackboard, the saving of its memories and their
+  summary) has its spans beside the span of the node, under the group or the run, before and after it. The download
+  of a media or a prompt from a `url` is a span inside the run, `read media <id>` or `read prompt <id>`. The spans
+  have their real start and duration, so the branches of a `parallel` group overlap.
+- The attributes of a span are the fields of its events, with unique keys (end values replace start values). Those
+  of a-graph are named `a_graph.*` (`a_graph.http_request_count`, for one); those of OpenTelemetry keep their names:
+  `gen_ai.*`, `server.*`, `http.request.*`, `http.response.*`, `url.scheme`, `error.type`. Contents are included only
+  as the passport allows.
+- Every model call outside a batch has a span of kind `CLIENT`, opened before the call and closed when it ends, well
+  or badly; the spans of the run, the groups and the nodes are `INTERNAL`. A failed call keeps `error.type`, the
+  provider and the HTTP status when its error has one, and no tokens; the spans still open that hold it are marked as
+  failed too. A call still going on when the run is stopped (`run_timeout`, the service shutting down, Ctrl-C on the
+  command line) is closed when the trace is sent, as `interrupted`, with `error.type` `cancelled`.
 - The ids of the spans are random, so two runs in the same trace never share one.
 - Other spans still open at failure are closed as `interrupted`. A failed run is marked as failed.
-- The service name is `passport.adl.name`. `service.version` and the instrumentation scope version identify the
-  a-graph binary (`CARGO_PKG_VERSION`); `a_graph.graph.version` identifies `passport.adl.version`.
+- The service name is `passport.adl.name`. `service.version` and the version of the instrumentation scope are the
+  version of a-graph; `a_graph.graph.version` is `passport.adl.version`.
 
-Trace contents are disabled by default, independently of the JSON log and display. To include them for public data:
+The contents of the trace are off by default, whatever the log and the display do: a span that has some writes
+`a_graph.content_redacted`. For public data they are turned on with:
 
 ```yaml
 trace:
@@ -149,11 +159,11 @@ trace:
   max_content_bytes: 4096
 ```
 
-`max_content_bytes` defaults to 4096, must be at least 1, and applies separately to each prompt, answer, reasoning or
-error-detail attribute. Truncation preserves UTF-8 boundaries and adds `a_graph.content_truncated=true`. This is a
-per-content-field limit, not a cap on the number of spans or the entire export. The passport can still forbid all
-contents; enabling capture never bypasses redaction. Logs and the live display retain their existing passport-based
-policy and are not affected by these trace-only settings.
+`max_content_bytes` (4096 by default, at least 1) is the most bytes of each content of an event (a prompt, an
+answer, a result, a detail...), taken one by one: a longer one is cut at the end of a UTF-8 character, and its span
+gets `a_graph.content_truncated`. It does not limit the number of spans or the size of the whole trace. A passport
+that hides the contents hides them from the trace too, with or without `capture_content`; the log and the display
+follow the passport alone.
 
 ### The trace of the caller
 
