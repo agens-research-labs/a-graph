@@ -1,67 +1,73 @@
-# Correlated logs and traces
+# Observability: a sequence and a react, in Jaeger
 
-The hello graph with a local OpenTelemetry Collector and a Jaeger trace viewer:
+A graph with a sequence and a `react`, whose trace goes to a local OpenTelemetry Collector and from there to Jaeger,
+a viewer of traces:
 
-```text
-a-graph (host) -- OTLP/HTTP JSON :4318 --> Collector -- OTLP/gRPC --> Jaeger
-                                                                    |
-                                                        http://localhost:16686
+```mermaid
+flowchart LR
+    A[a-graph] -- OTLP over HTTP, JSON, port 4318 --> C[Collector]
+    C -- OTLP over gRPC --> J[Jaeger]
+    J --> U[http://localhost:16686]
 ```
 
-Docker with Compose, Rust, and Ollama with `qwen3.5:4b` are required. From the repository root:
+`framer` states the task, the controller `editor` calls the workers `explainer` and `critic` until it is done, and
+`summarizer` shortens its final answer. What each part does is explained in [the examples](../../docs/examples.md).
+
+## Running it
+
+You need Docker with Compose, `a-graph` (see [the README](../../README.md#build)) and Ollama with `qwen3.5:4b`. From
+the root of the repository:
 
 ```sh
-cargo build --locked
 ollama pull qwen3.5:4b
 docker compose -f examples/03-observability/compose.yml up -d
-mkdir -p target/o11y-real
-./target/debug/a-graph examples/03-observability/graph.yml "What is a mutex?" \
-  > target/o11y-real/result.json 2> target/o11y-real/events.ndjson
 ```
 
-Wait for the Collector to report `Everything is ready` in `docker compose -f
-examples/03-observability/compose.yml logs collector` before running the graph.
-
-Open <http://localhost:16686>, select service **hello-observability**, and find traces. Allow a few
-seconds for the Collector's batch to arrive. Each run has three spans: `run` → `node assistant` →
-`model local`. Expand the model span to inspect provider, actual model, tokens, system prompt,
-user prompt and answer. The model span also shows `server.address=localhost`, `server.port=11434`,
-`url.scheme=http`, `http.request.method=POST` and the actual `http.response.status_code` (normally 200).
-These describe the primary REST request, not a separate HTTP span; trace-context propagation is not enabled.
-
-The JSON log's `trace_id` is also a direct lookup:
+Wait until the Collector says `Everything is ready` in
+`docker compose -f examples/03-observability/compose.yml logs collector`, then run the graph:
 
 ```sh
-# With jq installed:
-TRACE_ID=$(jq -r 'select(.code == "run.start") | .trace_id' target/o11y-real/events.ndjson)
-curl --fail "http://localhost:16686/api/traces/$TRACE_ID"
-# Browser: http://localhost:16686/trace/<trace_id>
+mkdir -p target/o11y
+a-graph examples/03-observability/graph.yml "What is a mutex?" \
+  > target/o11y/result.json 2> target/o11y/events.ndjson
 ```
 
-`verbose: off` keeps stderr machine-readable on a successful run; stdout is only the result.
-Delivery failures can still produce plain-text notices on stderr. Check the log for delivery errors
-if the trace is absent; a successful model call alone does not prove trace delivery.
+The result goes to `result.json`, and the JSON log, one event per line, to `events.ndjson`.
 
-## Scope and safety
+## Reading the trace
 
-- This is a **trace** pipeline. Application JSON logs remain local; they are not OTLP logs and must
-  not be sent directly to the Collector's OTLP logs endpoint. There is no metrics pipeline here.
-- The passport deliberately declares **public** data and the demo sets `trace.capture_content: true`:
-  system/user prompts and answers are exported, capped at 4096 UTF-8 bytes per field. The default outside
-  this demo is no trace content. Use non-public classification for sensitive inputs; contents will be redacted.
-- Model calls are CLIENT spans with requested/returned model metadata. Failures retain their own error span;
-  in-flight calls cancelled at shutdown/timeout are retained as interrupted. Resource attributes identify
-  both the a-graph binary version and graph version.
-- Only Collector ingestion (`4318`) and the Jaeger UI (`16686`) are exposed, on loopback. No auth or
-  TLS is configured. Container-internal OTLP is plaintext. This is a local demo, not a production
-  security configuration.
-- Jaeger uses memory, capped at 1,000 traces. Restarting it loses all traces. Container memory limits
-  are 256 MiB for Collector and 512 MiB for Jaeger.
-- Images are version-pinned. Jaeger v1 is a demo-only legacy backend; a production deployment should
-  use a maintained backend, persistent storage, authentication and TLS. The app continues to send
-  the same OTLP payload to a Collector when the backend changes.
+Open <http://localhost:16686>, choose the service `observability` and look for its traces; the Collector sends them
+on within a few seconds. The trace of a run has a span for the run, for every node and for the `react`; inside each
+node a span `model local` for each call to the model, and inside `node editor` a span `structured valid` for each
+routing answer. A model span holds the provider, the model that answered, the tokens, the prompts and the answer,
+and `server.address`, `server.port`, `url.scheme`, `http.request.method` and `http.response.status_code` of its
+request.
 
-Stop the demo with:
+The `trace_id` of the log leads to the same trace:
+
+```sh
+TRACE_ID=$(jq -r 'select(.code == "run.start") | .trace_id' target/o11y/events.ndjson)
+curl --fail "http://localhost:16686/api/traces/$TRACE_ID"
+```
+
+or, in the browser, `http://localhost:16686/trace/<the trace_id>`.
+
+A trace that does not arrive is written in the log or on the standard error: a run that ended well does not mean
+that its trace was delivered.
+
+## What it does and does not do
+
+- Only the trace goes to the Collector. The JSON log stays in the local file: it is not in the format of the logs of
+  OpenTelemetry, and must not be sent to the Collector. Nothing sends metrics.
+- The passport says the data are `public` and the graph sets `trace.capture_content: true`, so the prompts and the
+  answers go into the trace, at most 4096 bytes each. Outside this example the default is no content; with data that
+  are not public, the contents are left out.
+- The Collector (port 4318) and Jaeger (port 16686) listen only on `127.0.0.1`, without authentication or TLS: it is
+  a local example, not the configuration of a service.
+- Jaeger keeps at most 1000 traces in memory, and loses them when it restarts. The Collector may use 256 MiB and
+  Jaeger 512 MiB. The images are pinned by version.
+
+To stop it:
 
 ```sh
 docker compose -f examples/03-observability/compose.yml down

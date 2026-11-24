@@ -1,13 +1,16 @@
-# The hello graph with machine-readable logs and OTLP traces sent to the local Collector.
+# Observability
+# A sequence and a react, with machine-readable logs and OTLP traces sent to the local Collector:
+# `framer` states the task, the controller `editor` calls the workers `explainer` and `critic` until it is done,
+# and `summarizer` shortens its final answer.
 graph_spec: "1.0"
 passport:
   adl:
     adl_spec: "0.3.0"
-    name: hello-observability
-    description: One local model call, with correlated logs and traces.
+    name: observability
+    description: A sequence and a react, with correlated logs and traces.
     version: "1.0.0"
     data_classification: { sensitivity: public }
-    permissions: { network: { allowed_hosts: [localhost] } }
+    permissions: { network: { allowed_hosts: [localhost:11434, localhost:4318] } }
 observability: { level: debug }
 verbose: { level: off }
 trace:
@@ -23,17 +26,72 @@ models:
     output: [text]
 resources:
   prompts:
-    - id: answer
+    - id: frame
       content:
-        system: "Answer in one short sentence."
+        system: "Restate the question as one clear task for a writer, in one sentence."
         user: "{{user_message}}"
+    - id: edit
+      content:
+        system: |
+          You are the editor of a short explanation. You never write the explanation yourself: your workers do.
+          - explainer: writes an explanation of the task it receives.
+          - critic: lists the weak points of the explanation it receives.
+          Take one step at each turn:
+          1. Call explainer with the task (done: false).
+          2. Call critic with the explanation of explainer (done: false).
+          3. Give as your answer the explanation of explainer, corrected for the weak points of critic (done: true).
+        user: "{{agent_message}}"
+    - id: explain
+      content:
+        system: "Explain the task in at most five sentences."
+        user: "{{agent_message}}"
+    - id: criticize
+      content:
+        system: "List at most three weak points of the explanation, one per line."
+        user: "{{agent_message}}"
+    - id: summarize
+      content:
+        system: "Shorten the text to at most two sentences."
+        user: "{{agent_message}}"
 graph:
   nodes:
-    - id: assistant
+    - id: framer
       model: { id: local, reasoning: off, max_tokens: 300, temperature: 0 }
-      resources: { prompt: answer }
+      resources: { prompt: frame }
       message:
         input: { user_message: true }
+        output: { node: true }
+    - id: editor
+      model: { id: local, reasoning: off, max_tokens: 1500, temperature: 0 }
+      resources: { prompt: edit }
+      message:
+        input: { agent_message: true }
+        output: { node: true }
+    - id: explainer
+      model: { id: local, reasoning: off, max_tokens: 600, temperature: 0 }
+      resources: { prompt: explain }
+      message:
+        input: { agent_message: true }
+        output: { node: true }
+    - id: critic
+      model: { id: local, reasoning: off, max_tokens: 400, temperature: 0 }
+      resources: { prompt: criticize }
+      message:
+        input: { agent_message: true }
+        output: { node: true }
+    - id: summarizer
+      model: { id: local, reasoning: off, max_tokens: 300, temperature: 0 }
+      resources: { prompt: summarize }
+      message:
+        input: { agent_message: true }
         output: { assistant_message: true }
   edges:
-    - start: assistant
+    - start: framer
+    - react:
+        controller: editor
+        max_iterations: 4
+        structured_output: api
+        components:
+          - worker: explainer
+          - worker: critic
+    - end: summarizer
