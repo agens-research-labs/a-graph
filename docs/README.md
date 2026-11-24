@@ -1,5 +1,7 @@
 # Documentation
 
+- [The architecture](architecture.md): the entities, the components and the managers, and how a file becomes a program.
+- [Agents and software](agents-and-software.md): the agents in the file, the software in the program, and what observability lets you measure.
 - [The command line](cli.md): how to run a graph, the result, the errors, the exit codes.
 - [The graph file](file.md): the blocks, the ids, the secrets, the allowed hosts.
 - [The reference](graph.md): every key of the graph file, generated from the code.
@@ -17,6 +19,8 @@ The blocks of the graph file:
 - [Skills](skills.md): how the model uses a skill, and its scripts.
 - [Media](media.md): the media a node reads and produces.
 - [Utilities](utilities.md): the programs that change the data of a node.
+- [Embeddings](embeddings.md): the models that turn a text into a vector.
+- [Vector databases](vectordb.md): the databases a node searches, and `{{chunks}}`.
 - [Memory](memory.md): the file of a memory, what the model gets, the summary.
 - [Blackboards](blackboards.md): the shared notes and their header.
 - [Observability](observability.md): the log, the trace, the display.
