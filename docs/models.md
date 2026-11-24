@@ -130,7 +130,8 @@ How a produced media is described is explained in [media](media.md).
 ## Batch
 
 A `batch` group (see [edges](edges.md)) sends the requests of its branches to the provider as one batch job instead of
-one call each. The job is submitted, then polled until it ends.
+one call each, or as several jobs, one after the other, when its `limit` is lower than the number of branches. Each
+job is submitted, then polled until it ends.
 
 A poll of the job, or the download of its results, that fails with an error that may not come again (the network,
 429, 5xx such as the 529 of Anthropic) is tried again at the next poll; the batch fails after 10 such failures in a row,

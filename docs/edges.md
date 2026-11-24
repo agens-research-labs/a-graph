@@ -43,7 +43,8 @@ written once and in this order (`block_shape`, `exactly_one`).
 - `out` (optional): the node that receives the answers of all the branches, packed as one, and whose output goes on to
   the rest of the graph. A group may have no `out` only if none of its nodes sends its output on
   (`group_out_required`); then the group sends nothing on, and the next entry starts when the branches are done.
-- `limit`: how many branches run at the same time.
+- `limit`: in `parallel` and `concurrent`, how many branches run at the same time; in `batch`, how many requests go
+  in each job, the jobs being sent one after the other.
 
 The four groups differ only in how the branches run:
 
@@ -52,7 +53,7 @@ The four groups differ only in how the branches run:
 | `linear` | one after the other | not allowed |
 | `parallel` | all together, each as a task of its own | optional: at most `limit` at a time |
 | `concurrent` | all together, at most `limit` at a time | mandatory |
-| `batch` | as one batch job of the provider, instead of one call each (see [models](models.md#batch)) | optional: at most `limit` requests in each job |
+| `batch` | as batch jobs of the provider, instead of one call each: one job, or several, one after the other, when `limit` is lower than the number of branches (see [models](models.md#batch)) | optional: at most `limit` requests in each job |
 
 The branches of a `batch` are plain nodes, all with the same model: a group or a `react` among them is an error. They
 cannot have tools, MCP servers or skills (`batch_tools`): the answer of a batch is the last one, so a tool call in it

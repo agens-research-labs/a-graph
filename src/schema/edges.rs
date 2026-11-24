@@ -10,7 +10,7 @@ const NODE_REF: Shape = Shape::Ref(Kind::Node);
 
 /// One entry of a group: `limit`, `in`, `fan` or `out`.
 static GROUP_ITEM: Shape = Shape::Either(&[
-    Shape::Map(&[Field::req(LIMIT, Shape::Int).doc("How many branches run at the same time; in `batch`, how many requests go in each job.")]),
+    Shape::Map(&[Field::req(LIMIT, Shape::Int).doc("In `parallel` and `concurrent`, how many branches run at the same time; in `batch`, how many requests go in each job, the jobs being sent one after the other.")]),
     Shape::Map(&[Field::req(IN, NODE_REF).doc("The node that runs first. What it sends on is the input of every branch. Mandatory.")]),
     Shape::Map(&[Field::req(FAN, Shape::List(&BRANCH)).doc("The branches, at least one. Mandatory.")]),
     Shape::Map(&[Field::req(OUT, NODE_REF).doc(
@@ -51,7 +51,7 @@ const PARALLEL_GROUP: Field = Field::req(PARALLEL, GROUP).doc(
 );
 const CONCURRENT_GROUP: Field = Field::req(CONCURRENT, GROUP).doc("A group whose branches run all together, at most `limit` at a time; `limit` is mandatory. The first branch that fails ends the run.");
 const BATCH_GROUP: Field = Field::req(BATCH, GROUP).doc(
-    "A group whose branches are sent to the provider as one batch job; with `limit`, at most that many requests in each job. The branches are plain nodes, all with the same model, without tools, MCP servers or skills.",
+    "A group whose branches are sent to the provider as one batch job or, with `limit`, as jobs of at most that many requests each, sent one after the other. The branches are plain nodes, all with the same model, without tools, MCP servers or skills.",
 );
 const REACT_ENTRY: Field = Field::req(REACT, REACT_BODY)
     .doc("A controller that decides at run time which worker to call. A `react` cannot be a worker of another `react`, nor stand in a group among its workers.");

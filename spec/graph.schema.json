@@ -2749,7 +2749,7 @@
           "properties": {
             "batch": {
               "$ref": "#/$defs/group",
-              "description": "A group whose branches are sent to the provider as one batch job; with `limit`, at most that many requests in each job. The branches are plain nodes, all with the same model, without tools, MCP servers or skills."
+              "description": "A group whose branches are sent to the provider as one batch job or, with `limit`, as jobs of at most that many requests each, sent one after the other. The branches are plain nodes, all with the same model, without tools, MCP servers or skills."
             }
           },
           "required": [
@@ -2782,7 +2782,7 @@
             "properties": {
               "limit": {
                 "type": "integer",
-                "description": "How many branches run at the same time; in `batch`, how many requests go in each job."
+                "description": "In `parallel` and `concurrent`, how many branches run at the same time; in `batch`, how many requests go in each job, the jobs being sent one after the other."
               }
             },
             "required": [
@@ -2960,7 +2960,7 @@
           "properties": {
             "batch": {
               "$ref": "#/$defs/group",
-              "description": "A group whose branches are sent to the provider as one batch job; with `limit`, at most that many requests in each job. The branches are plain nodes, all with the same model, without tools, MCP servers or skills."
+              "description": "A group whose branches are sent to the provider as one batch job or, with `limit`, as jobs of at most that many requests each, sent one after the other. The branches are plain nodes, all with the same model, without tools, MCP servers or skills."
             }
           },
           "required": [
@@ -3043,7 +3043,7 @@
           "properties": {
             "batch": {
               "$ref": "#/$defs/group",
-              "description": "A group whose branches are sent to the provider as one batch job; with `limit`, at most that many requests in each job. The branches are plain nodes, all with the same model, without tools, MCP servers or skills."
+              "description": "A group whose branches are sent to the provider as one batch job or, with `limit`, as jobs of at most that many requests each, sent one after the other. The branches are plain nodes, all with the same model, without tools, MCP servers or skills."
             }
           },
           "required": [
