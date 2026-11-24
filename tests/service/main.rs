@@ -51,6 +51,9 @@ mod env_not_listed;
 #[path = "env_wrong_host/env_wrong_host.rs"]
 mod env_wrong_host;
 
+#[path = "gateway_key_refused/gateway_key_refused.rs"]
+mod gateway_key_refused;
+
 #[path = "error_kept_out/error_kept_out.rs"]
 mod error_kept_out;
 

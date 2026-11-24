@@ -195,7 +195,8 @@ Then the graph is checked as by `--check`: a graph that is not valid is refused 
 graph:
 
 - **Variables.** Every `{ env: VAR }` of the graph must name a variable of `allowed_env`, and the value must go only
-  to hosts listed for that variable (`env_not_allowed`): the host of the model for a key of a model, the `url` of a
+  to hosts listed for that variable (`env_not_allowed`): the host of the model for a key of a model (the host of its
+  `host` when it goes through a gateway, see [models](models.md#a-gateway-in-front-of-a-provider)), the `url` of a
   tool, a utility, an MCP server, a vector database, the log, a media or a prompt for their headers or key, the
   `endpoint` of the
   trace for its headers. A refused variable is not read, so the answer never tells whether it is set; a variable of
