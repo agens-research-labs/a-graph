@@ -112,48 +112,11 @@ both are generated from the code.
 
 ## Observability
 
-A run reports on itself in three ways, each with its own block of the graph file, and all three read the same events:
-
-| Block | What it gives | Where it goes |
-|---|---|---|
-| `observability` | the log: one JSON object for each event | the standard error (the default), the standard output, a file or a URL |
-| `trace` | the timeline of the run, sent at its end in OpenTelemetry (OTLP over HTTP, JSON) | a collector |
-| `verbose` | the progress of the run as it goes, for a person | the standard error |
-
-```yaml
-observability: { level: debug }
-trace: { endpoint: http://localhost:4318/v1/traces }
-verbose: { level: detail }
-```
-
-The events follow the run as it goes:
-
-```mermaid
-flowchart LR
-    R[run.start] --> G[group.start]
-    G --> N[node.start]
-    N --> C[model.call, tool.call, structured.attempt]
-    C --> E[node.end: tokens, duration, stop, verdict]
-    E --> GE[group.end]
-    GE --> RE[run.end, or the error that stopped the run]
-```
-
-- At the level `info` the log holds the run, the groups and the nodes; at `debug` also each call to a model, a tool, an
-  MCP server, a skill or a utility, each answer checked against a schema, and each reading of a vector database, a
-  memory or a media.
-- An error says where it happened (the node, the path in the file) and its rule; what caused it, as written by the
-  model, the tool or the provider, is added only as the passport allows.
-- In the trace the run, every group, every node and every call is a span, with its real start and duration, so the
-  branches that run together overlap. Every record of the log written during a run carries the ids of the trace, so
-  the two can be read together.
-- The contents of the messages (prompts, answers, reasoning, results) appear only if the data classification of the
-  passport allows it; the trace needs `capture_content: true` as well.
-- Through the [HTTP service](docs/serve.md), `GET /runs/{id}/events` sends the events of a run as they happen
-  (Server-Sent Events), at the level of the `verbose` of its graph.
-
-[`examples/03-observability`](examples/03-observability/README.md) sends the trace of a run to an OpenTelemetry
-Collector and shows it in Jaeger; the JSON log stays in a local file, and its `trace_id` leads to the trace. Every
-event and its fields are described in [observability](docs/observability.md).
+Every run reports on itself in three ways, each with its own block of the graph file: a JSON log (`observability`),
+an OpenTelemetry trace sent to a collector (`trace`) and a live display (`verbose`), all with the events of the run,
+of each group and node, and of each call. How to read them, and every event with its fields, is in
+[observability](docs/observability.md); [`examples/03-observability`](examples/03-observability/README.md) shows the
+trace in Jaeger.
 
 ## What it does
 

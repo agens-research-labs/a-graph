@@ -43,6 +43,18 @@ the contents are hidden. Even for public data, traces require the separate opt-i
 | `read.media` | debug | `id`, `bytes`, `duration` | |
 | `read.prompt` | debug | `id`, `bytes`, `duration` | |
 
+The events follow the run as it goes:
+
+```mermaid
+flowchart LR
+    R[run.start] --> G[group.start]
+    G --> N[node.start]
+    N --> C[model.call, tool.call, structured.attempt]
+    C --> E[node.end: tokens, duration, stop, verdict]
+    E --> GE[group.end]
+    GE --> RE[run.end, or the error that stopped the run]
+```
+
 The requests of a `batch` give no `model.start`, `model.call` or `model.error`.
 
 `read.media` and `read.prompt` are the downloads of the media and of the prompts read from a `url`, when the run
@@ -165,6 +177,10 @@ gets `a_graph.content_truncated`. It does not limit the number of spans or the s
 that hides the contents hides them from the trace too, with or without `capture_content`; the log and the display
 follow the passport alone.
 
+For a graph whose trace goes to a Collector and from there to Jaeger, see
+[examples/03-observability](../examples/03-observability/README.md): its JSON log is not sent, it goes to the
+standard error, and nothing sends metrics.
+
 ### The trace of the caller
 
 A request to the service (`POST /run`, `POST /runs`, see [serve](serve.md#running-a-graph)) may carry a
@@ -182,9 +198,6 @@ the flag is read.
 The answer gives back the `traceparent` of the run, so that the caller finds it: the trace, the span of the run, and
 the flag `01` when the trace of the run is sent, `00` otherwise (no `trace` block, or a caller that does not record).
 A request without the header gets it too, with the run's own trace.
-
-For a runnable Collector → Jaeger demo, see [examples/03-observability](../examples/03-observability/README.md).
-It verifies the OTLP trace path; JSON logs stay local and no metrics are exported.
 
 ## Delivery over the network
 
