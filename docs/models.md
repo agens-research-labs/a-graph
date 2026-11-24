@@ -58,6 +58,9 @@ models:
 
 - The host of `host`, on its port, must be in `allowed_hosts`, as for a local server; the host of the provider is no
   longer needed, since nothing goes there.
+- The variable of `api_key` is sent to `host`: on the service, its `allowed_env` must list the gateway, otherwise the
+  graph is refused (`env_not_allowed`, see [a graph from outside](serve.md#a-graph-from-outside)). A key listed only for the host of its provider can
+  never be sent elsewhere through `host`.
 - Everything goes to `host`, the batches too (`anthropic`, `openai`, `mistral`), and the key named by `api_key`
   goes with them: a gateway that does not serve the batch API of the provider answers with an error, which stops the
   run (`model_failed`).

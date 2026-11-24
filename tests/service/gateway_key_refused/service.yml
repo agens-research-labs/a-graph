@@ -1,0 +1,7 @@
+# The configuration of the service for this test ({{port:service}}); the sessions keep their files in target/test-service/gateway_key_refused.
+port: {{port:service}}
+data_dir: target/test-service/gateway_key_refused
+allowed_hosts: [127.0.0.1, localhost, api.anthropic.com]
+allowed_env:
+  A_GRAPH_GATEWAY_KEY: [api.anthropic.com]
+allowed_ambient: []
