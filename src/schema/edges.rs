@@ -90,9 +90,9 @@ const WORKER_ENTRY: Shape = Shape::Lazy {
 
 /// One entry of the list.
 static STEP_SHAPE: Shape = Shape::Either(&[
-    Shape::Map(&[Field::req(START, NODE_REF).doc("The first node: the first entry, and the only `start` (`edge_start`). A graph of one node is its `start` alone.")]),
+    Shape::Map(&[Field::req(START, NODE_REF).doc("The first node: the first entry, and the only `start` (`edge_start`). A graph of one node is its `start` alone. A graph whose first entry is a group or a `react` may leave it out: that entry then takes the message of the user.")]),
     Shape::Map(&[Field::req(NEXT, NODE_REF).doc(NEXT_DOC)]),
-    Shape::Map(&[Field::req(END, NODE_REF).doc("The last node: the last entry, and the only `end` (`edge_end`). Every graph needs it, except one of a single node.")]),
+    Shape::Map(&[Field::req(END, NODE_REF).doc("The last node: the last entry, and the only `end` (`edge_end`). Every graph needs it, except one of a single node and one whose last entry is a group or a `react`: there the result is what the nodes send to the final output.")]),
     Shape::Map(&[LINEAR_GROUP]),
     Shape::Map(&[PARALLEL_GROUP]),
     Shape::Map(&[CONCURRENT_GROUP]),

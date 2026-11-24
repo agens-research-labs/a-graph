@@ -18,13 +18,29 @@ Every entry is a map with one key. Every key is described in [the reference](gra
 
 ## The main flow
 
-- `start` is the first entry, and there is exactly one (`edge_start`).
+- `start` is the first entry, and there is exactly one (`edge_start`), except in the cases below.
 - `next` runs a node after the one before it.
-- `end` is the last entry, and there is exactly one (`edge_end`).
+- `end` is the last entry, and there is exactly one (`edge_end`), except in the cases below.
 - The groups (`linear`, `parallel`, `concurrent`, `batch`) and `react` are entries of the list like `next`.
 
-A graph of one node is the `start` alone, with nothing else: the node runs once and its output is the result. Every
-other graph needs its `end`.
+A graph of one node is the `start` alone, with nothing else: the node runs once and its output is the result.
+
+A graph whose first entry is a group or a `react` may leave out the `start`: that entry takes the message of the user,
+and no `agent_message`. A graph whose last entry is a group or a `react` may leave out the `end`: nothing runs after
+it, and the result is what the nodes send to the final output (`assistant_message`). A group or a `react` alone is a
+whole graph:
+
+```yaml
+edges:
+  - parallel:
+      - in: split
+      - fan:
+          - next: a
+          - next: b
+      - out: merge
+```
+
+Every other graph needs its `start` and its `end`.
 
 A node may appear more than once in the edges, and each appearance is a run of it. `start: a` and `end: a` is an edge
 from a node to itself: `a` runs twice.

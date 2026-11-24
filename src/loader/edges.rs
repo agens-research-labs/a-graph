@@ -1,5 +1,5 @@
 //! The coherence of `graph.edges`, which the shapes of the schema cannot say: the entries and their
-//! order, how a group is made (`limit` is mandatory in `concurrent`), when a group may have no `out`, and where a validation node may stand and pass its problem on. Names and the nodes cited are
+//! order, when `start` and `end` may be left out, how a group is made (`limit` is mandatory in `concurrent`), when a group may have no `out`, and where a validation node may stand and pass its problem on. Names and the nodes cited are
 //! already checked by the shapes; here the yml is read as it is written, and what does not have
 //! the expected shape is skipped (the shapes have already reported it).
 
@@ -64,9 +64,13 @@ pub(super) fn check(root: &Value, c: &mut Collector) {
             }
         }
     }
-    if starts == 0 {
-        c.errs
-            .push(error(&base, Rule::EdgeStart, "the graph needs exactly one `start`"));
+    // a graph that begins with a group or a `react` may leave out the `start`
+    if starts == 0 && !entries.first().is_some_and(group_or_react) {
+        c.errs.push(error(
+            &base,
+            Rule::EdgeStart,
+            "the graph needs exactly one `start`, unless its first entry is a group or a `react`",
+        ));
     }
     if ends == 0 {
         // a graph of one node is the `start` alone: the node runs once and its output is the result
@@ -74,14 +78,20 @@ pub(super) fn check(root: &Value, c: &mut Collector) {
             if let Some(id) = start_id {
                 nodes.nothing_after(id, "it is the only node of the graph", c);
             }
-        } else {
+        // a graph that ends with a group or a `react` may leave out the `end`
+        } else if !entries.last().is_some_and(group_or_react) {
             c.errs.push(error(
                 &base,
                 Rule::EdgeEnd,
-                "the graph needs exactly one `end` (only a graph of one node, a `start` alone, has none)",
+                "the graph needs exactly one `end`, unless its last entry is a group or a `react` or the graph is a `start` alone",
             ));
         }
     }
+}
+
+/// An entry that is a group or a `react`.
+fn group_or_react(entry: &Value) -> bool {
+    single(entry).is_some_and(|(k, _)| GROUPS.contains(&k) || k == key::REACT)
 }
 
 fn error(at: &Path, rule: Rule, msg: impl Into<String>) -> Error {

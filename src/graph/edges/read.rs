@@ -23,35 +23,40 @@ pub(super) fn build(list: Option<Value>, nodes: &Nodes) -> Result<Edges, Errors>
     let entries_len = entries.len();
 
     let (mut start, mut end, mut steps) = (None, None, Vec::new());
-    for o in entries {
+    // whether the first and the last entry are a group or a `react`, which may stand without `start` or `end`
+    let (mut first_block, mut last_block) = (false, false);
+    for (i, o) in entries.into_iter().enumerate() {
         let at = o.at().clone();
         let Some((k, v)) = o.single(&mut r.errs) else { continue };
         let at_key = at.key(&k);
         match k.as_str() {
             key::START => start = r.node(&v, &at_key),
             key::END => end = r.node(&v, &at_key),
-            _ => steps.extend(r.step(&k, v, &at_key)),
+            _ => {
+                let step = r.step(&k, v, &at_key);
+                let block = matches!(step, Some(Step::Group(_) | Step::React(_)));
+                first_block |= i == 0 && block;
+                last_block = i + 1 == entries_len && block;
+                steps.extend(step);
+            }
         }
     }
     // the Loader has already checked the rules; a yml that skipped it is refused here
     // a graph of one node is the `start` alone, with no `end` and nothing else
     let alone = start.is_some() && end.is_none() && steps.is_empty() && entries_len == 1;
-    let (Some(start), Some(end), true) = (start, if alone { start } else { end }, r.errs.0.is_empty()) else {
+    let complete = (start.is_some() || first_block) && (end.is_some() || alone || last_block);
+    if !complete || !r.errs.0.is_empty() {
         if r.errs.0.is_empty() {
             r.errs.add(
                 &base,
                 Rule::BlockShape,
-                "the edges have no `start` or no `end`: they were not validated by the Loader",
+                "the edges have no `start` or no `end` where they need one: they were not validated by the Loader",
             );
         }
         return Err(Errors(r.errs.0));
-    };
+    }
 
-    Ok(Edges {
-        start,
-        end: if alone { None } else { Some(end) },
-        steps,
-    })
+    Ok(Edges { start, end, steps })
 }
 
 impl Reader<'_> {

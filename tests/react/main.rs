@@ -59,3 +59,6 @@ mod controller_corrects;
 
 #[path = "controller_attempts/controller_attempts.rs"]
 mod controller_attempts;
+
+#[path = "react_alone_runs/react_alone_runs.rs"]
+mod react_alone_runs;

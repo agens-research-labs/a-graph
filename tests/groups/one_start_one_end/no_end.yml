@@ -1,4 +1,4 @@
-# Variant of valid.yml: No `end`.
+# Variant of valid.yml: No `end`, and the last entry is a `next`, not a group or a `react`.
 graph_spec: "1.0"
 passport:
   adl:
@@ -214,3 +214,4 @@ graph:
                 - fan:
                     - next: e
         - out: f
+    - next: g
