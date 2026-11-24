@@ -5,7 +5,7 @@ passport:
   adl:
     adl_spec: "0.3.0"
     name: hello
-    description: One node answers the message of the user. A graph of one node is the `start` alo
+    description: One node answers the message of the user. A graph of one node is the `start` alone.
     version: "1.0.0"
     data_classification: { sensitivity: public }
     permissions: { network: { allowed_hosts: [localhost:11434] } }

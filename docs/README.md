@@ -3,6 +3,7 @@
 - [The architecture](architecture.md): the entities, the components and the managers, and how a file becomes a program.
 - [Agents and software](agents-and-software.md): the agents in the file, the software in the program, and what observability lets you measure.
 - [The command line](cli.md): how to run a graph, the result, the errors, the exit codes.
+- [Examples](examples.md): the three graphs of `examples/`, what each shows and how to run it.
 - [The graph file](file.md): the blocks, the ids, the secrets, the allowed hosts.
 - [The reference](graph.md): every key of the graph file, generated from the code.
 - [The HTTP service](serve.md): how to run graphs over HTTP, the sessions, the rules for a graph from outside.
