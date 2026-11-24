@@ -1,15 +1,36 @@
 # A-Graph
 
-`a-graph` runs a **graph of agents written in a YAML file**. You describe the models, the data they read, the tools
-they use and how the nodes are connected; `a-graph` checks the file, runs it, and gives you the result. It is a program
-for the command line and a small HTTP service, written in Rust.
+`a-graph` runs a **graph of agents written in a YAML file**. The file holds the problem of the agents: the models,
+what each node reads, the prompts, the order of the nodes and the patterns that connect them. The engine holds the
+problem of the software: the API of each provider, structured output, batch jobs, the network, the secrets. Your own
+programs, the tools and the utilities, stay outside the graph, behind a small JSON contract.
 
 ```
 a-graph graph.yml "What is a mutex?"
 ```
 
-Inspired by [KeGal](https://github.com/Kedos-srl/kegal), this Rust implementation was designed with a configuration-first approach, with the code following
-the configuration design.
+- **Checked before it runs.** The whole file is checked before the first call: the keys, the ids and the links, what
+  each model can do, the agreement between prompts and nodes, the hosts, the environment variables. `a-graph --check`
+  does only that.
+- **Every agent can be measured.** Each node has its own events (its tokens, its duration, its calls, the answers
+  checked against a schema) in a JSON log, an OpenTelemetry trace and a live display: the data to measure how stable
+  each agent is, where it fails, and why. See [observability](#observability).
+- **One file, nine providers.** Anthropic, OpenAI, Gemini, Mistral, Amazon Bedrock, Google Vertex AI, Microsoft Foundry,
+  Ollama, and any server that speaks the Ollama contract. Reasoning, output schemas, logprobs and batch jobs are
+  written once, and sent in the form of each provider.
+- **The patterns are edges.** Pipelines; groups whose branches run one after the other, all together, at most a few at
+  a time, or as batch jobs; a `react`, where a controller chooses its workers; judges that approve a result or stop the
+  run.
+- **No secrets in the file.** The file names environment variables, never their values; it reaches only the hosts its
+  passport lists; the contents of the messages reach the log and the trace only if its data classification allows it.
+- **Graphs from outside.** `a-graph --serve` runs graphs sent over HTTP, and refuses, before it builds anything, what
+  could start a program, touch a file outside the folder of the session, or reach a host it does not allow.
+
+It is a program for the command line and a small HTTP service, written in Rust. Inspired by
+[KeGal](https://github.com/Kedos-srl/kegal), this Rust implementation was designed with a configuration-first
+approach, with the code following the configuration design. How the file and the engine divide the work is explained
+in [agents and software](docs/agents-and-software.md), and how the engine is built in
+[the architecture](docs/architecture.md).
 
 ## Build
 
@@ -19,7 +40,7 @@ You need [Rust](https://rustup.rs). From the root of this project:
 cargo build --release
 ```
 
-The program is `target/release/a-graph`, about 53 MB (about 35 MB without its symbols, after `strip`). To build it and
+The program is `target/release/a-graph`, about 62 MB (about 41 MB without its symbols, after `strip`). To build it and
 put `a-graph` in `~/.cargo/bin`, which `rustup` already adds to the `PATH`:
 
 ```
@@ -29,7 +50,7 @@ cargo install --path . --locked
 The code has been built and tested on Linux and on macOS: the CI runs the tests on Linux for every pull request,
 and on macOS too after every push to `main`.
 
-The builds of development and the tests are kept in `target/`, which takes about 9 GB after the whole suite and grows
+The builds of development and the tests are kept in `target/`, which takes about 13 GB after the whole suite and grows
 with every build, since Cargo does not remove the old ones: `cargo clean` empties it. To keep it smaller, `Cargo.toml`
 leaves out the debug information of the dependencies in the builds of development
 (`[profile.dev.package."*"] debug = false`); the code of the project keeps it whole.
@@ -51,8 +72,9 @@ The progress of the run is written on the standard error; the result is a JSON d
 ```
 
 `examples/02-sequence` connects two nodes: the first translates the message, the second shortens the translation. Run
-each example from its own folder. [`examples/03-observability`](examples/03-observability/README.md) adds correlated
-JSON logs and traces through a Docker Compose OpenTelemetry Collector and an in-memory Jaeger viewer.
+these two from their own folder. [`examples/03-observability`](examples/03-observability/README.md), run from the root
+of the repository, sends the trace of a run to an OpenTelemetry Collector in Docker Compose and shows it in Jaeger; the
+JSON log stays in a local file, and its `trace_id` leads to the trace.
 
 ## The command line
 
@@ -88,13 +110,58 @@ How the file works is explained in [the graph file](docs/file.md). Every key is 
 [the reference](docs/graph.md), and the JSON Schema of the file is [`spec/graph.schema.json`](spec/graph.schema.json):
 both are generated from the code.
 
+## Observability
+
+A run reports on itself in three ways, each with its own block of the graph file, and all three read the same events:
+
+| Block | What it gives | Where it goes |
+|---|---|---|
+| `observability` | the log: one JSON object for each event | the standard error (the default), the standard output, a file or a URL |
+| `trace` | the timeline of the run, sent at its end in OpenTelemetry (OTLP over HTTP, JSON) | a collector |
+| `verbose` | the progress of the run as it goes, for a person | the standard error |
+
+```yaml
+observability: { level: debug }
+trace: { endpoint: http://localhost:4318/v1/traces }
+verbose: { level: detail }
+```
+
+The events follow the run as it goes:
+
+```mermaid
+flowchart LR
+    R[run.start] --> G[group.start]
+    G --> N[node.start]
+    N --> C[model.call, tool.call, structured.attempt]
+    C --> E[node.end: tokens, duration, stop, verdict]
+    E --> GE[group.end]
+    GE --> RE[run.end, or the error that stopped the run]
+```
+
+- At the level `info` the log holds the run, the groups and the nodes; at `debug` also each call to a model, a tool, an
+  MCP server, a skill or a utility, each answer checked against a schema, and each reading of a vector database, a
+  memory or a media.
+- An error says where it happened (the node, the path in the file) and its rule; what caused it, as written by the
+  model, the tool or the provider, is added only as the passport allows.
+- In the trace the run, every group, every node and every call is a span, with its real start and duration, so the
+  branches that run together overlap. Every record of the log written during a run carries the ids of the trace, so
+  the two can be read together.
+- The contents of the messages (prompts, answers, reasoning, results) appear only if the data classification of the
+  passport allows it; the trace needs `capture_content: true` as well.
+- Through the [HTTP service](docs/serve.md), `GET /runs/{id}/events` sends the events of a run as they happen
+  (Server-Sent Events), at the level of the `verbose` of its graph.
+
+[`examples/03-observability`](examples/03-observability/README.md) sends the trace of a run to an OpenTelemetry
+Collector and shows it in Jaeger; the JSON log stays in a local file, and its `trace_id` leads to the trace. Every
+event and its fields are described in [observability](docs/observability.md).
+
 ## What it does
 
 - **Models**: Anthropic, OpenAI (Responses API), Gemini, Mistral, Amazon Bedrock, Google Vertex AI, Microsoft Foundry,
   Ollama, and any server that speaks the Ollama contract. Reasoning levels, output schemas (JSON), batch jobs, images
   in, images and audio out.
 - **Edges**: nodes in sequence; groups whose branches run one after the other, all together, at most a few at a time, or
-  as one batch job; a `react`, where a controller chooses at every turn which worker to call; validation nodes that
+  as batch jobs; a `react`, where a controller chooses at every turn which worker to call; validation nodes that
   judge a result and can stop the run.
 - **Tools**: your own programs (`stdio`) or services (`http`) with a small JSON contract; **MCP servers** (stdio and
   Streamable HTTP); **skills** in the [Agent Skills](https://agentskills.io/specification) format.
