@@ -5,7 +5,7 @@ edition = "2024"
 authors = ["Fabio Gagliardi"]
 description = "Runs a graph of agents written in a YAML file."
 license = "MIT"
-repository = "https://github.com/agens-labs/a-graph"
+repository = "https://github.com/agens-research-labs/a-graph"
 readme = "README.md"
 
 [dependencies]
