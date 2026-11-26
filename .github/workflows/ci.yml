@@ -1,4 +1,4 @@
-# The checks of every pull request and of every push to main: the formatting, the build, clippy, the tests, the
+# The checks of every pull request and of every push to main: the commit messages of a pull request, the formatting, the build, clippy, the tests, the
 # advisories on the crates of Cargo.lock, the Docker image. On a push to main the tests run on macOS too.
 # CONTRIBUTING.md says how to run the same checks by hand.
 name: ci
@@ -20,6 +20,31 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # every commit of a pull request against the rules of AGENTS.md, with the hook of .githooks: pull requests are merged
+  # fast-forward, so their commits reach main as they are
+  commits:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          failed=0
+          for commit in $(git rev-list --reverse "$BASE..$HEAD"); do
+            git log -1 --format=%B "$commit" > "$RUNNER_TEMP/message"
+            if ! .githooks/commit-msg "$RUNNER_TEMP/message"; then
+              echo "::error::$(git log -1 --format='%h %s' "$commit")"
+              failed=1
+            fi
+          done
+          exit "$failed"
+
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 30

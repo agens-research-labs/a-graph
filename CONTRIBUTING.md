@@ -63,6 +63,17 @@ ones:
 - the title of a commit is `type(scope): description`, with the types and the scopes listed there;
 - one change for each commit, with the documentation it needs in the same commit.
 
+The hook in `.githooks/commit-msg` checks the message of every commit against those rules, and refuses the commit
+when one is broken. Turn it on once, in your clone:
+
+```
+git config core.hooksPath .githooks
+```
+
+CI runs the same hook on every commit of a pull request, so a commit made without it is caught there. The hook
+cannot check the imperative mood or whether a commit holds one change: that is left to the review. A
+`git commit --fixup` passes on a branch and fails in CI, so squash it before asking for the merge.
+
 ## How the code is organized
 
 - `src/main.rs`: the command line.
