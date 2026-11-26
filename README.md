@@ -1,5 +1,32 @@
 # A-Graph
 
+A-Graph is a declarative framework for AI agents: the agents are described in a YAML file, and an engine checks the
+file and then runs it.
+
+The motivation comes from an idea of Andrej Karpathy: a language model is the CPU of a new kind of computer, and its
+context window is the RAM.
+
+```mermaid
+flowchart LR
+    tools[classical tools: terminal, Python interpreter] --- computer
+    io[peripherals: audio, video] --- computer
+    subgraph computer["A new kind of computer"]
+        direction TB
+        cpu[CPU: the language model] --- ram[RAM: the context window]
+    end
+    computer --- disk[disk: files, embeddings]
+    computer --- net[network: browser, other models]
+```
+
+Redrawn from Karpathy's "LLM OS" sketch (2023), which he showed again in
+[Software Is Changing (Again)](https://www.youtube.com/watch?v=LCEmiRjPEtQ&t=600s) at Y Combinator's AI Startup School,
+June 2025.
+
+On this computer an agent is a program. On a classical computer the operating system decides what a program may use.
+For many agents, what they may use is written only in their code. In A-Graph it is declared in the file, and the
+engine does part of the work of an operating system: it checks the whole file before the first call, and it reaches
+only the hosts the file lists.
+
 `a-graph` runs a **graph of agents written in a YAML file**. The file holds the problem of the agents: the models,
 what each node reads, the prompts, the order of the nodes and the patterns that connect them. The engine holds the
 problem of the software: the API of each provider, structured output, batch jobs, the network, the secrets. Your own
@@ -26,10 +53,9 @@ a-graph graph.yml "What is a mutex?"
 - **Graphs from outside.** `a-graph --serve` runs graphs sent over HTTP, and refuses, before it builds anything, what
   could start a program, touch a file outside the folder of the session, or reach a host it does not allow.
 
-It is a program for the command line and a small HTTP service, written in Rust. Inspired by
-[KeGal](https://github.com/Kedos-srl/kegal), this Rust implementation was designed with a configuration-first
-approach, with the code following the configuration design. How the file and the engine divide the work is explained
-in [agents and software](docs/agents-and-software.md), and how the engine is built in
+It is a program for the command line and a small HTTP service, written in Rust. It was designed with a
+configuration-first approach, with the code following the configuration design. How the file and the engine divide the
+work is explained in [agents and software](docs/agents-and-software.md), and how the engine is built in
 [the architecture](docs/architecture.md).
 
 ## Build
@@ -57,7 +83,48 @@ leaves out the debug information of the dependencies in the builds of developmen
 
 ## A first run
 
-The examples need no key: they use a local [Ollama](https://ollama.com) with `qwen3.5:4b`.
+The examples need no key: they use a local [Ollama](https://ollama.com) with `qwen3.5:4b`. The smallest one,
+[`examples/01-hello/graph.yml`](examples/01-hello/graph.yml), is one node that answers the message of the user in one
+short sentence:
+
+```yaml
+# Hello
+# One node answers the message of the user. A graph of one node is the `start` alone.
+graph_spec: "1.0"
+passport:
+  adl:
+    adl_spec: "0.3.0"
+    name: hello
+    description: One node answers the message of the user. A graph of one node is the `start` alone.
+    version: "1.0.0"
+    data_classification: { sensitivity: public }
+    permissions: { network: { allowed_hosts: [localhost:11434] } }
+observability: { level: warn }      # the log goes to the standard error
+verbose: { level: steps }        # the display of the run: off | steps | detail
+models:
+  - id: local
+    provider: ollama
+    model: qwen3.5:4b
+    host: http://localhost:11434
+    input: [text]
+    output: [text]
+resources:
+  prompts:
+    - id: answer
+      content:
+        system: "Answer in one short sentence."
+        user: "{{user_message}}"      # {{user_message}} is the message you give on the command line
+graph:
+  nodes:
+    - id: assistant
+      model: { id: local, reasoning: off, max_tokens: 300, temperature: 0 }
+      resources: { prompt: answer }
+      message:
+        input: { user_message: true }
+        output: { assistant_message: true }   # the answer goes to the result
+  edges:
+    - start: assistant
+```
 
 ```
 ollama pull qwen3.5:4b
@@ -74,7 +141,8 @@ The progress of the run is written on the standard error; the result is a JSON d
 `examples/02-sequence` connects two nodes: the first translates the message, the second shortens the translation. Run
 these two from their own folder. [`examples/03-observability`](examples/03-observability/README.md), run from the root
 of the repository, sends the trace of a run to an OpenTelemetry Collector in Docker Compose and shows it in Jaeger; the
-JSON log stays in a local file, and its `trace_id` leads to the trace.
+JSON log stays in a local file, and its `trace_id` leads to the trace. What each example shows is in
+[examples](docs/examples.md).
 
 ## The command line
 
@@ -145,6 +213,8 @@ trace in Jaeger.
 - Audio and video in: no provider takes them yet.
 - A `react` inside a `react`.
 - The batch of Gemini, and of Vertex AI with publisher `google`.
+- A sandbox for the programs a graph starts (a `stdio` tool or utility, an MCP server over stdio, the script of a
+  skill): each runs with the rights of the user who runs `a-graph`.
 
 ## The HTTP service
 
@@ -152,12 +222,14 @@ trace in Jaeger.
 same JSON as the command line. Since the graph comes from outside, the service refuses, before it builds anything,
 what could start a program, touch a file outside the folder of the session, or reach a host it does not allow; and
 it refuses a graph that names an environment variable it does not list, or sends one where it may not go. It has no
-authentication of its own. See [the HTTP service](docs/serve.md), which also says how to run it with Docker
-(`docker compose up -d`); the routes are described, in OpenAPI 3.1, in [`spec/service.openapi.json`](spec/service.openapi.json).
+authentication of its own: whoever reaches its port can run graphs on it. See [the HTTP service](docs/serve.md), which
+also says how to run it with Docker (`docker compose up -d`); the routes are described, in OpenAPI 3.1, in
+[`spec/service.openapi.json`](spec/service.openapi.json).
 
 ## Documentation
 
-All the documentation is in [`docs/`](docs/README.md). To work on the code, see [CONTRIBUTING](CONTRIBUTING.md).
+All the documentation is in [`docs/`](docs/README.md), and on the site [a-graph.dev](https://a-graph.dev/docs/). To work
+on the code, see [CONTRIBUTING](CONTRIBUTING.md).
 
 ## License
 

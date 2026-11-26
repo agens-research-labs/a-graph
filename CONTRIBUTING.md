@@ -17,7 +17,8 @@ The suite runs against mock servers, started by the tests themselves: it needs n
 The live tests are marked `#[ignore]` because they need something outside the project; each says what in its
 `#[ignore]` line. They need a local [Ollama](https://ollama.com) with some models (`qwen3.5:4b`, `embeddinggemma`,
 `llama3.2`, `gpt-oss`, `mistral-small3.2`, `gemma4:e2b`), a Chroma server on `127.0.0.1:8000`, `python3` with
-`pymupdf4llm`, or the keys `GEMINI_API_KEY` and `CLAUDE_API_KEY` for the real APIs.
+`pymupdf4llm`, or the keys of the real APIs: `GEMINI_API_KEY`, `CLAUDE_API_KEY`, `OPENAI_API_KEY`, `MISTRAL_API_KEY`,
+and `AWS_ACCESS_KEY_ID` with `AWS_SECRET_ACCESS_KEY` for Bedrock.
 
 The code has been built and tested on Linux and on macOS. On macOS, in a parallel run, a test that starts a
 program (`utilities`, `tools`) can fail at random with "did not answer within 5 s": the standard library creates the
@@ -36,7 +37,7 @@ cargo build --locked
 cargo clippy --all-targets --locked -- -D warnings
 cargo test --locked --no-fail-fast
 cargo audit                     # the advisories on the crates of Cargo.lock (cargo install cargo-audit --locked)
-docker build .                  # the image, once the Dockerfile is in the repository
+docker build .                  # the image of the service
 ```
 
 The same commands run by hand, before opening a pull request. CI checks the formatting, it does not fix it: let the
@@ -53,6 +54,15 @@ Clippy fails on any warning: a lint that does not fit the code is allowed in `[l
 a commit of its own, with what the new lints asked for. `cargo audit` fails on a new advisory: the fix is a
 `cargo update` of that crate, or, when there is no fix yet, an entry in `.cargo/audit.toml` with the reason.
 
+## Commits and branches
+
+The rules for branches and commits are in [AGENTS.md](AGENTS.md), and hold for people as for coding agents. The main
+ones:
+
+- no commit on `main`: the work goes on a branch named `type/short-kebab-description`;
+- the title of a commit is `type(scope): description`, with the types and the scopes listed there;
+- one change for each commit, with the documentation it needs in the same commit.
+
 ## How the code is organized
 
 - `src/main.rs`: the command line.
@@ -65,6 +75,7 @@ a commit of its own, with what the new lints asked for. `cargo audit` fails on a
 - `src/gate`: the calls to tools, MCP servers and skill scripts.
 - `src/logging`: the log, the trace and the display.
 - `src/network.rs`: the check of the allowed hosts.
+- `src/secrets.rs`: the check of the environment variables a graph sent to the service may use.
 - `src/service`: the HTTP service.
 - `src/error`: the errors, with their phase, path and rule.
 
