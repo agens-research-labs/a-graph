@@ -71,7 +71,7 @@ git config core.hooksPath .githooks
 ```
 
 CI runs the same hook on every commit of a pull request, so a commit made without it is caught there. The hook
-cannot check the imperative mood or whether a commit holds one change: that is left to the review. A
+cannot check the imperative mood, a ticket key (`AB-12` looks like `UTF-8`) or whether a commit holds one change: that is left to the review. A
 `git commit --fixup` passes on a branch and fails in CI, so squash it before asking for the merge.
 
 ## How the code is organized

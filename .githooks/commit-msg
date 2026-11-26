@@ -43,7 +43,8 @@ fi
 
 grep -qiE '^co-authored-by:' <<<"$msg" && fail "no Co-authored-by"
 grep -qiE 'generated (by|with)' <<<"$msg" && fail "no mention of the tool that wrote the commit"
-grep -qE '(^|[^[:alnum:]&])#[0-9]+\b|\b[A-Z][A-Z0-9]+-[0-9]+\b' <<<"$msg" && fail "no issue or ticket numbers"
+# only `#123`: a ticket key like `AB-12` cannot be told apart from `UTF-8` or `SHA-256`
+grep -qE '(^|[^[:alnum:]&])#[0-9]+' <<<"$msg" && fail "no issue numbers"
 perl -CSD -ne 'exit 1 if /[\p{Extended_Pictographic}\x{1F1E6}-\x{1F1FF}]/' <<<"$msg" || fail "no emoji"
 
 if [[ -n $errors ]]; then
