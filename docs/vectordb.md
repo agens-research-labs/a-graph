@@ -5,7 +5,11 @@ prompt where it writes `{{chunks}}` (see [prompts](prompts.md#chunks)). Vector d
 `external.vectordb`, each with an `id`; a node, or a validation node, lists the ones it searches in its
 `external.vectordb`. Every key is described in [the reference](graph.md).
 
-<img src="images/vectordb.svg" alt="Retrieval: a node queries a vector database and receives chunks" width="26%">
+```mermaid
+flowchart LR
+    agent[retrieval agent] -- query --> db[(vector database)]
+    db -- chunks --> agent
+```
 
 ```yaml
 external:

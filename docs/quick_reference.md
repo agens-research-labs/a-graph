@@ -472,7 +472,13 @@ message:
 
 ### Pipeline
 
-<img src="images/linear_pipeline.svg" alt="A pipeline: start, next and end, each node passing its output to the next" width="80%">
+```mermaid
+flowchart LR
+    input([input message]) --> a1["start<br/>agent_1"]
+    a1 -- node output --> a2["next<br/>agent_2"]
+    a2 -- node output --> a3["end<br/>agent_3"]
+    a3 --> output["graph output<br/>one item each for agent_1, agent_2, agent_3"]
+```
 
 ```yaml
 edges:
@@ -483,9 +489,25 @@ edges:
 
 ### Groups: fan-out and fan-in
 
-<img src="images/fan_in_out_1.svg" alt="A group with an out node: in, three branches, out" width="100%">
+```mermaid
+flowchart LR
+    prev([previous agent]) -- node output --> gin[in]
+    gin -- node output --> b1[branch 1] & b2[branch 2] & b3[branch 3]
+    b1 & b2 & b3 -- node output --> gout[out]
+    gout -- node output --> nxt([next agent])
+```
 
-<img src="images/fan_in_out_2.svg" alt="A group without an out node: in, three branches, then the next entry" width="81%">
+```mermaid
+flowchart LR
+    prev([previous agent]) -- node output --> gin[in]
+    gin -- node output --> b1 & b2 & b3
+    subgraph fan
+        b1[branch 1]
+        b2[branch 2]
+        b3[branch 3]
+    end
+    fan --> nxt([next agent])
+```
 
 ```yaml
 - parallel:
@@ -525,7 +547,17 @@ edges:
 
 ### React: controller and workers
 
-<img src="images/react.svg" alt="A react: the controller calls the workers in a loop" width="60%">
+```mermaid
+flowchart LR
+    prev([previous agent]) -- node output --> ctrl[controller agent]
+    ctrl -- node output --> nxt([next agent])
+    subgraph workers["ReAct loop"]
+        w1((worker agent))
+        w2((worker agent))
+        w3((worker agent))
+    end
+    ctrl <--> workers
+```
 
 ```yaml
 - react:
@@ -562,7 +594,14 @@ gives the controller only the ids of the workers: what each one does must be wri
 
 ### Validation node: the judge
 
-<img src="images/validation_node.svg" alt="A validation node: approved, the run goes on; refused, it stops or passes the problem to the next node" width="68%">
+```mermaid
+flowchart LR
+    input([input content]) --> judge["start<br/>validation_node"]
+    judge -- approved --> pass[next step]
+    judge -- refused --> refusal{refusal management}
+    refusal --> exc[exception] --> nxt([next agent])
+    refusal --> halt[stop execution]
+```
 
 ```yaml
 - id: check_answer
@@ -591,7 +630,12 @@ A validation node reads and judges, and produces nothing. Its answer always has 
 
 ## Tools
 
-<img src="images/tool_and_mcp.svg" alt="A node that calls a program as a tool, and a node that calls an MCP server" width="41%">
+```mermaid
+flowchart LR
+    js([javascript program]) <--> tool[tool agent]
+    srv[[mcp server]] <--> mcp[mcp agent]
+    tool -- node output --> mcp
+```
 
 ```yaml
 resources:
@@ -730,7 +774,15 @@ name (`duplicate_id`).
 
 ## Utilities
 
-<img src="images/utilities.svg" alt="Utilities: a utility changes the data before the model, another after it" width="75%">
+```mermaid
+flowchart LR
+    prev([previous agent]) -- node output --> u1
+    subgraph agent
+        u1["utility<br/>(Python)"] -. modified content .-> llm[LLM]
+        llm -.-> u2["utility<br/>(Node.js)"]
+    end
+    u2 -- "node output<br/>(modified content)" --> nxt([next agent])
+```
 
 ```yaml
 utilities:
@@ -781,7 +833,11 @@ and of its answer (`http`).
 
 ## Vector databases
 
-<img src="images/vectordb.svg" alt="Retrieval: a node queries a vector database and receives chunks" width="26%">
+```mermaid
+flowchart LR
+    agent[retrieval agent] -- query --> db[(vector database)]
+    db -- chunks --> agent
+```
 
 ```yaml
 external:
@@ -826,7 +882,10 @@ embedding model is `model_failed`.
 
 ## Memory
 
-<img src="images/memory.svg" alt="A memory file read and written by the graph" width="35%">
+```mermaid
+flowchart LR
+    mem[("memory<br/>JSON file")] <--> run["graph"] <--> input([input message])
+```
 
 ```yaml
 external:
@@ -872,7 +931,20 @@ a list of records fails the node (`io`).
 
 ## Blackboards
 
-<img src="images/blackboard.svg" alt="A blackboard: two nodes write it, a third reads it, a cleanup leaves the header" width="48%">
+```mermaid
+sequenceDiagram
+    participant P as penalty expert
+    participant R as renewal expert
+    participant C as Contract Reviewer
+    participant B as blackboard
+    Note over B: header (description, purpose), never changed
+    P->>B: write "Clause 4: the penalty is capped"
+    B->>R: read
+    R->>B: write "Clause 7: the renewal is automatic"
+    B->>C: read
+    C->>B: cleanup
+    Note over B: only the header is left
+```
 
 ```yaml
 blackboards:
