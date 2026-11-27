@@ -712,15 +712,17 @@ description: Extracts the text and the tables of PDF files. Use it when the user
 How the model uses a skill:
 
 1. The system text of the node ends with how to use the skills and a catalog of their names and descriptions.
-2. `activate_skill` (parameter: the name) gives the instructions of `SKILL.md` and lists the other files of the folder,
-   at most `max_files`, at most `max_depth` levels down, hidden files and links leading out left out. Files are listed,
-   not read. A skill is given once in a run of the node.
+2. `activate_skill` (parameter: the name) gives the instructions of `SKILL.md`, without the frontmatter, inside
+   `<skill_content name="...">`, and lists the other files of the folder with paths relative to it: at most
+   `max_files`, at most `max_depth` levels down, hidden files and links leading out left out. Files are listed, not
+   read. A skill is given once in a run of the node: a second activation is told that it is already loaded.
 3. `read_skill_file` (`skill`, `path`) reads a text file inside the folder, of at most `max_file_bytes`; an absolute
    path, a `..`, a link leading out, a missing, binary or too large file are errors the model reads.
 4. `run_skill_script` (`skill`, `path` inside `scripts/`, `args`), only with `run_scripts: true`, runs a script: without
-   a shell, in the folder of the skill, with no standard input and only `PATH` in its environment (no keys). It needs
-   the permission to execute and a `#!` line. The result is its standard output, cut at `max_file_bytes`; an exit code
-   other than 0, a missing permission or a timeout reach the model as errors.
+   a shell, so nothing in its arguments is expanded, in the folder of the skill, with no standard input and only `PATH`
+   in its environment (no keys). It needs the permission to execute, and a `#!` line if it is a script. The result is
+   its standard output, cut at `max_file_bytes`; an exit code other than 0, a missing permission or a timeout reach the
+   model as errors.
 
 `max_iter` counts `read_skill_file` and `run_skill_script` together, not the activation; one more is `tool_limit`. The
 three tool names are reserved: a node with skills cannot have a tool with one of them, nor two skills with the same
