@@ -18,7 +18,13 @@ Every entry is a map with one key. Every key is described in [the reference](gra
 
 ## The main flow
 
-<img src="images/linear_pipeline.svg" alt="A pipeline: start, next and end, each node passing its output to the next" width="80%">
+```mermaid
+flowchart LR
+    input([input message]) --> a1["start<br/>agent_1"]
+    a1 -- node output --> a2["next<br/>agent_2"]
+    a2 -- node output --> a3["end<br/>agent_3"]
+    a3 --> output["graph output<br/>one item each for agent_1, agent_2, agent_3"]
+```
 
 - `start` is the first entry, and there is exactly one (`edge_start`), except in the cases below.
 - `next` runs a node after the one before it.
@@ -52,9 +58,25 @@ its `agent_message` and its media. See [nodes](nodes.md).
 
 ## Groups
 
-<img src="images/fan_in_out_1.svg" alt="A group with an out node: in, three branches, out" width="100%">
+```mermaid
+flowchart LR
+    prev([previous agent]) -- node output --> gin[in]
+    gin -- node output --> b1[branch 1] & b2[branch 2] & b3[branch 3]
+    b1 & b2 & b3 -- node output --> gout[out]
+    gout -- node output --> nxt([next agent])
+```
 
-<img src="images/fan_in_out_2.svg" alt="A group without an out node: in, three branches, then the next entry" width="81%">
+```mermaid
+flowchart LR
+    prev([previous agent]) -- node output --> gin[in]
+    gin -- node output --> b1 & b2 & b3
+    subgraph fan
+        b1[branch 1]
+        b2[branch 2]
+        b3[branch 3]
+    end
+    fan --> nxt([next agent])
+```
 
 `linear`, `parallel`, `concurrent` and `batch` have the same shape: a list of `limit`, `in`, `fan` and `out`, each
 written once and in this order (`block_shape`, `exactly_one`).
@@ -106,7 +128,17 @@ What the nodes of a group send to the final output goes there in the order of th
 
 ## React
 
-<img src="images/react.svg" alt="A react: the controller calls the workers in a loop" width="60%">
+```mermaid
+flowchart LR
+    prev([previous agent]) -- node output --> ctrl[controller agent]
+    ctrl -- node output --> nxt([next agent])
+    subgraph workers["ReAct loop"]
+        w1((worker agent))
+        w2((worker agent))
+        w3((worker agent))
+    end
+    ctrl <--> workers
+```
 
 A `react` is not a group of branches: a controller decides at run time which worker to call.
 
