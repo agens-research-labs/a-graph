@@ -71,21 +71,44 @@ neighbours: the links are made by the edges alone (see [nodes](nodes.md) and [ed
 A few constructs of edges and nodes express the usual patterns of systems of agents:
 
 - **Pipeline**: each node works on the result of the one before: `start`, some `next`, `end`.
+
+  <img src="images/linear_pipeline.svg" alt="A pipeline: start, next and end, each node passing its output to the next" width="80%">
+
 - **Fan-out and fan-in**: a group has an `in` node, branches (`fan`) and, if needed, an `out` node, which receives the
   answers of all the branches packed as one. The four groups differ only in how the branches run: one after the
   other (`linear`), all together (`parallel`), at most `limit` at a time (`concurrent`), or as batch jobs of the
   provider (`batch`). A branch can be a group or a `react`, so groups nest (see [edges](edges.md#groups)).
+
+  <img src="images/fan_in_out_1.svg" alt="A group with an out node: in, three branches, out" width="100%">
+
+  <img src="images/fan_in_out_2.svg" alt="A group without an out node: in, three branches, then the next entry" width="81%">
+
 - **Controller and workers**: in a `react` a controller chooses at every turn which worker to call, with which input,
   until its final answer, within `max_iterations` calls. It is the only construct where the order of the work is
   decided at run time instead of in the file (see [edges](edges.md#react)).
+
+  <img src="images/react.svg" alt="A react: the controller calls the workers in a loop" width="60%">
+
 - **Judge**: a validation node judges a result by the criterion of its prompt. Approved, the message it
   received from the node before goes on unchanged; refused, the run stops (`on_error: stop`) or the reasons go to
   the next node (`on_error: node`) (see [nodes](nodes.md#validation-nodes)).
+
+  <img src="images/validation_node.svg" alt="A validation node: approved, the run goes on; refused, it stops or passes the problem to the next node" width="68%">
+
 - **Retrieval**: a node searches its vector databases, and the chunks found go into its prompt as `{{chunks}}` (see
   [vector databases](vectordb.md)).
+
+  <img src="images/vectordb.svg" alt="Retrieval: a node queries a vector database and receives chunks" width="26%">
+
 - **Memory**: a memory keeps the exchanges of a node between runs and has them summarized by a model (see
   [memory](memory.md)).
+
+  <img src="images/memory.svg" alt="A memory file read and written by the graph" width="35%">
+
 - **Blackboard**: a Markdown text one node writes and another reads later (see [blackboards](blackboards.md)).
+
+  <img src="images/blackboard.svg" alt="A blackboard: two nodes write it, a third reads it, a cleanup leaves the header" width="48%">
+
 - **Structured output**: a node with a schema answers a JSON value, which the program checks before it goes on (see
   [nodes](nodes.md#where-the-answer-goes)).
 

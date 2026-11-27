@@ -4,6 +4,8 @@ A blackboard is a Markdown text shared by nodes: one node writes what it found, 
 are declared in `blackboards`, each with an `id` and a `source`; a node uses one with its `blackboard` block. Every key
 is described in [the reference](graph.md).
 
+<img src="images/blackboard.svg" alt="A blackboard: two nodes write it, a third reads it, a cleanup leaves the header" width="48%">
+
 ```yaml
 blackboards:
   - id: findings

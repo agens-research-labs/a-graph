@@ -4,6 +4,8 @@ A memory keeps the conversation of a node between runs: what the user asked, wha
 what came before. Memories are declared in `external.memory`; a node uses one with `external.memory` on the node, where
 it says which roles it reads and which it saves. Every key is described in [the reference](graph.md).
 
+<img src="images/memory.svg" alt="A memory file read and written by the graph" width="35%">
+
 ```yaml
 external:
   memory:
