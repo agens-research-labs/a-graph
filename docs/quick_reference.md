@@ -477,7 +477,7 @@ flowchart LR
     input([input message]) --> a1["start<br/>agent_1"]
     a1 -- node output --> a2["next<br/>agent_2"]
     a2 -- node output --> a3["end<br/>agent_3"]
-    a3 --> output["graph output<br/>one item each for agent_1, agent_2, agent_3"]
+    a3 --> output["graph output<br/>one item for each agent"]
 ```
 
 ```yaml
@@ -548,15 +548,15 @@ flowchart LR
 ### React: controller and workers
 
 ```mermaid
-flowchart LR
-    prev([previous agent]) -- node output --> ctrl[controller agent]
-    ctrl -- node output --> nxt([next agent])
+flowchart TB
     subgraph workers["ReAct loop"]
         w1((worker agent))
         w2((worker agent))
         w3((worker agent))
     end
-    ctrl <--> workers
+    workers <--> ctrl
+    prev([previous agent]) -- node output --> ctrl[controller agent]
+    ctrl -- node output --> nxt([next agent])
 ```
 
 ```yaml
@@ -633,8 +633,8 @@ A validation node reads and judges, and produces nothing. Its answer always has 
 ```mermaid
 flowchart LR
     js([javascript program]) <--> tool[tool agent]
-    srv[[mcp server]] <--> mcp[mcp agent]
-    tool -- node output --> mcp
+    tool -- node output --> mcp[mcp agent]
+    mcp <--> srv[[mcp server]]
 ```
 
 ```yaml
