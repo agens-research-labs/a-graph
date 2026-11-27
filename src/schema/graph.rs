@@ -191,7 +191,7 @@ const NODE_ITEM: Shape = Shape::Map(&[
     Field::opt(MEDIA, NODE_MEDIA).doc("The media the node reads and produces."),
     Field::opt(MESSAGE, NODE_MESSAGE).doc("Where the text of the node comes from and where its answer goes."),
     Field::opt(VALIDATION_NODE, VALIDATION_NODE_BODY).doc(
-        "Makes the node a validation node, which reads and judges and produces nothing; the node then has only `id` and `validation-node`. Approved, the message it examined goes on unchanged. It stands in the main flow only, never in a group or a `react`.",
+        "Makes the node a validation node, which reads and judges and produces nothing; the node then has only `id` and `validation-node`. Approved, the message it received from the node before goes on unchanged, whatever its `message.input` reads; as `start` it received none, and none goes on. It stands in the main flow only, never in a group or a `react`.",
     ),
 ]);
 

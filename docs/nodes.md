@@ -141,7 +141,8 @@ asked to follow. `structured_output` (mandatory) says how: `api`, through the AP
 for a node; `prompt`, through the prompt, as [`schema_prompt`](#schema_prompt) does, with `max_attempts` (default 3,
 at least 1, only with `prompt`).
 
-- Approved: the message it examined goes on to the next node unchanged. Only the message: the media do not pass.
+- Approved: the message it received from the node before goes on to the next node unchanged, whatever its
+  `message.input` reads. As `start` it received none, and none goes on. Only the message: the media do not pass.
 - Refused, with `on_error: stop`: the run ends here and `end` is not reached. The final output gets one more item, from
   the validation node, with the text `reasons: ...` and `log: ...`.
 - Refused, with `on_error: node`: the run goes on, and the next node receives the problem as its `agent_message`. A

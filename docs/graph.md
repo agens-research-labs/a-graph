@@ -514,7 +514,7 @@ The form with `url` and `access`:
 | `blackboard` | no | map (below) | The one blackboard the node manages. |
 | `media` | no | map (below) | The media the node reads and produces. |
 | `message` | no | map (below) | Where the text of the node comes from and where its answer goes. |
-| `validation-node` | no | map (below) | Makes the node a validation node, which reads and judges and produces nothing; the node then has only `id` and `validation-node`. Approved, the message it examined goes on unchanged. It stands in the main flow only, never in a group or a `react`. |
+| `validation-node` | no | map (below) | Makes the node a validation node, which reads and judges and produces nothing; the node then has only `id` and `validation-node`. Approved, the message it received from the node before goes on unchanged, whatever its `message.input` reads; as `start` it received none, and none goes on. It stands in the main flow only, never in a group or a `react`. |
 
 ## `graph.nodes[].model`
 

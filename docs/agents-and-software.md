@@ -78,9 +78,9 @@ A few constructs of edges and nodes express the usual patterns of systems of age
 - **Controller and workers**: in a `react` a controller chooses at every turn which worker to call, with which input,
   until its final answer, within `max_iterations` calls. It is the only construct where the order of the work is
   decided at run time instead of in the file (see [edges](edges.md#react)).
-- **Judge**: a validation node judges a result by the criterion of its prompt. Approved, the message goes on
-  unchanged; refused, the run stops (`on_error: stop`) or the reasons go to the next node (`on_error: node`) (see
-  [nodes](nodes.md#validation-nodes)).
+- **Judge**: a validation node judges a result by the criterion of its prompt. Approved, the message it
+  received from the node before goes on unchanged; refused, the run stops (`on_error: stop`) or the reasons go to
+  the next node (`on_error: node`) (see [nodes](nodes.md#validation-nodes)).
 - **Retrieval**: a node searches its vector databases, and the chunks found go into its prompt as `{{chunks}}` (see
   [vector databases](vectordb.md)).
 - **Memory**: a memory keeps the exchanges of a node between runs and has them summarized by a model (see
