@@ -1,5 +1,6 @@
 # Documentation
 
+- [Quick reference](quick_reference.md): everything needed to write a graph, on one page.
 - [The architecture](architecture.md): the entities, the components and the managers, and how a file becomes a program.
 - [Agents and software](agents-and-software.md): the agents in the file, the software in the program, and what observability lets you measure.
 - [The command line](cli.md): how to run a graph, the result, the errors, the exit codes.
