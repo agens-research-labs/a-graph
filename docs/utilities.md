@@ -5,7 +5,15 @@ model: to convert a PDF into Markdown, to hide personal data, to add a mark. Unl
 not know that utilities exist. They can be written in any language. Utilities are declared in `utilities`, each with an
 `id`; a node names them where it wants its data changed. Every key is described in [the reference](graph.md).
 
-<img src="images/utilities.svg" alt="Utilities: a utility changes the data before the model, another after it" width="75%">
+```mermaid
+flowchart LR
+    prev([previous agent]) -- node output --> u1
+    subgraph agent
+        u1["utility<br/>(Python)"] -. modified content .-> llm[LLM]
+        llm -.-> u2["utility<br/>(Node.js)"]
+    end
+    u2 -- "node output<br/>(modified content)" --> nxt([next agent])
+```
 
 ```yaml
 utilities:

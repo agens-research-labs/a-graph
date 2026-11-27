@@ -4,7 +4,12 @@ A tool is a program or a service of yours that the model may call while a node r
 it; the program makes the call. Tools are declared in `resources.tools` and a node lists the ones it uses in
 `resources.tools`. Every key is described in [the reference](graph.md).
 
-<img src="images/tool_and_mcp.svg" alt="A node that calls a program as a tool, and a node that calls an MCP server" width="41%">
+```mermaid
+flowchart LR
+    js([javascript program]) <--> tool[tool agent]
+    srv[[mcp server]] <--> mcp[mcp agent]
+    tool -- node output --> mcp
+```
 
 ```yaml
 resources:
