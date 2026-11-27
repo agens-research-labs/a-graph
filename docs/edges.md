@@ -23,7 +23,7 @@ flowchart LR
     input([input message]) --> a1["start<br/>agent_1"]
     a1 -- node output --> a2["next<br/>agent_2"]
     a2 -- node output --> a3["end<br/>agent_3"]
-    a3 --> output["graph output<br/>one item each for agent_1, agent_2, agent_3"]
+    a3 --> output["graph output<br/>one item for each agent"]
 ```
 
 - `start` is the first entry, and there is exactly one (`edge_start`), except in the cases below.
@@ -129,15 +129,15 @@ What the nodes of a group send to the final output goes there in the order of th
 ## React
 
 ```mermaid
-flowchart LR
-    prev([previous agent]) -- node output --> ctrl[controller agent]
-    ctrl -- node output --> nxt([next agent])
+flowchart TB
     subgraph workers["ReAct loop"]
         w1((worker agent))
         w2((worker agent))
         w3((worker agent))
     end
-    ctrl <--> workers
+    workers <--> ctrl
+    prev([previous agent]) -- node output --> ctrl[controller agent]
+    ctrl -- node output --> nxt([next agent])
 ```
 
 A `react` is not a group of branches: a controller decides at run time which worker to call.

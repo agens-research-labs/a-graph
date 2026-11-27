@@ -7,8 +7,8 @@ it; the program makes the call. Tools are declared in `resources.tools` and a no
 ```mermaid
 flowchart LR
     js([javascript program]) <--> tool[tool agent]
-    srv[[mcp server]] <--> mcp[mcp agent]
-    tool -- node output --> mcp
+    tool -- node output --> mcp[mcp agent]
+    mcp <--> srv[[mcp server]]
 ```
 
 ```yaml
