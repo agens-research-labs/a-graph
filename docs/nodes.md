@@ -118,6 +118,8 @@ Each produced media decides its own destinations with its `assistant` and `node`
 
 ## Validation nodes
 
+<img src="images/validation_node.svg" alt="A validation node: approved, the run goes on; refused, it stops or passes the problem to the next node" width="68%">
+
 A validation node reads and judges, and produces nothing. It is a node of `graph.nodes` with an `id`, written with the
 key `validation-node`:
 

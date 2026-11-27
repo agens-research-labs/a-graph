@@ -18,6 +18,8 @@ Every entry is a map with one key. Every key is described in [the reference](gra
 
 ## The main flow
 
+<img src="images/linear_pipeline.svg" alt="A pipeline: start, next and end, each node passing its output to the next" width="80%">
+
 - `start` is the first entry, and there is exactly one (`edge_start`), except in the cases below.
 - `next` runs a node after the one before it.
 - `end` is the last entry, and there is exactly one (`edge_end`), except in the cases below.
@@ -49,6 +51,10 @@ What a node sends on (its `message.output.node` and the media with `node: true`)
 its `agent_message` and its media. See [nodes](nodes.md).
 
 ## Groups
+
+<img src="images/fan_in_out_1.svg" alt="A group with an out node: in, three branches, out" width="100%">
+
+<img src="images/fan_in_out_2.svg" alt="A group without an out node: in, three branches, then the next entry" width="81%">
 
 `linear`, `parallel`, `concurrent` and `batch` have the same shape: a list of `limit`, `in`, `fan` and `out`, each
 written once and in this order (`block_shape`, `exactly_one`).
@@ -99,6 +105,8 @@ Branches that give both texts and structured answers cannot be packed: the run f
 What the nodes of a group send to the final output goes there in the order of the `fan`.
 
 ## React
+
+<img src="images/react.svg" alt="A react: the controller calls the workers in a loop" width="60%">
 
 A `react` is not a group of branches: a controller decides at run time which worker to call.
 

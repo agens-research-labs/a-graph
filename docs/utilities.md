@@ -5,6 +5,8 @@ model: to convert a PDF into Markdown, to hide personal data, to add a mark. Unl
 not know that utilities exist. They can be written in any language. Utilities are declared in `utilities`, each with an
 `id`; a node names them where it wants its data changed. Every key is described in [the reference](graph.md).
 
+<img src="images/utilities.svg" alt="Utilities: a utility changes the data before the model, another after it" width="75%">
+
 ```yaml
 utilities:
   - id: pdf_to_md
