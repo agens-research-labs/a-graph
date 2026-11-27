@@ -2651,7 +2651,7 @@
                   "on_error"
                 ],
                 "additionalProperties": false,
-                "description": "Makes the node a validation node, which reads and judges and produces nothing; the node then has only `id` and `validation-node`. Approved, the message it examined goes on unchanged. It stands in the main flow only, never in a group or a `react`."
+                "description": "Makes the node a validation node, which reads and judges and produces nothing; the node then has only `id` and `validation-node`. Approved, the message it received from the node before goes on unchanged, whatever its `message.input` reads; as `start` it received none, and none goes on. It stands in the main flow only, never in a group or a `react`."
               }
             },
             "required": [
